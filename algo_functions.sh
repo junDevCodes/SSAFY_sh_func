@@ -259,6 +259,9 @@ _handle_git_commit() {
     local file_prefix="$2"
     local problem="$3"
     
+    # 원래 디렉토리 저장
+    local original_dir=$(pwd)
+    
     # Git 저장소 찾기
     local git_root=""
     local current_dir="$dir"
@@ -292,16 +295,33 @@ _handle_git_commit() {
         echo "✅ 커밋 완료: $commit_msg"
         
         if [ "$GIT_AUTO_PUSH" = true ]; then
+            local current_branch=$(git branch --show-current 2>/dev/null || git rev-parse --abbrev-ref HEAD 2>/dev/null)
+            
+            # 먼저 설정된 브랜치로 시도
             if git push origin "$GIT_DEFAULT_BRANCH" 2>/dev/null; then
-                echo "✅ 푸시 완료!"
+                echo "✅ 푸시 완료! (브랜치: $GIT_DEFAULT_BRANCH)"
             else
-                echo "⚠️  푸시 실패 (브랜치: $GIT_DEFAULT_BRANCH)"
-                echo "💡 'algo-config edit'로 브랜치명을 확인하세요"
+                # 설정된 브랜치로 실패하면 현재 브랜치로 시도
+                if [ -n "$current_branch" ] && [ "$current_branch" != "$GIT_DEFAULT_BRANCH" ]; then
+                    echo "⚠️  브랜치 '$GIT_DEFAULT_BRANCH'로 푸시 실패, 현재 브랜치 '$current_branch'로 시도 중..."
+                    if git push origin "$current_branch" 2>/dev/null; then
+                        echo "✅ 푸시 완료! (브랜치: $current_branch)"
+                    else
+                        echo "❌ 푸시 실패 (시도한 브랜치: $GIT_DEFAULT_BRANCH, $current_branch)"
+                        echo "💡 'algo-config edit'로 브랜치명을 확인하거나 수동으로 푸시하세요"
+                    fi
+                else
+                    echo "❌ 푸시 실패 (브랜치: $GIT_DEFAULT_BRANCH)"
+                    echo "💡 'algo-config edit'로 브랜치명을 확인하거나 수동으로 푸시하세요"
+                fi
             fi
         fi
     else
         echo "⚠️  커밋할 변경사항이 없습니다"
     fi
+    
+    # 원래 디렉토리로 복원
+    cd "$original_dir" 2>/dev/null || true
 }
 
 # 에디터에서 파일 열기 내부 함수
@@ -349,8 +369,17 @@ gitdown() {
             local filename=$(basename "$py_file" .py)
             commit_msg="${GIT_COMMIT_PREFIX}: $filename"
         else
-            local folder_name=$(basename "$(pwd)")
-            commit_msg="update: $folder_name"
+            # 현재 디렉토리명 추출 (Windows 경로도 처리)
+            local current_dir="${PWD:-$(pwd)}"
+            local folder_name=$(basename "$current_dir" 2>/dev/null || echo "unknown")
+            
+            # 빈 문자열이나 특수 케이스 처리
+            if [ -z "$folder_name" ] || [ "$folder_name" = "/" ] || [ "$folder_name" = "\\" ]; then
+                folder_name="root"
+            fi
+            
+            echo "📂 현재 폴더: $folder_name"
+            commit_msg="${GIT_COMMIT_PREFIX}: $folder_name"
         fi
     fi
     
@@ -363,10 +392,25 @@ gitdown() {
         
         if [ "$GIT_AUTO_PUSH" = true ]; then
             echo "🌐 원격 저장소로 푸시 중..."
+            local current_branch=$(git branch --show-current 2>/dev/null || git rev-parse --abbrev-ref HEAD 2>/dev/null)
+            
+            # 먼저 설정된 브랜치로 시도
             if git push origin "$GIT_DEFAULT_BRANCH" 2>/dev/null; then
-                echo "✅ 푸시 완료!"
+                echo "✅ 푸시 완료! (브랜치: $GIT_DEFAULT_BRANCH)"
             else
-                echo "⚠️  푸시 실패 (브랜치: $GIT_DEFAULT_BRANCH)"
+                # 설정된 브랜치로 실패하면 현재 브랜치로 시도
+                if [ -n "$current_branch" ] && [ "$current_branch" != "$GIT_DEFAULT_BRANCH" ]; then
+                    echo "⚠️  브랜치 '$GIT_DEFAULT_BRANCH'로 푸시 실패, 현재 브랜치 '$current_branch'로 시도 중..."
+                    if git push origin "$current_branch" 2>/dev/null; then
+                        echo "✅ 푸시 완료! (브랜치: $current_branch)"
+                    else
+                        echo "❌ 푸시 실패 (시도한 브랜치: $GIT_DEFAULT_BRANCH, $current_branch)"
+                        echo "💡 'algo-config edit'로 브랜치명을 확인하거나 수동으로 푸시하세요"
+                    fi
+                else
+                    echo "❌ 푸시 실패 (브랜치: $GIT_DEFAULT_BRANCH)"
+                    echo "💡 'algo-config edit'로 브랜치명을 확인하거나 수동으로 푸시하세요"
+                fi
             fi
         fi
     else
@@ -375,7 +419,10 @@ gitdown() {
     fi
     
     echo "📁 상위 폴더로 이동"
-    cd ..
+    cd .. || {
+        echo "⚠️  상위 폴더로 이동할 수 없습니다"
+        return 1
+    }
 }
 
 # =============================================================================
@@ -475,16 +522,74 @@ get_active_ide() {
 # check_ide - IDE 디버깅 정보
 # =============================================================================
 check_ide() {
+    init_algo_config
+    
     echo "🔍 IDE 감지 디버깅 정보:"
     echo ""
     echo "💻 운영체제: $OSTYPE"
     echo "📁 현재 위치: $(pwd)"
     echo ""
     
-    if command -v ps > /dev/null 2>&1; then
-        echo "1️⃣ 실행 중인 IDE 프로세스:"
-        ps aux | grep -E "(pycharm|idea|code|subl)" | grep -v grep || echo "   ❌ IDE 프로세스를 찾을 수 없습니다"
+    # 운영체제 감지
+    local os_type=""
+    if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]] || command -v powershell.exe > /dev/null 2>&1; then
+        os_type="windows"
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        os_type="mac"
+    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        os_type="linux"
     fi
+    
+    echo "1️⃣ 실행 중인 IDE 프로세스:"
+    case "$os_type" in
+        "windows")
+            # Windows: tasklist 또는 PowerShell 사용
+            if command -v tasklist > /dev/null 2>&1; then
+                local ide_processes=$(tasklist 2>/dev/null | grep -iE "(code|pycharm|idea|subl)" || echo "")
+                if [ -n "$ide_processes" ]; then
+                    echo "$ide_processes" | head -10
+                else
+                    echo "   ❌ IDE 프로세스를 찾을 수 없습니다"
+                fi
+            elif command -v powershell.exe > /dev/null 2>&1; then
+                local ide_processes=$(powershell.exe -Command "Get-Process | Where-Object {\$_.ProcessName -like '*code*' -or \$_.ProcessName -like '*pycharm*' -or \$_.ProcessName -like '*idea*' -or \$_.ProcessName -like '*subl*'} | Select-Object ProcessName,Id" 2>/dev/null)
+                if [ -n "$ide_processes" ]; then
+                    echo "$ide_processes"
+                else
+                    echo "   ❌ IDE 프로세스를 찾을 수 없습니다"
+                fi
+            else
+                echo "   ⚠️  프로세스 확인 도구를 찾을 수 없습니다"
+            fi
+            ;;
+        "mac"|"linux")
+            # macOS/Linux: ps 또는 pgrep 사용
+            if command -v pgrep > /dev/null 2>&1; then
+                local ide_found=false
+                for ide in code pycharm idea subl; do
+                    if pgrep -f "$ide" > /dev/null 2>&1; then
+                        echo "   ✅ $ide 실행 중"
+                        ide_found=true
+                    fi
+                done
+                if [ "$ide_found" = false ]; then
+                    echo "   ❌ IDE 프로세스를 찾을 수 없습니다"
+                fi
+            elif command -v ps > /dev/null 2>&1; then
+                local ide_processes=$(ps aux 2>/dev/null | grep -E "(pycharm|idea|code|subl)" | grep -v grep || echo "")
+                if [ -n "$ide_processes" ]; then
+                    echo "$ide_processes" | head -10
+                else
+                    echo "   ❌ IDE 프로세스를 찾을 수 없습니다"
+                fi
+            else
+                echo "   ⚠️  프로세스 확인 도구를 찾을 수 없습니다"
+            fi
+            ;;
+        *)
+            echo "   ⚠️  알 수 없는 운영체제"
+            ;;
+    esac
     
     echo ""
     echo "2️⃣ get_active_ide() 결과:"
@@ -492,8 +597,36 @@ check_ide() {
     echo "   감지된 IDE: '$detected_ide'"
     
     echo ""
-    echo "3️⃣ 현재 설정 (algo-config show):"
-    algo-config show | grep "IDE_PRIORITY"
+    echo "3️⃣ IDE 명령어 확인:"
+    for ide in $IDE_PRIORITY; do
+        local ide_cmd="$ide"
+        case "$ide" in
+            pycharm)
+                if [ "$os_type" = "windows" ]; then
+                    ide_cmd="pycharm64.exe"
+                elif [ "$os_type" = "linux" ]; then
+                    ide_cmd="pycharm.sh"
+                fi
+                ;;
+            idea)
+                if [ "$os_type" = "windows" ]; then
+                    ide_cmd="idea64.exe"
+                elif [ "$os_type" = "linux" ]; then
+                    ide_cmd="idea.sh"
+                fi
+                ;;
+        esac
+        
+        if command -v "$ide_cmd" > /dev/null 2>&1; then
+            echo "   ✅ $ide ($ide_cmd) - 설치됨"
+        else
+            echo "   ❌ $ide ($ide_cmd) - 설치되지 않음"
+        fi
+    done
+    
+    echo ""
+    echo "4️⃣ 현재 설정:"
+    algo-config show | grep "IDE_PRIORITY" || echo "   설정 파일을 찾을 수 없습니다"
     
     echo ""
     echo "💡 IDE 우선순위를 변경하려면: algo-config edit"

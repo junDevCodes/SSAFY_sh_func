@@ -56,23 +56,36 @@ cp ~/.bashrc ~/.bashrc.backup.$(date +%Y%m%d_%H%M%S)
 ```
 
 #### **중요** 2단계: 셸 함수 추가
+
+**방법 1: 현재 위치에서 직접 설치 (추천)**
+```bash
+# 현재 algo_functions.sh가 있는 위치에서 실행
+cat algo_functions.sh >> ~/.bashrc
+```
+
+**방법 2: 절대 경로로 설치**
+```bash
+# algo_functions.sh의 전체 경로를 사용
+cat /c/Users/jylee/Desktop/workspace/python/projects/SSAFY_sh_func/algo_functions.sh >> ~/.bashrc
+```
+
+**방법 3: 사용자 디렉토리로 복사 후 설치**
 ```bash
 # 연습용 디렉토리 생성 위치로 설정
 cd ~/Desktop/
 # 사용자 문제 연습용 디렉토리 생성
-mkdir Algorithm-Practics
+mkdir -p Algorithm-Practics
 cd Algorithm-Practics
-# git init을 통한 개인 레포 설정
+
+# algo_functions.sh를 현재 위치로 복사
+cp /c/Users/jylee/Desktop/workspace/python/projects/SSAFY_sh_func/algo_functions.sh .
+
+# git init을 통한 개인 레포 설정 (선택사항)
 git init
 git remote add origin "본인 레포지토리 주소"
-# 다운로드 한 algo_functions.sh를 해당 디렉토리로 이동
 
-# **중요**
-# 이때의 파일구조 /사용자의 생성 위치/Algorithm-Practics/algo_functions.sh
-
-# algo_functions.sh 파일을 다운로드한 위치에서 실행
-# ~/사용자의 생성 위치/Algorithm-Practics/algo_functions.sh
-cat ~/Desktop/Algorithm-Practics/algo_functions.sh >> ~/.bashrc
+# 셸 함수 추가
+cat algo_functions.sh >> ~/.bashrc
 ```
 
 #### 3단계: 적용
@@ -152,10 +165,10 @@ IDE_PRIORITY="code pycharm idea subl"
 
 **주요 설정 항목:**
 - `ALGO_BASE_DIR`: 문제 풀이 파일이 생성될 기본 디렉토리
-- `GIT_DEFAULT_BRANCH`: Git 푸시할 브랜치 (main/master)
-- `GIT_COMMIT_PREFIX`: 커밋 메시지 앞에 붙을 접두사
+- `GIT_DEFAULT_BRANCH`: Git 푸시할 브랜치 (main/master) - 자동 감지 기능으로 설정과 다르면 자동 재시도
+- `GIT_COMMIT_PREFIX`: 커밋 메시지 앞에 붙을 접두사 (기본값: "solve")
 - `GIT_AUTO_PUSH`: true면 자동 푸시, false면 수동
-- `IDE_PRIORITY`: 선호하는 IDE 순서
+- `IDE_PRIORITY`: 선호하는 IDE 순서 (공백으로 구분)
 
 ---
 
@@ -171,8 +184,12 @@ al p 42576   # 프로그래머스 42576번 문제
 ```
 
 **동작:**
-- 새 문제: 디렉토리 생성 → Python 템플릿 파일 생성 → IDE에서 파일 열기
+- 새 문제: 디렉토리 생성 → Python 템플릿 파일 생성 → Git 커밋/푸시 → IDE에서 파일 열기
 - 기존 문제: Git 커밋 → 푸시 → IDE에서 파일 열기
+
+**Git 브랜치 자동 감지:**
+- 설정된 브랜치(`main`/`master`)로 푸시 시도
+- 실패 시 현재 브랜치를 자동 감지하여 재시도
 
 **옵션:**
 ```bash
@@ -186,13 +203,16 @@ al s 2105 --no-open   # 파일 열기 건너뛰기
 
 ```bash
 gitup https://github.com/username/repo.git
+# 또는 GitLab
+gitup https://gitlab.com/username/repo.git
 ```
 
 **동작:**
 1. 저장소 클론
 2. 클론된 디렉토리로 이동
-3. Python/HTML/README 등 파일 검색
+3. Python/HTML/README 등 파일 검색 (우선순위: *.py → *.html → README* → 기타)
 4. 감지된 IDE에서 파일 열기
+5. 프로젝트 준비 완료 메시지 출력
 
 
 #### 3. `gitdown` - 문제 풀이 완료 - Git lab용
@@ -206,9 +226,18 @@ gitdown "custom message"   # 커스텀 커밋 메시지
 
 **동작:**
 1. `git add .` - 모든 변경사항 추가
-2. 커밋 메시지 자동 생성 (`solve: 파일명`)
+2. 커밋 메시지 자동 생성
+   - Python 파일이 있으면: `solve: 파일명`
+   - Python 파일이 없으면: `solve: 폴더명`
 3. 커밋 및 푸시
+   - 설정된 브랜치(`main`/`master`)로 먼저 시도
+   - 실패 시 현재 브랜치로 자동 재시도
 4. `cd ..` - 상위 디렉토리로 이동
+
+**커밋 메시지 규칙:**
+- 항상 `${GIT_COMMIT_PREFIX}` 접두사를 사용하여 일관성 유지
+- 예: `solve: boj_1234`, `solve: problem_folder`
+- 폴더명 추출: Windows 경로도 정상 처리되며, 빈 문자열이나 루트 디렉토리 케이스도 안전하게 처리
 
 #### 4. `get_active_ide` - 활성 IDE 감지
 
@@ -220,11 +249,27 @@ get_active_ide  # 예: code, pycharm, idea, subl
 
 #### 5. `check_ide` - IDE 디버깅
 
-IDE 감지 문제를 진단합니다.
+IDE 감지 문제를 진단하고 상세 정보를 제공합니다.
 
 ```bash
 check_ide
 ```
+
+**출력 정보:**
+1. **실행 중인 IDE 프로세스**
+   - Windows: `tasklist` 또는 PowerShell을 사용하여 프로세스 확인
+   - macOS/Linux: `pgrep` 또는 `ps`를 사용하여 프로세스 확인
+   
+2. **get_active_ide() 결과**
+   - 현재 감지된 IDE 이름 표시
+   
+3. **IDE 명령어 확인**
+   - 설정된 우선순위에 따라 각 IDE의 설치 여부 확인
+   - Windows: `pycharm64.exe`, `idea64.exe` 등 실행 파일 확인
+   - Linux: `pycharm.sh`, `idea.sh` 등 스크립트 확인
+   
+4. **현재 설정**
+   - `IDE_PRIORITY` 설정 값 표시
 
 #### 6. `algo-config` - 설정 관리
 
@@ -302,18 +347,28 @@ algo-config show  # GIT_DEFAULT_BRANCH 확인
 git branch        # 현재 브랜치 확인
 ```
 
-브랜치가 다르면 설정 파일 수정:
+**자동 브랜치 감지 기능:**
+- `gitdown`과 `al` 명령어는 설정된 브랜치로 푸시 실패 시 자동으로 현재 브랜치를 감지하여 재시도합니다
+- 예: 설정이 `main`인데 실제 브랜치가 `master`인 경우 자동으로 `master`로 푸시 시도
+
+브랜치가 다르면 설정 파일 수정 (선택사항):
 ```bash
 algo-config edit
 # GIT_DEFAULT_BRANCH="master" (또는 본인의 브랜치명)
+# 자동 감지 기능이 있어서 수정하지 않아도 됩니다
 ```
 
 ### IDE가 자동으로 열리지 않을 때
 
-**1. IDE 감지 확인**
+**1. IDE 감지 확인 (권장)**
 ```bash
 check_ide
 ```
+이 명령어는 다음을 확인합니다:
+- 실행 중인 IDE 프로세스
+- 감지된 IDE
+- IDE 명령어 설치 여부
+- 현재 설정
 
 **2. IDE 우선순위 변경**
 ```bash
@@ -329,8 +384,21 @@ which code
 # PyCharm (Windows Git Bash)
 which pycharm64.exe
 
+# IntelliJ IDEA (Windows Git Bash)
+which idea64.exe
+
 # macOS/Linux
 which pycharm
+which idea
+```
+
+**4. Windows에서 IDE 프로세스 확인**
+```bash
+# tasklist 사용
+tasklist | grep -i "code\|pycharm\|idea"
+
+# PowerShell 사용
+powershell.exe -Command "Get-Process | Where-Object {\$_.ProcessName -like '*code*' -or \$_.ProcessName -like '*pycharm*'}"
 ```
 
 ### 파일이 생성되지 않을 때
