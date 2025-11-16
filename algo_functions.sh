@@ -360,27 +360,16 @@ gitdown() {
     
     local commit_msg=""
     
-    # 커밋 메시지 생성
+    # 커밋 메시지 생성 (GitLab 과제용 - solve: 디렉토리명 형식만 사용)
     if [ -n "$1" ]; then
         commit_msg="$1"
     else
-        local py_file=$(find . -maxdepth 1 -name "*.py" -type f | head -n 1)
-        if [ -n "$py_file" ]; then
-            local filename=$(basename "$py_file" .py)
-            commit_msg="${GIT_COMMIT_PREFIX}: $filename"
-        else
-            # 현재 디렉토리명 추출 (Windows 경로도 처리)
-            local current_dir="${PWD:-$(pwd)}"
-            local folder_name=$(basename "$current_dir" 2>/dev/null || echo "unknown")
-            
-            # 빈 문자열이나 특수 케이스 처리
-            if [ -z "$folder_name" ] || [ "$folder_name" = "/" ] || [ "$folder_name" = "\\" ]; then
-                folder_name="root"
-            fi
-            
-            echo "📂 현재 폴더: $folder_name"
-            commit_msg="${GIT_COMMIT_PREFIX}: $folder_name"
+        # 항상 현재 디렉토리명 사용
+        local folder_name=$(basename "$(pwd)" 2>/dev/null)
+        if [ -z "$folder_name" ] || [ "$folder_name" = "/" ] || [ "$folder_name" = "\\" ]; then
+            folder_name="update"
         fi
+        commit_msg="${GIT_COMMIT_PREFIX}: $folder_name"
     fi
     
     echo "📝 모든 변경사항을 추가하고 커밋합니다..."
