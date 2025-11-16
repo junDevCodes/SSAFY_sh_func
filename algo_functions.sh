@@ -381,24 +381,67 @@ gitdown() {
         
         if [ "$GIT_AUTO_PUSH" = true ]; then
             echo "🌐 원격 저장소로 푸시 중..."
-            local current_branch=$(git branch --show-current 2>/dev/null || git rev-parse --abbrev-ref HEAD 2>/dev/null)
             
-            # 먼저 설정된 브랜치로 시도
-            if git push origin "$GIT_DEFAULT_BRANCH" 2>/dev/null; then
-                echo "✅ 푸시 완료! (브랜치: $GIT_DEFAULT_BRANCH)"
+            # 브랜치 리스트 가져오기
+            local branches=$(git branch --list 2>/dev/null | sed 's/^[* ] //' | tr '\n' ' ')
+            local has_master=false
+            local has_main=false
+            local push_branch=""
+            
+            # master 또는 main 브랜치 확인
+            for branch in $branches; do
+                if [ "$branch" = "master" ]; then
+                    has_master=true
+                elif [ "$branch" = "main" ]; then
+                    has_main=true
+                fi
+            done
+            
+            # 우선순위: master -> main
+            if [ "$has_master" = true ]; then
+                push_branch="master"
+            elif [ "$has_main" = true ]; then
+                push_branch="main"
             else
-                # 설정된 브랜치로 실패하면 현재 브랜치로 시도
-                if [ -n "$current_branch" ] && [ "$current_branch" != "$GIT_DEFAULT_BRANCH" ]; then
-                    echo "⚠️  브랜치 '$GIT_DEFAULT_BRANCH'로 푸시 실패, 현재 브랜치 '$current_branch'로 시도 중..."
-                    if git push origin "$current_branch" 2>/dev/null; then
-                        echo "✅ 푸시 완료! (브랜치: $current_branch)"
-                    else
-                        echo "❌ 푸시 실패 (시도한 브랜치: $GIT_DEFAULT_BRANCH, $current_branch)"
-                        echo "💡 'algo-config edit'로 브랜치명을 확인하거나 수동으로 푸시하세요"
+                # master/main이 없으면 브랜치 리스트 표시하고 사용자 선택
+                echo ""
+                echo "📋 사용 가능한 브랜치:"
+                local branch_list=$(git branch --list 2>/dev/null | sed 's/^[* ] //')
+                local branch_array=()
+                local index=1
+                
+                while IFS= read -r branch; do
+                    if [ -n "$branch" ]; then
+                        echo "  $index) $branch"
+                        branch_array[$index]="$branch"
+                        index=$((index + 1))
                     fi
+                done <<< "$branch_list"
+                
+                if [ $index -eq 1 ]; then
+                    echo "❌ 사용 가능한 브랜치가 없습니다. 푸시를 건너뜁니다."
+                    return 0
+                fi
+                
+                echo ""
+                read -p "푸시할 브랜치 번호를 선택하세요 (1-$((index-1))): " branch_choice
+                
+                if [ -n "$branch_choice" ] && [ "$branch_choice" -ge 1 ] && [ "$branch_choice" -lt "$index" ] 2>/dev/null; then
+                    push_branch="${branch_array[$branch_choice]}"
                 else
-                    echo "❌ 푸시 실패 (브랜치: $GIT_DEFAULT_BRANCH)"
-                    echo "💡 'algo-config edit'로 브랜치명을 확인하거나 수동으로 푸시하세요"
+                    echo "❌ 잘못된 선택입니다. 푸시를 건너뜁니다."
+                    return 0
+                fi
+            fi
+            
+            # 선택된 브랜치로 푸시 시도
+            if [ -n "$push_branch" ]; then
+                echo "🚀 브랜치 '$push_branch'로 푸시 중..."
+                if git push origin "$push_branch" 2>/dev/null; then
+                    echo "✅ 푸시 완료! (브랜치: $push_branch)"
+                else
+                    echo "❌ 푸시 실패 (브랜치: $push_branch)"
+                    echo "💡 수동으로 푸시하세요: git push origin $push_branch"
                 fi
             fi
         fi
