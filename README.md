@@ -250,7 +250,6 @@ get_active_ide  # 예: code, pycharm, idea, subl
 #### 5. `check_ide` - IDE 디버깅
 
 IDE 감지 문제를 진단하고 상세 정보를 제공합니다.
-
 ```bash
 check_ide
 ```
