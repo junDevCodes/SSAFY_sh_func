@@ -1,5 +1,9 @@
 #!/bin/bash
 
+# 이전에 정의된 함수/별칭이 남아 있을 때 새 버전을 확실히 적용하기 위해 초기화
+unalias -- al gitup gitdown algo-config 2>/dev/null
+unset -f -- al gitup gitdown algo_config get_active_ide check_ide _create_algo_file _handle_git_commit _open_in_editor init_algo_config 2>/dev/null
+
 # =============================================================================
 # 알고리즘 문제 풀이 자동화 셸 함수 (공개용)
 # =============================================================================
@@ -29,7 +33,7 @@ EOF
 }
 
 # 설정 편집 명령어
-algo-config() {
+algo_config() {
     init_algo_config
     
     if [ "$1" = "edit" ]; then
@@ -56,6 +60,7 @@ algo-config() {
     echo "  algo-config show   - 현재 설정 보기"
     echo "  algo-config reset  - 설정 초기화"
 }
+alias algo-config='algo_config'
 
 # =============================================================================
 # al - 알고리즘 문제 환경 설정
@@ -658,7 +663,7 @@ check_ide() {
     
     echo ""
     echo "4️⃣ 현재 설정:"
-    algo-config show | grep "IDE_PRIORITY" || echo "   설정 파일을 찾을 수 없습니다"
+    algo_config show | grep "IDE_PRIORITY" || echo "   설정 파일을 찾을 수 없습니다"
     
     echo ""
     echo "💡 IDE 우선순위를 변경하려면: algo-config edit"
