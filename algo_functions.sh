@@ -392,8 +392,9 @@ gitdown() {
             local has_master=false
             local has_main=false
             local push_branch=""
-            
-            # master 또는 main 브랜치 확인
+            local remote_head=""
+            local need_select=true
+
             for branch in $branches; do
                 if [ "$branch" = "master" ]; then
                     has_master=true
@@ -401,14 +402,31 @@ gitdown() {
                     has_main=true
                 fi
             done
-            
-            # 우선순위: master -> main
-            if [ "$has_master" = true ]; then
-                push_branch="master"
-            elif [ "$has_main" = true ]; then
-                push_branch="main"
-            else
-                # master/main이 없으면 브랜치 리스트 표시하고 사용자 선택
+
+            # Prefer remote default branch if available
+            remote_head=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')
+            if [ -z "$remote_head" ]; then
+                remote_head=$(git remote show origin 2>/dev/null | awk '/HEAD branch/ {print $NF}')
+            fi
+
+            if [ -n "$remote_head" ]; then
+                if [ "$has_master" = true ] && [ "$has_main" = true ]; then
+                    need_select=true
+                elif [ "$has_master" = false ] && [ "$has_main" = false ]; then
+                    need_select=true
+                elif [ "$remote_head" = "master" ] && [ "$has_master" = true ] && [ "$has_main" = false ]; then
+                    push_branch="$remote_head"
+                    need_select=false
+                elif [ "$remote_head" = "main" ] && [ "$has_main" = true ] && [ "$has_master" = false ]; then
+                    push_branch="$remote_head"
+                    need_select=false
+                else
+                    need_select=true
+                fi
+            fi
+
+            if [ "$need_select" = true ]; then
+                # master/main이 동시에 있거나 둘 다 없으면 브랜치 리스트 표시하고 사용자 선택
                 echo ""
                 echo "📋 사용 가능한 브랜치:"
                 local branch_list=$(git branch --list 2>/dev/null | sed 's/^[* ] //')
