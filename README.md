@@ -1,482 +1,119 @@
-# 알고리즘 문제 풀이 (Algorithm Problem Solutions)
+﻿# 알고리즘/실습 자동화 Shell 함수
 
-이 저장소는 다양한 온라인 저지 및 플랫폼의 알고리즘 문제 풀이 코드를 담고 있습니다. 
-**셸 함수(Shell Functions)**를 통해 문제 풀이 환경 설정과 Git 작업이 자동화됩니다.
-
----
-
-## 📋 목차
-
-- [디렉토리 구조](#디렉토리-구조-directory-structure)
-- [포함된 플랫폼](#포함된-플랫폼-included-platforms)
-- [셸 함수 설치 및 사용법](#셸-함수-설치-및-사용법)
-- [워크플로우 예시](#워크플로우-예시)
-- [기여](#기여-contribution)
+이 저장소는 Bash 함수 2가지를 제공합니다.
+1) al: 알고리즘 문제 풀이 보조
+2) gitup/gitdown: 실습 제출용 Git 작업 자동화
 
 ---
 
-## 디렉토리 구조 (Directory Structure)
+## 1) al - 알고리즘 문제 풀이 보조
 
-문제 풀이 코드는 플랫폼 및 문제 번호별로 정리되어 있습니다.
+### 사용법
+```bash
+al <site> <problem> [--no-git] [--no-open]
+```
 
+- site: `s|swea`, `b|boj`, `p|programmers`
+- problem: 숫자만 허용
+
+### 동작
+- `ALGO_BASE_DIR/<site>/<problem>/` 디렉터리를 만들고 템플릿 파일을 생성합니다.
+- 파일이 이미 있으면 필요 시 Git 커밋을 수행합니다.
+- IDE를 감지해서 자동으로 파일을 엽니다(`--no-open`로 끔).
+
+예시 구조:
 ```
-Algorithm-Practics(사용자 디렉토리)/
-├── swea/
-│   └── 1234/
-│       ├── swea_1234.py
-│       └── sample_input.txt
-├── boj/
-│   └── 10950/
-│       ├── boj_10950.py
-│       └── sample_input.txt
-└── programmers/
-    └── 42576/
-        └── programmers_42576.py
+$ALGO_BASE_DIR/
+  swea/1234/swea_1234.py
+  boj/10950/boj_10950.py
+  programmers/42576/programmers_42576.py
 ```
+
+옵션:
+- `--no-git`: Git 커밋/푸시 생략
+- `--no-open`: IDE 자동 열기 생략
+
+참고:
+- 템플릿에서 `sample_input.txt`를 열도록 설정되어 있지만, 파일은 자동 생성되지 않습니다.
 
 ---
 
-## 포함된 플랫폼 (Included Platforms)
+## 2) gitup / gitdown - 실습 제출용
 
-현재 다음 플랫폼들의 문제 풀이를 관리하고 있습니다:
+### gitup
+```bash
+gitup <git-repository-url>
+```
+- 저장소를 clone 한 뒤, 루트 근처에서 적당한 파일을 찾아 IDE로 엽니다.
 
-* **SWEA** (Samsung SW Expert Academy) - `s` 또는 `swea`
-* **BOJ** (백준 온라인 저지) - `b` 또는 `boj`
-* **Programmers** (프로그래머스) - `p` 또는 `programmers`
+### gitdown
+```bash
+gitdown [commit message]
+```
+- `git add .` → `git commit` → `git push` → `cd ..`
+- 기본 커밋 메시지: `${GIT_COMMIT_PREFIX}: <현재폴더명>`
+- `GIT_AUTO_PUSH=true`일 때만 자동 push 수행
+
+푸시 브랜치 결정 규칙:
+- 원격 default 브랜치(`origin/HEAD`)를 우선 사용합니다.
+- 로컬에 `master`와 `main`이 **둘 다 있거나 둘 다 없으면** 브랜치 목록을 보여주고 선택합니다.
+- 로컬에 `master` 또는 `main`이 **하나만** 있고, 그것이 원격 default와 같으면 자동으로 푸시합니다.
 
 ---
 
-## 셸 함수 설치 및 사용법
+## 로컬 적용(설치)
 
-### 🚀 초기 설치
-
-#### 1단계: 백업 생성 (권장)
+### 1) 파일 위치 결정
 ```bash
-cp ~/.bashrc ~/.bashrc.backup.$(date +%Y%m%d_%H%M%S)
+mkdir -p ~/scripts
+cp /path/to/algo_functions.sh ~/scripts/
 ```
 
-#### **중요** 2단계: 셸 함수 추가
-
-**방법 1: 현재 위치에서 직접 설치 (추천)**
+### 2) 셸 설정 파일에 source 추가
 ```bash
-# 현재 algo_functions.sh가 있는 위치에서 실행
-cat algo_functions.sh >> ~/.bashrc
+echo 'source ~/scripts/algo_functions.sh' >> ~/.bashrc
+# zsh 사용 시
+# echo 'source ~/scripts/algo_functions.sh' >> ~/.zshrc
 ```
 
-**방법 2: 절대 경로로 설치**
-```bash
-# algo_functions.sh의 전체 경로를 사용
-cat /c/Users/jylee/Desktop/workspace/python/projects/SSAFY_sh_func/algo_functions.sh >> ~/.bashrc
-```
-
-**방법 3: 사용자 디렉토리로 복사 후 설치**
-```bash
-# 연습용 디렉토리 생성 위치로 설정
-cd ~/Desktop/
-# 사용자 문제 연습용 디렉토리 생성
-mkdir -p Algorithm-Practics
-cd Algorithm-Practics
-
-# algo_functions.sh를 현재 위치로 복사
-cp /c/Users/jylee/Desktop/workspace/python/projects/SSAFY_sh_func/algo_functions.sh .
-
-# git init을 통한 개인 레포 설정 (선택사항)
-git init
-git remote add origin "본인 레포지토리 주소"
-
-# 셸 함수 추가
-cat algo_functions.sh >> ~/.bashrc
-```
-
-#### 3단계: 적용
+### 3) 적용
 ```bash
 source ~/.bashrc
 ```
 
-#### 4단계: 설치 확인
+---
+
+## 업데이트 방법
+
+### 1) 저장소에서 바로 쓰는 경우
 ```bash
-al  # 사용법이 출력되면 성공!
+cd /path/to/SSAFY_sh_func
+git pull
+source ~/.bashrc
+```
+
+### 2) 복사해서 쓰는 경우
+```bash
+cp /path/to/SSAFY_sh_func/algo_functions.sh ~/scripts/
+source ~/.bashrc
 ```
 
 ---
 
-### ⚙️ 설정 파일 관리
+## 설정 파일
 
-설정 파일 위치: `~/.algo_config`
-
-#### 설정 보기
+- 위치: `~/.algo_config`
+- 명령어:
 ```bash
 algo-config show
-```
-
-#### 설정 편집 방법
-
-**방법 1: 명령어 사용 (추천)**
-```bash
 algo-config edit
-```
-기본 에디터(보통 nano)가 열립니다.
-
-**방법 2: Vim 사용**
-```bash
-vim ~/.algo_config
+algo-config reset
 ```
 
-**Vim 단축키:**
-- `i` : 입력 모드 (편집 시작)
-- `ESC` : 명령 모드로 돌아가기
-- `:w` : 저장
-- `:q` : 종료
-- `:wq` 또는 `:x` : 저장 후 종료
-- `:q!` : 저장하지 않고 강제 종료
-
-**이하 초보자용 추천**
-
-**방법 3: VSCode 사용**
+주요 설정값:
 ```bash
-code ~/.algo_config
-```
-
-**방법 4: 직접 파일 경로로 열기**
-```bash
-# Windows Git Bash
-notepad ~/.algo_config
-
-# macOS
-open -a TextEdit ~/.algo_config
-
-# Linux
-gedit ~/.algo_config
-```
-
-#### 설정 파일 내용
-```bash
-# 알고리즘 문제 풀이 디렉토리 설정
-ALGO_BASE_DIR="$HOME/Desktop/Algorithm-Practics"
-
-# Git 설정
-GIT_DEFAULT_BRANCH="main"           # 기본 브랜치
-GIT_COMMIT_PREFIX="solve"           # 커밋 메시지 접두사
-GIT_AUTO_PUSH=true                  # 자동 푸시 여부
-
-# IDE 우선순위 (공백으로 구분)
+ALGO_BASE_DIR="$HOME/algorithm"
+GIT_COMMIT_PREFIX="solve"
+GIT_AUTO_PUSH=true
 IDE_PRIORITY="code pycharm idea subl"
 ```
-
-**주요 설정 항목:**
-- `ALGO_BASE_DIR`: 문제 풀이 파일이 생성될 기본 디렉토리
-- `GIT_DEFAULT_BRANCH`: Git 푸시할 브랜치 (main/master) - 자동 감지 기능으로 설정과 다르면 자동 재시도
-- `GIT_COMMIT_PREFIX`: 커밋 메시지 앞에 붙을 접두사 (기본값: "solve")
-- `GIT_AUTO_PUSH`: true면 자동 푸시, false면 수동
-- `IDE_PRIORITY`: 선호하는 IDE 순서 (공백으로 구분)
-
----
-
-### 📖 사용 가능한 명령어
-
-#### 1. `al` - 알고리즘 문제 환경 설정
-
-**새 문제 시작하기:**
-```bash
-al s 1234    # SWEA 1234번 문제
-al b 10950   # BOJ 10950번 문제
-al p 42576   # 프로그래머스 42576번 문제
-```
-
-**동작:**
-- 새 문제: 디렉토리 생성 → Python 템플릿 파일 생성 → Git 커밋/푸시 → IDE에서 파일 열기
-- 기존 문제: Git 커밋 → 푸시 → IDE에서 파일 열기
-
-**Git 브랜치 자동 감지:**
-- 설정된 브랜치(`main`/`master`)로 푸시 시도
-- 실패 시 현재 브랜치를 자동 감지하여 재시도
-
-**옵션:**
-```bash
-al b 1000 --no-git    # Git 작업 건너뛰기
-al s 2105 --no-open   # 파일 열기 건너뛰기
-```
-
-#### 2. `gitup` - Git 저장소 클론 - Git lab용
-
-저장소를 클론하고 자동으로 파일을 열어줍니다.
-
-```bash
-gitup https://github.com/username/repo.git
-# 또는 GitLab
-gitup https://gitlab.com/username/repo.git
-```
-
-**동작:**
-1. 저장소 클론
-2. 클론된 디렉토리로 이동
-3. Python/HTML/README 등 파일 검색 (우선순위: *.py → *.html → README* → 기타)
-4. 감지된 IDE에서 파일 열기
-5. 프로젝트 준비 완료 메시지 출력
-
-
-#### 3. `gitdown` - 문제 풀이 완료 - Git lab용
-
-현재 디렉토리의 모든 변경사항을 커밋하고 푸시한 후 상위 디렉토리로 이동합니다.
-
-```bash
-gitdown                    # 자동 커밋 메시지
-gitdown "custom message"   # 커스텀 커밋 메시지
-```
-
-**동작:**
-1. `git add .` - 모든 변경사항 추가
-2. 커밋 메시지 자동 생성
-   - Python 파일이 있으면: `solve: 파일명`
-   - Python 파일이 없으면: `solve: 폴더명`
-3. 커밋 및 푸시
-   - 설정된 브랜치(`main`/`master`)로 먼저 시도
-   - 실패 시 현재 브랜치로 자동 재시도
-4. `cd ..` - 상위 디렉토리로 이동
-
-**커밋 메시지 규칙:**
-- 항상 `${GIT_COMMIT_PREFIX}` 접두사를 사용하여 일관성 유지
-- 예: `solve: boj_1234`, `solve: problem_folder`
-- 폴더명 추출: Windows 경로도 정상 처리되며, 빈 문자열이나 루트 디렉토리 케이스도 안전하게 처리
-
-#### 4. `get_active_ide` - 활성 IDE 감지
-
-현재 실행 중인 IDE를 감지합니다.
-
-```bash
-get_active_ide  # 예: code, pycharm, idea, subl
-```
-
-#### 5. `check_ide` - IDE 디버깅
-
-IDE 감지 문제를 진단하고 상세 정보를 제공합니다.
-```bash
-check_ide
-```
-
-**출력 정보:**
-1. **실행 중인 IDE 프로세스**
-   - Windows: `tasklist` 또는 PowerShell을 사용하여 프로세스 확인
-   - macOS/Linux: `pgrep` 또는 `ps`를 사용하여 프로세스 확인
-   
-2. **get_active_ide() 결과**
-   - 현재 감지된 IDE 이름 표시
-   
-3. **IDE 명령어 확인**
-   - 설정된 우선순위에 따라 각 IDE의 설치 여부 확인
-   - Windows: `pycharm64.exe`, `idea64.exe` 등 실행 파일 확인
-   - Linux: `pycharm.sh`, `idea.sh` 등 스크립트 확인
-   
-4. **현재 설정**
-   - `IDE_PRIORITY` 설정 값 표시
-
-#### 6. `algo-config` - 설정 관리
-
-```bash
-algo-config show   # 현재 설정 보기
-algo-config edit   # 설정 파일 편집
-algo-config reset  # 설정 초기화
-```
-
----
-
-## 워크플로우 예시
-
-### 🎯 알고리즘 새 문제 풀기
-
-```bash
-# 1. 문제 환경 설정 (새 파일 생성)
-al b 1000
-
-# 2. 코드 작성 (IDE에서 자동으로 열림)
-# ... 문제 풀이 ...
-
-# 3. 완료 후 커밋 및 상위 폴더로 이동
-al b 1000
-```
-
-### 🔄 기존 문제 다시 작업
-
-```bash
-# 기존 문제 파일 열기 및 Git 커밋/푸시
-al b 1000
-```
-
-### 📥 깃랩 문제 저장소 클론
-
-```bash
-gitup https://github.com/username/algorithm-solutions.git
-# 자동으로 파일이 열립니다
-# 문제 해결 이후
-gitdown
-```
-
----
-
-## 🛠️ 문제 해결
-
-### Git 푸시가 안 될 때
-
-**1. Git 저장소 초기화 확인**
-```bash
-cd ~/Desktop/Algorithm-Practics
-git status  # Git 저장소인지 확인
-```
-
-**2. Git 저장소 초기 설정 (처음 한 번만)**
-```bash
-cd ~/Desktop/Algorithm-Practics
-
-# Git 초기화
-git init
-
-# 원격 저장소 연결
-git remote add origin https://github.com/본인아이디/Algorithm-Practics.git
-
-# 첫 커밋
-git add .
-git commit -m "init: 알고리즘 저장소 초기화"
-git branch -M main
-git push -u origin main
-```
-
-**3. 브랜치 확인**
-```bash
-algo-config show  # GIT_DEFAULT_BRANCH 확인
-git branch        # 현재 브랜치 확인
-```
-
-**자동 브랜치 감지 기능:**
-- `gitdown`과 `al` 명령어는 설정된 브랜치로 푸시 실패 시 자동으로 현재 브랜치를 감지하여 재시도합니다
-- 예: 설정이 `main`인데 실제 브랜치가 `master`인 경우 자동으로 `master`로 푸시 시도
-
-브랜치가 다르면 설정 파일 수정 (선택사항):
-```bash
-algo-config edit
-# GIT_DEFAULT_BRANCH="master" (또는 본인의 브랜치명)
-# 자동 감지 기능이 있어서 수정하지 않아도 됩니다
-```
-
-### IDE가 자동으로 열리지 않을 때
-
-**1. IDE 감지 확인 (권장)**
-```bash
-check_ide
-```
-이 명령어는 다음을 확인합니다:
-- 실행 중인 IDE 프로세스
-- 감지된 IDE
-- IDE 명령어 설치 여부
-- 현재 설정
-
-**2. IDE 우선순위 변경**
-```bash
-algo-config edit
-# IDE_PRIORITY="pycharm code idea"  (원하는 순서로)
-```
-
-**3. IDE 실행 파일 확인**
-```bash
-# VSCode
-which code
-
-# PyCharm (Windows Git Bash)
-which pycharm64.exe
-
-# IntelliJ IDEA (Windows Git Bash)
-which idea64.exe
-
-# macOS/Linux
-which pycharm
-which idea
-```
-
-**4. Windows에서 IDE 프로세스 확인**
-```bash
-# tasklist 사용
-tasklist | grep -i "code\|pycharm\|idea"
-
-# PowerShell 사용
-powershell.exe -Command "Get-Process | Where-Object {\$_.ProcessName -like '*code*' -or \$_.ProcessName -like '*pycharm*'}"
-```
-
-### 파일이 생성되지 않을 때
-
-**1. 경로 확인**
-```bash
-algo-config show  # ALGO_BASE_DIR 확인
-```
-
-**2. 디렉토리 생성 권한 확인**
-```bash
-ls -la ~/Desktop  # Desktop 폴더 권한 확인
-```
-
-**3. 경로 수정**
-```bash
-algo-config edit
-# ALGO_BASE_DIR="$HOME/Desktop/Algorithm-Practics"
-```
-
----
-
-## 📝 파일 위치 요약
-
-| 파일/디렉토리 | 위치 | 설명 |
-|--------------|------|------|
-| 셸 함수 정의 | `~/.bashrc` | algo_functions.sh 내용이 추가됨 |
-| 설정 파일 | `~/.algo_config` | 사용자 설정 (자동 생성) |
-| 작업 디렉토리 | `~/Desktop/Algorithm-Practics/` | 문제 풀이 파일들 |
-| Git 저장소 | `~/Desktop/Algorithm-Practics/.git` | Git 정보 |
-
-**경로 표시 규칙:**
-- `~` = 홈 디렉토리 (`/home/사용자명` 또는 `/c/Users/사용자명`)
-- `~/Desktop` = 바탕화면
-- `~/.bashrc` = 홈 디렉토리의 숨김 파일
-
----
-
-## 🔍 자주 사용하는 명령어 모음
-
-```bash
-# 새 문제 시작
-al s 1234
-
-# 깃랩 문제 풀이 시작
-gitup "주소"
-
-# 깃랩 문제 풀이 완료
-gitdown
-
-# 설정 보기
-algo-config show
-
-# 설정 변경
-algo-config edit
-
-# IDE 확인
-check_ide
-
-# Git 상태 확인
-git status
-
-# 현재 위치 확인
-pwd
-
-# 홈으로 이동
-cd ~
-
-# 작업 디렉토리로 이동
-cd ~/Desktop/Algorithm-Practics
-```
-
----
-
-## 기여 (Contribution)
-
-이 저장소는 개인적인 학습 및 연습을 위한 공간입니다. 
-피드백 및 개선 제안은 언제나 환영합니다!
-
----
-
-**Made with ❤️ for efficient algorithm problem solving**
