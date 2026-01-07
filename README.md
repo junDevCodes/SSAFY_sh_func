@@ -10,7 +10,7 @@
 
 ### 사용법
 ```bash
-al <site> <problem> [--no-git] [--no-open]
+al <site> <problem> [--msg <msg> | <msg>] [--no-git] [--no-open]
 ```
 
 - site: `s|swea`, `b|boj`, `p|programmers`
@@ -32,8 +32,11 @@ $ALGO_BASE_DIR/
 옵션:
 - `--no-git`: Git 커밋/푸시 생략
 - `--no-open`: IDE 자동 열기 생략
+- `--msg, -m <msg>` 또는 `<msg>`: 커밋 메시지 지정
 
 참고:
+- 커밋 메시지를 직접 넣으면 커밋 전 확인 프롬프트가 뜹니다. `n`을 선택하면 메시지를 다시 입력합니다.
+- 메시지에 공백이 있으면 따옴표로 감싸세요. 예: `al b 1000 "feat: new commit"`
 - 템플릿에서 `sample_input.txt`를 열도록 설정되어 있지만, 파일은 자동 생성되지 않습니다.
 
 ---
@@ -53,6 +56,8 @@ gitdown [commit message]
 - `git add .` → `git commit` → `git push` → `cd ..`
 - 기본 커밋 메시지: `${GIT_COMMIT_PREFIX}: <현재폴더명>`
 - `GIT_AUTO_PUSH=true`일 때만 자동 push 수행
+ - 커밋 메시지를 직접 넣으면 커밋 전 확인 프롬프트가 뜹니다. `n`을 선택하면 메시지를 다시 입력합니다.
+ - 메시지에 공백이 있으면 따옴표로 감싸세요. 예: `gitdown "feat: new commit"`
 
 푸시 브랜치 결정 규칙:
 - 원격 default 브랜치(`origin/HEAD`)를 우선 사용합니다.
