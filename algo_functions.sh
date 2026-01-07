@@ -2,7 +2,7 @@
 
 # 이전에 정의된 함수/별칭이 남아 있을 때 새 버전을 확실히 적용하기 위해 초기화
 unalias -- al gitup gitdown algo-config 2>/dev/null
-unset -f -- al gitup gitdown algo_config get_active_ide check_ide _create_algo_file _handle_git_commit _open_in_editor init_algo_config 2>/dev/null
+unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commit_message _create_algo_file _handle_git_commit _open_in_editor init_algo_config 2>/dev/null
 
 # =============================================================================
 # 알고리즘 문제 풀이 자동화 셸 함수 (공개용)
@@ -78,14 +78,16 @@ al() {
         echo "  p  → Programmers"
         echo ""
         echo "⚙️  옵션:"
-        echo "  --no-git    Git 커밋/푸시 건너뛰기"
-        echo "  --no-open   파일 열기 건너뛰기"
+        echo "  --no-git         Git 커밋/푸시 건너뛰기"
+        echo "  --no-open        파일 열기 건너뛰기"
+        echo "  --msg, -m <msg>  커밋 메시지 지정"
         echo ""
         echo "💡 사용 예제:"
-        echo "  al s 1234          # SWEA 1234번 문제"
-        echo "  al b 10950         # BOJ 10950번 문제"
-        echo "  al p 42576         # 프로그래머스 42576번 문제"
-        echo "  al b 1000 --no-git # Git 작업 없이 파일만 생성"
+        echo "  al s 1234                  # SWEA 1234번 문제"
+        echo "  al b 10950                 # BOJ 10950번 문제"
+        echo "  al p 42576                 # 프로그래머스 42576번 문제"
+        echo "  al b 1000 --no-git         # Git 작업 없이 파일만 생성"
+        echo "  al b 1000 --msg \"fix: ty\"  # 커밋 메시지 지정"
         return 1
     fi
     
@@ -93,6 +95,7 @@ al() {
     local problem="$2"
     local skip_git=false
     local skip_open=false
+    local custom_commit_msg=""
     
     # 옵션 파싱
     shift 2
@@ -100,9 +103,41 @@ al() {
         case "$1" in
             --no-git) skip_git=true ;;
             --no-open) skip_open=true ;;
+            --msg|-m)
+                shift
+                if [ -z "$1" ] || [[ "$1" == --* ]]; then
+                    echo "❗ --msg 옵션에는 커밋 메시지가 필요합니다."
+                    return 1
+                fi
+                custom_commit_msg="$1"
+                ;;
+            --msg=*)
+                custom_commit_msg="${1#--msg=}"
+                if [ -z "$custom_commit_msg" ]; then
+                    echo "❗ --msg 옵션에는 커밋 메시지가 필요합니다."
+                    return 1
+                fi
+                ;;
+            *)
+                if [ -z "$custom_commit_msg" ] && [[ "$1" != --* ]]; then
+                    custom_commit_msg="$1"
+                elif [ -n "$custom_commit_msg" ] && [[ "$1" != --* ]]; then
+                    echo "❗ 커밋 메시지에 공백이 있으면 따옴표로 감싸주세요."
+                    echo "   예: al b 1000 \"feat: new commit\""
+                    return 1
+                else
+                    echo "❗ 알 수 없는 옵션: $1"
+                    return 1
+                fi
+                ;;
         esac
         shift
     done
+
+    if [ -n "$custom_commit_msg" ] && [ -z "${custom_commit_msg//[[:space:]]/}" ]; then
+        echo "❗ 커밋 메시지가 비어 있습니다."
+        return 1
+    fi
     
     # 사이트 코드 검증
     local site_name file_prefix site_display
@@ -152,7 +187,7 @@ al() {
     else
         echo "📄 기존 파일 발견!"
         if [ "$skip_git" = false ]; then
-            _handle_git_commit "$dir" "$file_prefix" "$problem"
+            _handle_git_commit "$dir" "$file_prefix" "$problem" "$custom_commit_msg"
         else
             echo "⏭️  Git 작업 건너뛰기"
         fi
@@ -258,11 +293,41 @@ PROG_CODE
     echo "✅ 파일 생성 완료!"
 }
 
+# 커밋 메시지 확인/수정
+_confirm_commit_message() {
+    local msg="$1"
+    local answer=""
+
+    CONFIRMED_COMMIT_MSG=""
+
+    while true; do
+        echo "✅ 커밋 메시지: $msg"
+        read -r -p "이대로 커밋하고 push할까요? (y/n): " answer
+        case "$answer" in
+            y|Y)
+                CONFIRMED_COMMIT_MSG="$msg"
+                return 0
+                ;;
+            n|N)
+                read -r -p "커밋 메시지 다시 입력: " msg
+                if [ -z "${msg//[[:space:]]/}" ]; then
+                    echo "❗ 커밋 메시지가 비어 있습니다."
+                    return 1
+                fi
+                ;;
+            *)
+                echo "❗ y 또는 n을 입력하세요."
+                ;;
+        esac
+    done
+}
+
 # Git 커밋 처리 내부 함수
 _handle_git_commit() {
     local dir="$1"
     local file_prefix="$2"
     local problem="$3"
+    local custom_msg="$4"
     
     # 원래 디렉토리 저장
     local original_dir=$(pwd)
@@ -294,7 +359,13 @@ _handle_git_commit() {
     
     git add "$relative_path"
     
-    local commit_msg="${GIT_COMMIT_PREFIX}: ${file_prefix}_${problem}"
+    local commit_msg=""
+    if [ -n "$custom_msg" ]; then
+        _confirm_commit_message "$custom_msg" || return 1
+        commit_msg="$CONFIRMED_COMMIT_MSG"
+    else
+        commit_msg="${GIT_COMMIT_PREFIX}: ${file_prefix}_${problem}"
+    fi
     
     if git commit -m "$commit_msg" 2>/dev/null; then
         echo "✅ 커밋 완료: $commit_msg"
@@ -366,8 +437,19 @@ gitdown() {
     local commit_msg=""
     
     # 커밋 메시지 생성 (GitLab 과제용 - solve: 디렉토리명 형식만 사용)
+    if [ $# -gt 1 ]; then
+        echo "❗ 커밋 메시지에 공백이 있으면 따옴표로 감싸주세요."
+        echo "   예: gitdown \"feat: new commit\""
+        return 1
+    fi
+
     if [ -n "$1" ]; then
-        commit_msg="$1"
+        if [ -z "${1//[[:space:]]/}" ]; then
+            echo "❗ 커밋 메시지가 비어 있습니다."
+            return 1
+        fi
+        _confirm_commit_message "$1" || return 1
+        commit_msg="$CONFIRMED_COMMIT_MSG"
     else
         # 항상 현재 디렉토리명 사용
         local folder_name=$(basename "$(pwd)" 2>/dev/null)
