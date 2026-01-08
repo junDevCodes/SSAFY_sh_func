@@ -70,12 +70,16 @@ al() {
     
     # 인자 검증
     if [ $# -eq 0 ]; then
-        echo "❗️사용법: al <사이트> <문제번호> [옵션]"
+        echo "❗️사용법: al <사이트> <문제번호> [py|cpp] [옵션]"
         echo ""
         echo "📋 지원 사이트:"
         echo "  s  → SWEA (Samsung SW Expert Academy)"
         echo "  b  → BOJ (Baekjoon Online Judge)"
         echo "  p  → Programmers"
+        echo ""
+        echo "🧩 언어:"
+        echo "  py  → Python (기본값)"
+        echo "  cpp → C++"
         echo ""
         echo "⚙️  옵션:"
         echo "  --no-git         Git 커밋/푸시 건너뛰기"
@@ -88,17 +92,27 @@ al() {
         echo "  al p 42576                 # 프로그래머스 42576번 문제"
         echo "  al b 1000 --no-git         # Git 작업 없이 파일만 생성"
         echo "  al b 1000 --msg \"fix: ty\"  # 커밋 메시지 지정"
+        echo "  al b 1000 cpp              # C++ 파일 생성"
         return 1
     fi
     
     local site_code="$1"
     local problem="$2"
+    local lang="py"
+    local lang_provided=false
     local skip_git=false
     local skip_open=false
     local custom_commit_msg=""
+    local shift_count=2
+
+    if [ "$3" = "py" ] || [ "$3" = "cpp" ]; then
+        lang="$3"
+        lang_provided=true
+        shift_count=3
+    fi
     
     # 옵션 파싱
-    shift 2
+    shift "$shift_count"
     while [ $# -gt 0 ]; do
         case "$1" in
             --no-git) skip_git=true ;;
@@ -172,7 +186,9 @@ al() {
     
     # 디렉토리 및 파일 경로 설정
     local dir="$ALGO_BASE_DIR/$site_name/$problem"
-    local file="$dir/${file_prefix}_${problem}.py"
+    local py_file="$dir/${file_prefix}_${problem}.py"
+    local cpp_file="$dir/${file_prefix}_${problem}.cpp"
+    local file=""
     
     echo "🎯 사이트: $site_display"
     echo "📝 문제번호: $problem"
@@ -182,14 +198,56 @@ al() {
     mkdir -p "$dir"
     
     # 파일 생성 또는 Git 작업
-    if [ ! -f "$file" ]; then
-        _create_algo_file "$file" "$site_name" "$site_display" "$problem"
-    else
-        echo "📄 기존 파일 발견!"
-        if [ "$skip_git" = false ]; then
-            _handle_git_commit "$dir" "$file_prefix" "$problem" "$custom_commit_msg"
+    local has_py=false
+    local has_cpp=false
+    if [ -f "$py_file" ]; then
+        has_py=true
+    fi
+    if [ -f "$cpp_file" ]; then
+        has_cpp=true
+    fi
+
+    if [ "$lang_provided" = true ]; then
+        if [ "$lang" = "cpp" ]; then
+            file="$cpp_file"
         else
-            echo "⏭️  Git 작업 건너뛰기"
+            file="$py_file"
+        fi
+
+        if [ ! -f "$file" ]; then
+            _create_algo_file "$file" "$site_name" "$site_display" "$problem" "$lang"
+        else
+            echo "📄 기존 파일 발견!"
+            if [ "$skip_git" = false ]; then
+                _handle_git_commit "$file" "$problem" "$custom_commit_msg" "$lang"
+            else
+                echo "⏭️  Git 작업 건너뛰기"
+            fi
+        fi
+    else
+        if [ "$has_py" = false ] && [ "$has_cpp" = false ]; then
+            file="$py_file"
+            lang="py"
+            _create_algo_file "$file" "$site_name" "$site_display" "$problem" "$lang"
+        else
+            if [ "$skip_git" = false ]; then
+                if [ "$has_py" = true ]; then
+                    _handle_git_commit "$py_file" "$problem" "$custom_commit_msg" "py"
+                fi
+                if [ "$has_cpp" = true ]; then
+                    _handle_git_commit "$cpp_file" "$problem" "$custom_commit_msg" "cpp"
+                fi
+            else
+                echo "⏭️  Git 작업 건너뛰기"
+            fi
+
+            if [ "$has_py" = true ]; then
+                file="$py_file"
+                lang="py"
+            else
+                file="$cpp_file"
+                lang="cpp"
+            fi
         fi
     fi
     
@@ -209,8 +267,20 @@ _create_algo_file() {
     local site_name="$2"
     local site_display="$3"
     local problem="$4"
+    local lang="$5"
     
     echo "🆕 새 문제 파일 생성 중..."
+
+    local sample_file="$(dirname "$file")/sample_input.txt"
+    if [ ! -f "$sample_file" ]; then
+        : > "$sample_file"
+    fi
+
+    if [ "$lang" = "cpp" ]; then
+        : > "$file"
+        echo "✅ 파일 생성 완료!"
+        return
+    fi
     
     cat > "$file" <<PYCODE
 # $site_display $problem 문제 풀이
@@ -324,17 +394,17 @@ _confirm_commit_message() {
 
 # Git 커밋 처리 내부 함수
 _handle_git_commit() {
-    local dir="$1"
-    local file_prefix="$2"
-    local problem="$3"
-    local custom_msg="$4"
+    local target_path="$1"
+    local problem="$2"
+    local custom_msg="$3"
+    local lang="$4"
     
     # 원래 디렉토리 저장
     local original_dir=$(pwd)
     
     # Git 저장소 찾기
     local git_root=""
-    local current_dir="$dir"
+    local current_dir="$(dirname "$target_path")"
     
     while [ "$current_dir" != "/" ] && [ "$current_dir" != "$HOME" ]; do
         if [ -d "$current_dir/.git" ]; then
@@ -351,8 +421,8 @@ _handle_git_commit() {
     
     cd "$git_root" || return
     
-    local relative_path=$(realpath --relative-to="$git_root" "$dir" 2>/dev/null || \
-        python3 -c "import os.path; print(os.path.relpath('$dir', '$git_root'))")
+    local relative_path=$(realpath --relative-to="$git_root" "$target_path" 2>/dev/null || \
+        python3 -c "import os.path; print(os.path.relpath('$target_path', '$git_root'))")
     
     echo "✅ Git 저장소: $git_root"
     echo "📁 대상: $relative_path"
@@ -364,7 +434,11 @@ _handle_git_commit() {
         _confirm_commit_message "$custom_msg" || return 1
         commit_msg="$CONFIRMED_COMMIT_MSG"
     else
-        commit_msg="${GIT_COMMIT_PREFIX}: ${file_prefix}_${problem}"
+        local lang_label="Python"
+        if [ "$lang" = "cpp" ]; then
+            lang_label="C++"
+        fi
+        commit_msg="${GIT_COMMIT_PREFIX}: ${problem} ${lang_label}"
     fi
     
     if git commit -m "$commit_msg" 2>/dev/null; then
