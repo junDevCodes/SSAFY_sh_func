@@ -10,15 +10,16 @@
 
 ### 사용법
 ```bash
-al <site> <problem> [--msg <msg> | <msg>] [--no-git] [--no-open]
+al <site> <problem> [py|cpp] [--msg <msg> | <msg>] [--no-git] [--no-open]
 ```
 
 - site: `s|swea`, `b|boj`, `p|programmers`
 - problem: 숫자만 허용
+- language: `py`(기본값) 또는 `cpp`
 
 ### 동작
-- `ALGO_BASE_DIR/<site>/<problem>/` 디렉터리를 만들고 템플릿 파일을 생성합니다.
-- 파일이 이미 있으면 필요 시 Git 커밋을 수행합니다.
+- `ALGO_BASE_DIR/<site>/<problem>/` 디렉터리를 만들고 파일을 생성합니다.
+- 언어를 지정하지 않으면 `py/cpp` 파일 존재 여부에 따라 커밋을 자동 분기합니다.
 - IDE를 감지해서 자동으로 파일을 엽니다(`--no-open`로 끔).
 
 예시 구조:
@@ -37,7 +38,9 @@ $ALGO_BASE_DIR/
 참고:
 - 커밋 메시지를 직접 넣으면 커밋 전 확인 프롬프트가 뜹니다. `n`을 선택하면 메시지를 다시 입력합니다.
 - 메시지에 공백이 있으면 따옴표로 감싸세요. 예: `al b 1000 "feat: new commit"`
-- 템플릿에서 `sample_input.txt`를 열도록 설정되어 있지만, 파일은 자동 생성되지 않습니다.
+- `py`/`cpp`로 생성할 때는 빈 `sample_input.txt`가 함께 만들어집니다.
+- 언어를 지정하지 않으면, `py/cpp` 파일 존재 여부에 따라 커밋을 자동으로 분기합니다(둘 다 있으면 각각 따로 커밋).
+ - `al b 1000`처럼 언어를 생략해도 `py/cpp`가 둘 다 있으면 각각 한 번씩 커밋됩니다.
 
 ---
 
@@ -54,10 +57,10 @@ gitup <git-repository-url>
 gitdown [commit message]
 ```
 - `git add .` → `git commit` → `git push` → `cd ..`
-- 기본 커밋 메시지: `${GIT_COMMIT_PREFIX}: <현재폴더명>`
+- 기본 커밋 메시지: `${GIT_COMMIT_PREFIX}: <문제번호> Python|C++`
 - `GIT_AUTO_PUSH=true`일 때만 자동 push 수행
- - 커밋 메시지를 직접 넣으면 커밋 전 확인 프롬프트가 뜹니다. `n`을 선택하면 메시지를 다시 입력합니다.
- - 메시지에 공백이 있으면 따옴표로 감싸세요. 예: `gitdown "feat: new commit"`
+- 커밋 메시지를 직접 넣으면 커밋 전 확인 프롬프트가 뜹니다. `n`을 선택하면 메시지를 다시 입력합니다.
+- 메시지에 공백이 있으면 따옴표로 감싸세요. 예: `gitdown "feat: new commit"`
 
 푸시 브랜치 결정 규칙:
 - 원격 default 브랜치(`origin/HEAD`)를 우선 사용합니다.
