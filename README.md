@@ -40,7 +40,7 @@ $ALGO_BASE_DIR/
 - 메시지에 공백이 있으면 따옴표로 감싸세요. 예: `al b 1000 "feat: new commit"`
 - `py`/`cpp`로 생성할 때는 빈 `sample_input.txt`가 함께 만들어집니다.
 - 언어를 지정하지 않으면, `py/cpp` 파일 존재 여부에 따라 커밋을 자동으로 분기합니다(둘 다 있으면 각각 따로 커밋).
- - `al b 1000`처럼 언어를 생략해도 `py/cpp`가 둘 다 있으면 각각 한 번씩 커밋됩니다.
+- `al b 1000`처럼 언어를 생략해도 `py/cpp`가 둘 다 있으면 각각 한 번씩 커밋됩니다.
 
 ---
 
@@ -48,19 +48,35 @@ $ALGO_BASE_DIR/
 
 ### gitup
 ```bash
-gitup <git-repository-url>
+gitup <git-repository-url | ssafy-topic>
+gitup --ssafy <ssafy-topic>
 ```
 - 저장소를 clone 한 뒤, 루트 근처에서 적당한 파일을 찾아 IDE로 엽니다.
+- SSAFY 전용 모드에서는 같은 주제/차시의 `ws(1~5)`, `hw(2,4)`를 한 번에 클론합니다.
+- 없는 저장소는 건너뛰고 요약만 출력합니다.
+- `data_ws`처럼 주제만 넣으면 차시 번호를 입력받습니다.
+
+SSAFY 예시:
+```bash
+gitup data_ws
+gitup https://lab.ssafy.com/jylee1702/data_ws_4_1
+gitup --ssafy data_ws
+```
+SSAFY 기본 주소와 사용자 ID는 `~/.algo_config`에서 변경할 수 있습니다.
 
 ### gitdown
 ```bash
 gitdown [commit message]
+gitdown --ssafy [commit message]
+gitdown --msg <message>
 ```
 - `git add .` → `git commit` → `git push` → `cd ..`
-- 기본 커밋 메시지: `${GIT_COMMIT_PREFIX}: <문제번호> Python|C++`
+- 기본 커밋 메시지: `${GIT_COMMIT_PREFIX}: <현재폴더명>`
 - `GIT_AUTO_PUSH=true`일 때만 자동 push 수행
 - 커밋 메시지를 직접 넣으면 커밋 전 확인 프롬프트가 뜹니다. `n`을 선택하면 메시지를 다시 입력합니다.
 - 메시지에 공백이 있으면 따옴표로 감싸세요. 예: `gitdown "feat: new commit"`
+- `--ssafy` 옵션을 쓰면 push 성공 시에만 다음 문제 디렉터리로 자동 이동하고 IDE를 엽니다.
+- `--ssafy`는 현재 폴더명이 `<주제>_(ws|hw)_<차시>_<문제번호>` 형식일 때 동작합니다.
 
 푸시 브랜치 결정 규칙:
 - 원격 default 브랜치(`origin/HEAD`)를 우선 사용합니다.
@@ -102,7 +118,7 @@ source ~/.bashrc
 
 ### 2) 복사해서 쓰는 경우
 ```bash
-cp /path/to/SSAFY_sh_func/algo_functions.sh ~/scripts/
+cp ./algo_functions.sh ~/scripts/
 source ~/.bashrc
 ```
 
@@ -124,4 +140,6 @@ ALGO_BASE_DIR="$HOME/algorithm"
 GIT_COMMIT_PREFIX="solve"
 GIT_AUTO_PUSH=true
 IDE_PRIORITY="code pycharm idea subl"
+SSAFY_BASE_URL="https://lab.ssafy.com"
+SSAFY_USER_ID="jylee1702"
 ```
