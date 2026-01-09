@@ -2,7 +2,7 @@
 
 # 이전에 정의된 함수/별칭이 남아 있을 때 새 버전을 확실히 적용하기 위해 초기화
 unalias -- al gitup gitdown algo-config 2>/dev/null
-unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commit_message _create_algo_file _handle_git_commit _open_in_editor init_algo_config 2>/dev/null
+unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commit_message _create_algo_file _handle_git_commit _open_in_editor _open_repo_file _gitup_ssafy _ssafy_next_repo init_algo_config 2>/dev/null
 
 # =============================================================================
 # 알고리즘 문제 풀이 자동화 셸 함수 (공개용)
@@ -10,6 +10,7 @@ unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commi
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
+ALGO_FUNCTIONS_VERSION="V4"
 
 # 기본 설정 초기화
 init_algo_config() {
@@ -25,11 +26,21 @@ GIT_AUTO_PUSH=true
 
 # IDE 우선순위 (공백으로 구분)
 IDE_PRIORITY="code pycharm idea subl"
+
+# SSAFY 설정
+SSAFY_BASE_URL="https://lab.ssafy.com"
+SSAFY_USER_ID="jylee1702"
 EOF
         echo "✅ 설정 파일 생성: $ALGO_CONFIG_FILE"
         echo "💡 'algo-config' 명령어로 설정을 변경할 수 있습니다"
     fi
     source "$ALGO_CONFIG_FILE"
+    if [ -z "$SSAFY_BASE_URL" ]; then
+        SSAFY_BASE_URL="https://lab.ssafy.com"
+    fi
+    if [ -z "$SSAFY_USER_ID" ]; then
+        SSAFY_USER_ID="jylee1702"
+    fi
 }
 
 # 설정 편집 명령어
@@ -103,18 +114,20 @@ al() {
     local skip_git=false
     local skip_open=false
     local custom_commit_msg=""
-    local shift_count=2
 
-    if [ "$3" = "py" ] || [ "$3" = "cpp" ]; then
-        lang="$3"
-        lang_provided=true
-        shift_count=3
-    fi
-    
-    # 옵션 파싱
-    shift "$shift_count"
+    # 옵션/언어 파싱
+    shift 2
     while [ $# -gt 0 ]; do
         case "$1" in
+            py|cpp)
+                if [ "$lang_provided" = false ]; then
+                    lang="$1"
+                    lang_provided=true
+                else
+                    echo "❗ 언어는 하나만 지정할 수 있습니다."
+                    return 1
+                fi
+                ;;
             --no-git) skip_git=true ;;
             --no-open) skip_open=true ;;
             --msg|-m)
@@ -132,15 +145,16 @@ al() {
                     return 1
                 fi
                 ;;
+            --*)
+                echo "❗ 알 수 없는 옵션: $1"
+                return 1
+                ;;
             *)
-                if [ -z "$custom_commit_msg" ] && [[ "$1" != --* ]]; then
+                if [ -z "$custom_commit_msg" ]; then
                     custom_commit_msg="$1"
-                elif [ -n "$custom_commit_msg" ] && [[ "$1" != --* ]]; then
+                else
                     echo "❗ 커밋 메시지에 공백이 있으면 따옴표로 감싸주세요."
                     echo "   예: al b 1000 \"feat: new commit\""
-                    return 1
-                else
-                    echo "❗ 알 수 없는 옵션: $1"
                     return 1
                 fi
                 ;;
@@ -509,31 +523,61 @@ gitdown() {
     echo ""
     
     local commit_msg=""
-    
-    # 커밋 메시지 생성 (GitLab 과제용 - solve: 디렉토리명 형식만 사용)
-    if [ $# -gt 1 ]; then
-        echo "❗ 커밋 메시지에 공백이 있으면 따옴표로 감싸주세요."
-        echo "   예: gitdown \"feat: new commit\""
-        return 1
-    fi
+    local custom_msg=false
+    local ssafy_mode=false
+    local push_ok=false
+    local current_repo=$(basename "$(pwd)" 2>/dev/null)
 
-    if [ -n "$1" ]; then
-        if [ -z "${1//[[:space:]]/}" ]; then
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --ssafy|-s)
+                ssafy_mode=true
+                ;;
+            --msg|-m)
+                shift
+                if [ -z "$1" ] || [[ "$1" == --* ]]; then
+                    echo "❗ --msg 옵션에는 커밋 메시지가 필요합니다."
+                    return 1
+                fi
+                commit_msg="$1"
+                custom_msg=true
+                ;;
+            --msg=*)
+                commit_msg="${1#--msg=}"
+                if [ -z "$commit_msg" ]; then
+                    echo "❗ --msg 옵션에는 커밋 메시지가 필요합니다."
+                    return 1
+                fi
+                custom_msg=true
+                ;;
+            *)
+                if [ -z "$commit_msg" ] && [[ "$1" != --* ]]; then
+                    commit_msg="$1"
+                    custom_msg=true
+                else
+                    echo "❗ 커밋 메시지에 공백이 있으면 따옴표로 감싸주세요."
+                    echo "   예: gitdown \"feat: new commit\""
+                    return 1
+                fi
+                ;;
+        esac
+        shift
+    done
+
+    if [ "$custom_msg" = true ]; then
+        if [ -z "${commit_msg//[[:space:]]/}" ]; then
             echo "❗ 커밋 메시지가 비어 있습니다."
             return 1
         fi
-        _confirm_commit_message "$1" || return 1
+        _confirm_commit_message "$commit_msg" || return 1
         commit_msg="$CONFIRMED_COMMIT_MSG"
     else
-        # 항상 현재 디렉토리명 사용
-        local folder_name=$(basename "$(pwd)" 2>/dev/null)
-        if [ -z "$folder_name" ] || [ "$folder_name" = "/" ] || [ "$folder_name" = "\\" ]; then
-            folder_name="update"
+        if [ -z "$current_repo" ] || [ "$current_repo" = "/" ] || [ "$current_repo" = "\\" ]; then
+            current_repo="update"
         fi
-        commit_msg="${GIT_COMMIT_PREFIX}: $folder_name"
+        commit_msg="${GIT_COMMIT_PREFIX}: $current_repo"
     fi
-    
-    echo "📝 모든 변경사항을 추가하고 커밋합니다..."
+
     git add .
     
     echo "📌 커밋 메시지: $commit_msg"
@@ -618,6 +662,7 @@ gitdown() {
                 echo "🚀 브랜치 '$push_branch'로 푸시 중..."
                 if git push origin "$push_branch" 2>/dev/null; then
                     echo "✅ 푸시 완료! (브랜치: $push_branch)"
+                    push_ok=true
                 else
                     echo "❌ 푸시 실패 (브랜치: $push_branch)"
                     echo "💡 수동으로 푸시하세요: git push origin $push_branch"
@@ -634,29 +679,39 @@ gitdown() {
         echo "⚠️  상위 폴더로 이동할 수 없습니다"
         return 1
     }
+
+    if [ "$ssafy_mode" = true ]; then
+        if [ "$push_ok" = true ]; then
+            local next_repo=$(_ssafy_next_repo "$current_repo")
+            if [ -n "$next_repo" ] && [ -d "$next_repo" ]; then
+                echo "➡️  다음 문제로 이동: $next_repo"
+                _open_repo_file "$next_repo" || echo "⚠️  다음 디렉터리로 이동할 수 없습니다: $next_repo"
+            else
+                echo "⚠️  다음 문제를 찾을 수 없습니다."
+            fi
+        else
+            echo "⚠️  푸시 실패/미실행으로 다음 문제 이동을 건너뜁니다."
+        fi
+    fi
 }
 
 # =============================================================================
 # gitup - Git 저장소 클론 및 시작
 # =============================================================================
-gitup() {
-    if [ -z "$1" ]; then
-        echo "❗️사용법: gitup <git-repository-url>"
-        echo "예시: gitup https://github.com/user/repo.git"
+
+_open_repo_file() {
+    local repo_dir="$1"
+
+    if [ ! -d "$repo_dir" ]; then
+        echo "⚠️  디렉터리를 찾을 수 없습니다: $repo_dir"
         return 1
     fi
-    
-    echo "🔄 Git 저장소 클론 중: $1"
-    git clone "$1" || return 1
-    
-    local repo_name=$(basename "$1" .git)
-    echo "📂 $repo_name 폴더로 이동"
-    cd "$repo_name" || return
-    
-    # 우선순위에 따라 파일 찾기
+
+    cd "$repo_dir" || return 1
+
     local target_file=""
     local file_types=("*.py" "*.html" "README*" "*.js" "*.css" "*.json" "*.md" "*.txt")
-    
+
     for pattern in "${file_types[@]}"; do
         target_file=$(find . -maxdepth 2 -name "$pattern" -type f | head -n 1)
         if [ -n "$target_file" ]; then
@@ -664,7 +719,7 @@ gitup() {
             break
         fi
     done
-    
+
     if [ -n "$target_file" ]; then
         local editor=$(get_active_ide)
         echo "📌 감지된 IDE: $editor"
@@ -675,8 +730,177 @@ gitup() {
         echo "📋 클론된 폴더 내용:"
         ls -la
     fi
-    
+
     echo "✅ 프로젝트 준비 완료!"
+}
+
+_gitup_ssafy() {
+    local input="$1"
+    local base_url="${SSAFY_BASE_URL%/}"
+    local user_id="${SSAFY_USER_ID%/}"
+    local repo_name="$input"
+    local topic=""
+    local session=""
+
+    if [[ "$input" =~ ^https?:// ]]; then
+        repo_name=$(basename "$input")
+        repo_name="${repo_name%.git}"
+    fi
+
+    if [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw)_([0-9]+)_[0-9]+$ ]]; then
+        topic="${BASH_REMATCH[1]}"
+        session="${BASH_REMATCH[3]}"
+    elif [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw)_([0-9]+)$ ]]; then
+        topic="${BASH_REMATCH[1]}"
+        session="${BASH_REMATCH[3]}"
+    elif [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw)$ ]]; then
+        topic="${BASH_REMATCH[1]}"
+        read -r -p "차시 입력: " session
+    elif [[ "$repo_name" =~ ^([A-Za-z0-9]+)$ ]]; then
+        topic="$repo_name"
+        read -r -p "차시 입력: " session
+    else
+        return 1
+    fi
+
+    if [ -z "$session" ] || ! [[ "$session" =~ ^[0-9]+$ ]]; then
+        echo "❗ 차시 번호가 올바르지 않습니다."
+        return 1
+    fi
+
+    local repos=()
+    local i=""
+    for i in 1 2 3 4 5; do
+        repos+=("${topic}_ws_${session}_${i}")
+    done
+    for i in 2 4; do
+        repos+=("${topic}_hw_${session}_${i}")
+    done
+
+    local -a cloned=()
+    local -a skipped=()
+    local -a failed=()
+    local repo=""
+
+    for repo in "${repos[@]}"; do
+        local url="${base_url}/${user_id}/${repo}"
+        if [ -d "$repo" ]; then
+            skipped+=("$repo")
+            continue
+        fi
+        if git clone "$url" >/dev/null 2>&1; then
+            cloned+=("$repo")
+        else
+            failed+=("$repo")
+        fi
+    done
+
+    echo "Clone summary: ok=${#cloned[@]}, skipped=${#skipped[@]}, failed=${#failed[@]}"
+    if [ "${#failed[@]}" -gt 0 ]; then
+        echo "Failed: ${failed[*]}"
+    fi
+
+    local first_repo="${topic}_ws_${session}_1"
+    if [ -d "$first_repo" ]; then
+        _open_repo_file "$first_repo"
+    elif [ "${#cloned[@]}" -gt 0 ]; then
+        _open_repo_file "${cloned[0]}"
+    elif [ "${#skipped[@]}" -gt 0 ]; then
+        _open_repo_file "${skipped[0]}"
+    else
+        echo "No repository to open."
+    fi
+}
+
+_ssafy_next_repo() {
+    local repo_name="$1"
+    local topic=""
+    local kind=""
+    local session=""
+    local number=""
+
+    if ! [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw)_([0-9]+)_([0-9]+)$ ]]; then
+        return 1
+    fi
+
+    topic="${BASH_REMATCH[1]}"
+    kind="${BASH_REMATCH[2]}"
+    session="${BASH_REMATCH[3]}"
+    number="${BASH_REMATCH[4]}"
+
+    if [ "$kind" = "ws" ]; then
+        if [ "$number" -lt 5 ]; then
+            number=$((number + 1))
+            echo "${topic}_ws_${session}_${number}"
+            return 0
+        elif [ "$number" -eq 5 ]; then
+            echo "${topic}_hw_${session}_2"
+            return 0
+        fi
+    elif [ "$kind" = "hw" ]; then
+        if [ "$number" -eq 2 ]; then
+            echo "${topic}_hw_${session}_4"
+            return 0
+        fi
+    fi
+
+    return 1
+}
+gitup() {
+    init_algo_config
+
+    local ssafy_mode=false
+    local input=""
+
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            --ssafy|-s) ssafy_mode=true ;;
+            *)
+                if [ -z "$input" ]; then
+                    input="$1"
+                else
+                    echo "❗️사용법: gitup <git-repository-url | ssafy-topic>"
+                    echo "예시:"
+                    echo "  gitup https://github.com/user/repo.git"
+                    echo "  gitup data_ws"
+                    echo "  gitup https://lab.ssafy.com/${SSAFY_USER_ID}/data_ws_4_1"
+                    echo "  gitup --ssafy data_ws"
+                    return 1
+                fi
+                ;;
+        esac
+        shift
+    done
+
+    if [ -z "$input" ]; then
+        echo "❗️사용법: gitup <git-repository-url | ssafy-topic>"
+        echo "예시:"
+        echo "  gitup https://github.com/user/repo.git"
+        echo "  gitup data_ws"
+        echo "  gitup https://lab.ssafy.com/${SSAFY_USER_ID}/data_ws_4_1"
+        echo "  gitup --ssafy data_ws"
+        return 1
+    fi
+
+    local ssafy_detected=false
+    if [ "$ssafy_mode" = true ]; then
+        ssafy_detected=true
+    elif [[ "$input" =~ ^https?://lab\.ssafy\.com/ ]]; then
+        ssafy_detected=true
+    elif [[ "$input" =~ ^[A-Za-z0-9]+_(ws|hw)(_[0-9]+(_[0-9]+)?)?$ ]]; then
+        ssafy_detected=true
+    fi
+
+    if [ "$ssafy_detected" = true ]; then
+        _gitup_ssafy "$input" || return 1
+        return 0
+    fi
+    
+    echo "🔄 Git 저장소 클론 중: $input"
+    git clone "$input" || return 1
+    
+    local repo_name=$(basename "$input" .git)
+    _open_repo_file "$repo_name"
 }
 
 # =============================================================================
@@ -848,5 +1072,5 @@ check_ide() {
 # =============================================================================
 init_algo_config
 
-echo "✅ 알고리즘 셸 함수 로드 완료!"
+echo "✅ 알고리즘 셸 함수 로드 완료! (${ALGO_FUNCTIONS_VERSION})"
 echo "💡 'algo-config edit'로 설정을 변경할 수 있습니다"
