@@ -2,7 +2,7 @@
 
 # 이전에 정의된 함수/별칭이 남아 있을 때 새 버전을 확실히 적용하기 위해 초기화
 unalias -- al gitup gitdown algo-config 2>/dev/null
-unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commit_message _create_algo_file _handle_git_commit _open_in_editor _open_repo_file _gitup_ssafy _ssafy_next_repo init_algo_config 2>/dev/null
+unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commit_message _create_algo_file _handle_git_commit _open_in_editor _open_repo_file _gitup_ssafy _ssafy_next_repo init_algo_config _is_interactive _set_config_value _ensure_ssafy_config _find_ssafy_session_root _print_file_menu _choose_file_from_list 2>/dev/null
 
 # =============================================================================
 # 알고리즘 문제 풀이 자동화 셸 함수 (공개용)
@@ -10,7 +10,83 @@ unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commi
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V4"
+ALGO_FUNCTIONS_VERSION="V5-prot"
+
+_is_interactive() {
+    [ -t 0 ] && [ -t 1 ]
+}
+
+_set_config_value() {
+    local key="$1"
+    local value="$2"
+    local file="$ALGO_CONFIG_FILE"
+
+    if [ -z "$key" ] || [ ! -f "$file" ]; then
+        return 1
+    fi
+
+    local escaped="$value"
+    escaped="${escaped//\\/\\\\}"
+    escaped="${escaped//\"/\\\"}"
+
+    local tmp="${file}.tmp.$$"
+    awk -v key="$key" -v val="$escaped" '
+        BEGIN { found = 0 }
+        $0 ~ ("^" key "=") {
+            print key "=\"" val "\""
+            found = 1
+            next
+        }
+        { print }
+        END {
+            if (found == 0) {
+                print key "=\"" val "\""
+            }
+        }
+    ' "$file" > "$tmp" && mv "$tmp" "$file"
+}
+
+_ensure_ssafy_config() {
+    if [ -z "${SSAFY_BASE_URL:-}" ]; then
+        if _is_interactive; then
+            local input=""
+            read -r -p "SSAFY GitLab base URL [https://lab.ssafy.com]: " input
+            SSAFY_BASE_URL="${input:-https://lab.ssafy.com}"
+            _set_config_value "SSAFY_BASE_URL" "$SSAFY_BASE_URL" >/dev/null 2>&1 || true
+        else
+            SSAFY_BASE_URL="https://lab.ssafy.com"
+        fi
+    fi
+
+    if [ -z "${SSAFY_USER_ID:-}" ]; then
+        if _is_interactive; then
+            local input=""
+            read -r -p "SSAFY namespace/user id (e.g. jylee1702 or group/user): " input
+            if [ -n "${input//[[:space:]]/}" ]; then
+                SSAFY_USER_ID="$input"
+                _set_config_value "SSAFY_USER_ID" "$SSAFY_USER_ID" >/dev/null 2>&1 || true
+            fi
+        fi
+    fi
+}
+
+_find_ssafy_session_root() {
+    local start_dir="${1:-$(pwd)}"
+    local dir="$start_dir"
+
+    while true; do
+        if [ -f "$dir/.ssafy_session_root" ]; then
+            echo "$dir"
+            return 0
+        fi
+        if [ -z "$dir" ] || [ "$dir" = "/" ] || [ "$dir" = "$HOME" ] || [ "$dir" = "." ]; then
+            break
+        fi
+        dir="$(dirname "$dir")"
+    done
+
+    return 1
+}
 
 # 기본 설정 초기화
 init_algo_config() {
@@ -27,20 +103,15 @@ GIT_AUTO_PUSH=true
 # IDE 우선순위 (공백으로 구분)
 IDE_PRIORITY="code pycharm idea subl"
 
-# SSAFY 설정
-SSAFY_BASE_URL="https://lab.ssafy.com"
-SSAFY_USER_ID="jylee1702"
+# SSAFY 설정 (처음 실행 시 입력받아 저장합니다)
+SSAFY_BASE_URL=""
+SSAFY_USER_ID=""
 EOF
         echo "✅ 설정 파일 생성: $ALGO_CONFIG_FILE"
         echo "💡 'algo-config' 명령어로 설정을 변경할 수 있습니다"
     fi
     source "$ALGO_CONFIG_FILE"
-    if [ -z "$SSAFY_BASE_URL" ]; then
-        SSAFY_BASE_URL="https://lab.ssafy.com"
-    fi
-    if [ -z "$SSAFY_USER_ID" ]; then
-        SSAFY_USER_ID="jylee1702"
-    fi
+    _ensure_ssafy_config
 }
 
 # 설정 편집 명령어
@@ -681,8 +752,26 @@ gitdown() {
     }
 
     if [ "$ssafy_mode" = true ]; then
+        local ssafy_root=""
+        ssafy_root=$(_find_ssafy_session_root "$(pwd)" 2>/dev/null || true)
+        if [ -z "$ssafy_root" ] && [ -n "${SSAFY_SESSION_ROOT:-}" ] && [ -d "$SSAFY_SESSION_ROOT" ]; then
+            ssafy_root="$SSAFY_SESSION_ROOT"
+        fi
+        if [ -n "$ssafy_root" ]; then
+            cd "$ssafy_root" || {
+                echo "??  SSAFY 루트로 이동할 수 없습니다: $ssafy_root"
+                return 1
+            }
+        fi
+    fi
+
+    if [ "$ssafy_mode" = true ]; then
         if [ "$push_ok" = true ]; then
             local next_repo=$(_ssafy_next_repo "$current_repo")
+            if [ -n "$next_repo" ] && [ ! -d "$next_repo" ]; then
+                echo "??  다음 문제 레포가 로컬에 없습니다: $next_repo"
+                echo "??  SSAFY에서 실습실/과제를 생성해야 레포가 만들어질 수 있습니다."
+            fi
             if [ -n "$next_repo" ] && [ -d "$next_repo" ]; then
                 echo "➡️  다음 문제로 이동: $next_repo"
                 _open_repo_file "$next_repo" || echo "⚠️  다음 디렉터리로 이동할 수 없습니다: $next_repo"
@@ -736,6 +825,13 @@ _open_repo_file() {
 
 _gitup_ssafy() {
     local input="$1"
+
+    _ensure_ssafy_config
+    if [ -z "${SSAFY_BASE_URL:-}" ] || [ -z "${SSAFY_USER_ID:-}" ]; then
+        echo "?? SSAFY 설정이 필요합니다. 'algo-config edit'로 SSAFY_BASE_URL/SSAFY_USER_ID를 설정하세요."
+        return 1
+    fi
+
     local base_url="${SSAFY_BASE_URL%/}"
     local user_id="${SSAFY_USER_ID%/}"
     local repo_name="$input"
@@ -760,6 +856,11 @@ _gitup_ssafy() {
         topic="$repo_name"
         read -r -p "차시 입력: " session
     else
+        if [[ "$repo_name" =~ ^(ws|hw)_[0-9]+(_[0-9]+)?$ ]]; then
+            echo "?? SSAFY 입력 형식이 올바르지 않습니다: $repo_name"
+            echo "   예: <topic>_ws_<차시> 또는 <topic>_ws_<차시>_<번호>"
+            echo "   예: ds_ws_2 또는 ds_ws_2_1"
+        fi
         return 1
     fi
 
@@ -799,6 +900,15 @@ _gitup_ssafy() {
     if [ "${#failed[@]}" -gt 0 ]; then
         echo "Failed: ${failed[*]}"
     fi
+
+    local session_root="$(pwd)"
+    export SSAFY_SESSION_ROOT="$session_root"
+    {
+        echo "topic=$topic"
+        echo "session=$session"
+        echo "user_id=$user_id"
+        echo "base_url=$base_url"
+    } > "$session_root/.ssafy_session_root" 2>/dev/null || true
 
     local first_repo="${topic}_ws_${session}_1"
     if [ -d "$first_repo" ]; then
@@ -1068,8 +1178,154 @@ check_ide() {
 }
 
 # =============================================================================
+# gitup - 파일 선택(override)
+# =============================================================================
+
+_open_repo_file() {
+    local repo_dir="$1"
+
+    if [ ! -d "$repo_dir" ]; then
+        echo "??  디렉터리를 찾을 수 없습니다: $repo_dir"
+        return 1
+    fi
+
+    cd "$repo_dir" || return 1
+
+    local editor
+    editor=$(get_active_ide)
+
+    local maxdepth=6
+    local -a primary_files=()
+
+    while IFS= read -r -d '' f; do
+        f="${f#./}"
+        primary_files+=("$f")
+    done < <(
+        find . -maxdepth "$maxdepth" \
+            \( -path './.git' -o -path './.git/*' -o -path './.vscode' -o -path './.vscode/*' -o -path './.idea' -o -path './.idea/*' -o -path './node_modules' -o -path './node_modules/*' -o -path './venv' -o -path './venv/*' -o -path './.venv' -o -path './.venv/*' -o -path './__pycache__' -o -path './__pycache__/*' \) -prune -o \
+            -type f \( -name '*.py' -o -name '*.ipynb' -o -name '*.cpp' \) -print0 2>/dev/null
+    )
+
+    local chosen=""
+
+    if _is_interactive; then
+        while true; do
+            echo ""
+            echo "?? 추천 코드 파일 (py/ipynb/cpp):"
+            if [ "${#primary_files[@]}" -gt 0 ]; then
+                local i=""
+                for i in "${!primary_files[@]}"; do
+                    printf "  %d) %s\n" "$((i + 1))" "${primary_files[$i]}"
+                done
+            else
+                echo "  (없음)"
+            fi
+
+            echo "  0) 다른 파일 목록 보기 (트리)"
+            echo "  q) 취소"
+
+            local choice=""
+            read -r -p "열 파일 번호 선택: " choice
+
+            if [ "$choice" = "q" ] || [ "$choice" = "Q" ]; then
+                return 1
+            fi
+
+            if [ "$choice" = "0" ]; then
+                local -a all_files=()
+                while IFS= read -r -d '' af; do
+                    af="${af#./}"
+                    case "$af" in
+                        .git/*|.git|.vscode/*|.idea/*|node_modules/*|venv/*|.venv/*|__pycache__/*) continue ;;
+                        *.iml|*.code-workspace|.DS_Store) continue ;;
+                        .gitignore|.gitattributes|.editorconfig|.env|.env.*) continue ;;
+                    esac
+                    all_files+=("$af")
+                done < <(
+                    find . -maxdepth "$maxdepth" \
+                        \( -path './.git' -o -path './.git/*' -o -path './node_modules' -o -path './node_modules/*' -o -path './venv' -o -path './venv/*' -o -path './.venv' -o -path './.venv/*' \) -prune -o \
+                        -type f -print0 2>/dev/null
+                )
+
+                if [ "${#all_files[@]}" -eq 0 ]; then
+                    echo "??  열 수 있는 파일을 찾을 수 없습니다."
+                    continue
+                fi
+
+                echo ""
+                echo "?? 파일 트리:"
+                local j=""
+                for j in "${!all_files[@]}"; do
+                    printf "  %d) %s\n" "$((j + 1))" "${all_files[$j]}"
+                done
+                echo "  b) 뒤로"
+                echo "  q) 취소"
+
+                local tchoice=""
+                read -r -p "열 파일 번호 선택: " tchoice
+
+                if [ "$tchoice" = "q" ] || [ "$tchoice" = "Q" ]; then
+                    return 1
+                fi
+                if [ "$tchoice" = "b" ] || [ "$tchoice" = "B" ]; then
+                    continue
+                fi
+                if [[ "$tchoice" =~ ^[0-9]+$ ]] && [ "$tchoice" -ge 1 ] && [ "$tchoice" -le "${#all_files[@]}" ]; then
+                    chosen="${all_files[$((tchoice - 1))]}"
+                    break
+                fi
+
+                echo "??  잘못된 선택입니다."
+                continue
+            fi
+
+            if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#primary_files[@]}" ]; then
+                chosen="${primary_files[$((choice - 1))]}"
+                break
+            fi
+
+            echo "??  잘못된 선택입니다."
+        done
+    else
+        if [ "${#primary_files[@]}" -gt 0 ]; then
+            chosen="${primary_files[0]}"
+        else
+            chosen="$(find . -maxdepth 2 -type f | head -n 1)"
+            chosen="${chosen#./}"
+        fi
+    fi
+
+    if [ -n "$chosen" ] && [ -f "$chosen" ]; then
+        echo "?? 감지된 IDE: $editor"
+        echo "?? 에디터에서 파일 열기: $chosen"
+        _open_in_editor "$editor" "$chosen"
+    else
+        echo "??  열 파일을 찾을 수 없습니다"
+        echo "?? 클론된 폴더 내용:"
+        ls -la
+    fi
+
+    echo "? 프로젝트 준비 완료!"
+}
+
+# =============================================================================
 # 초기화 실행
 # =============================================================================
+# =============================================================================
+# ssafy_batch - SSAFY 실습실 일괄 자동 생성 (Blind Mode)
+# =============================================================================
+ssafy_batch() {
+    if [ $# -eq 0 ]; then
+        echo "Usage: ssafy_batch <URL> [COUNT=7]"
+        echo "Example: ssafy_batch \"https://project.ssafy.com/.../PR00147645/...\" 7"
+        return 1
+    fi
+    
+    # Python 스크립트 실행
+    # (주의: 스크립트 위치가 변경되면 아래 경로도 수정해야 함)
+    python "c:/Users/SSAFY/Desktop/SSAFY_sh_func/ssafy_batch_create.py" "$1" "$2"
+}
+
 init_algo_config
 
 echo "✅ 알고리즘 셸 함수 로드 완료! (${ALGO_FUNCTIONS_VERSION})"
