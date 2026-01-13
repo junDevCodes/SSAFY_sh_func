@@ -1,8 +1,9 @@
 ﻿# 알고리즘/실습 자동화 Shell 함수
 
-이 저장소는 Bash 함수 2가지를 제공합니다.
+이 저장소는 Bash 함수 3가지를 제공합니다.
 1) al: 알고리즘 문제 풀이 보조
 2) gitup/gitdown: 실습 제출용 Git 작업 자동화
+3) ssafy_batch: 일괄 실습실 생성 및 자동화
 
 ---
 
@@ -52,6 +53,7 @@ gitup <git-repository-url | ssafy-topic>
 gitup --ssafy <ssafy-topic>
 ```
 - 저장소를 clone 한 뒤, 루트 근처에서 적당한 파일을 찾아 IDE로 엽니다.
+- 파일이 여러 개면 `py/ipynb/cpp` 파일 목록을 우선 보여주고, 필요하면 트리(번호 선택)로 다른 파일도 열 수 있습니다.
 - SSAFY 전용 모드에서는 같은 주제/차시의 `ws(1~5)`, `hw(2,4)`를 한 번에 클론합니다.
 - 없는 저장소는 건너뛰고 요약만 출력합니다.
 - `data_ws`처럼 주제만 넣으면 차시 번호를 입력받습니다.
@@ -63,6 +65,7 @@ gitup https://lab.ssafy.com/jylee1702/data_ws_4_1
 gitup --ssafy data_ws
 ```
 SSAFY 기본 주소와 사용자 ID는 `~/.algo_config`에서 변경할 수 있습니다.
+처음 실행 시 `SSAFY_BASE_URL`/`SSAFY_USER_ID`를 입력받아 `~/.algo_config`에 저장합니다.
 
 ### gitdown
 ```bash
@@ -77,11 +80,33 @@ gitdown --msg <message>
 - 메시지에 공백이 있으면 따옴표로 감싸세요. 예: `gitdown "feat: new commit"`
 - `--ssafy` 옵션을 쓰면 push 성공 시에만 다음 문제 디렉터리로 자동 이동하고 IDE를 엽니다.
 - `--ssafy`는 현재 폴더명이 `<주제>_(ws|hw)_<차시>_<문제번호>` 형식일 때 동작합니다.
+- `gitup --ssafy`로 클론한 루트를 `.ssafy_session_root`로 기록하고, `gitdown --ssafy`는 해당 루트를 기준으로 이동합니다.
 
 푸시 브랜치 결정 규칙:
 - 원격 default 브랜치(`origin/HEAD`)를 우선 사용합니다.
 - 로컬에 `master`와 `main`이 **둘 다 있거나 둘 다 없으면** 브랜치 목록을 보여주고 선택합니다.
 - 로컬에 `master` 또는 `main`이 **하나만** 있고, 그것이 원격 default와 같으면 자동으로 푸시합니다.
+
+---
+
+## 3) ssafy_batch - SSAFY 실습실 자동 생성
+
+### 사용법
+```bash
+ssafy_batch <URL> [COUNT]
+```
+- `URL`: 브라우저 주소창에 보이는 실습실 문제 링크 (예: `.../answer/PA...`)
+- `COUNT`: 생성할 문제 개수 (기본값: 7)
+
+### 동작
+1. 입력된 URL에서 문제 ID와 과목 ID를 자동으로 감지합니다.
+2. 만약 특정 문제(예: 3번) 링크라면, 지능적으로 앞번호(1번)부터 스캔하도록 자동 보정합니다.
+3. 연속된 번호(예: 1번~7번)에 대해 '실습 시작' 요청을 자동으로 보냅니다.
+4. 이미 생성된 레포지토리는 건너뛰고, 없는 것만 새로 생성합니다.
+
+### 주의사항
+- `ssafy_batch_create.py` 파일의 위치가 `c:/Users/SSAFY/Desktop/SSAFY_sh_func/`로 고정되어 있습니다. 파일 위치가 다르면 `algo_functions.sh` 내 경로를 수정해야 합니다.
+- 내부 `HEADERS` 토큰(로그인 정보)이 만료되면 동작하지 않을 수 있습니다. (이 경우 스크립트 파일을 열어 토큰을 갱신해야 합니다.)
 
 ---
 
@@ -140,6 +165,21 @@ ALGO_BASE_DIR="$HOME/algorithm"
 GIT_COMMIT_PREFIX="solve"
 GIT_AUTO_PUSH=true
 IDE_PRIORITY="code pycharm idea subl"
-SSAFY_BASE_URL="https://lab.ssafy.com"
-SSAFY_USER_ID="jylee1702"
+SSAFY_BASE_URL="https://lab.ssafy.com"   # 처음 실행 시 입력받음
+SSAFY_USER_ID="your-id-or-namespace"     # 예: jylee1702 또는 group/user
+```
+
+---
+
+## 테스트 실행
+
+```bash
+# Bash 테스트(가능한 환경)
+bash tests/run_tests.sh
+
+# Windows PowerShell
+powershell -NoProfile -ExecutionPolicy Bypass -File tests/run_tests.ps1
+
+# 자동 선택 + 결과 JSON 저장(권장)
+python tests/run_tests.py --out tests/test_results.json
 ```
