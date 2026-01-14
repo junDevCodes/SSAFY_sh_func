@@ -1,8 +1,38 @@
 import sys
-import requests
 import re
 import time
-import urllib.parse
+import json
+import urllib.request
+import urllib.error
+
+# [Helper] Requests 모듈 의존성 제거를 위한 간단한 래퍼
+class MockResponse:
+    def __init__(self, status_code, content):
+        self.status_code = status_code
+        self.content = content
+        self.text = content.decode('utf-8', errors='ignore') if content else ""
+    
+    def json(self):
+        return json.loads(self.text)
+
+def api_request(url, method="GET", data=None, headers=None):
+    if headers is None: headers = {}
+    
+    body = None
+    if data is not None:
+        body = json.dumps(data).encode('utf-8')
+        headers['Content-Type'] = 'application/json'
+        
+    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+    
+    try:
+        with urllib.request.urlopen(req) as res:
+            return MockResponse(res.getcode(), res.read())
+    except urllib.error.HTTPError as e:
+        return MockResponse(e.code, e.read())
+    except Exception as e:
+        # print(f"Network Error: {e}", file=sys.stderr)
+        return MockResponse(999, str(e).encode())
 
 # ==================================================================================
 # [사용자 설정 영역]
@@ -50,8 +80,8 @@ def get_repo_info(course_id, pr_id):
     
     for attempt in range(max_retries):
         try:
-            # 2. POST 시도
-            res = requests.post(api_url, headers=HEADERS, json={})
+            # 2. POST 시도 (urllib)
+            res = api_request(api_url, method="POST", headers=HEADERS, data={})
             status = res.status_code
             
             repo = None
@@ -89,7 +119,8 @@ def get_repo_info(course_id, pr_id):
                 detail_url = f"https://project.ssafy.com/ssafy/api/courses/{course_id}/practices/{pr_id}/answers/{pa_id}"
                 
                 try:
-                    res_detail = requests.get(detail_url, headers=HEADERS)
+                    res_detail = api_request(detail_url, method="GET", headers=HEADERS)
+                    
                     if res_detail.status_code == 200:
                         repo = res_detail.json().get('repositoryUrl')
                         if repo:
@@ -116,8 +147,6 @@ def get_repo_info(course_id, pr_id):
         except Exception as e:
             print(f"Error fetching {pr_id}: {e}", file=sys.stderr)
             time.sleep(1)
-            
-    return (None, None)
             
     return (None, None)
 
