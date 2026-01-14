@@ -144,30 +144,33 @@ def detect_round_from_repo(repo_url):
 REPO_CACHE = {}
 
 def get_repo_info(course_id, pr_id):
-    """특정 PR ID에 대해 레포 URL과 PA ID를 조회합니다 (Tuple 반환)."""
+    """특정 PR ID에 대해 레포 URL과 관련 메타데이터를 조회합니다."""
     
-    # 1. 캐시 확인
     if pr_id in REPO_CACHE:
         return REPO_CACHE[pr_id]
         
-    # 실습실 생성(POST) 및 목록 조회(GET)에 사용되는 통합 엔드포인트
     api_url = f"https://project.ssafy.com/ssafy/api/courses/{course_id}/practices/{pr_id}/answers"
-    max_retries = 3
+    max_retries = 8  # 3 -> 8
     
     for attempt in range(max_retries):
         try:
-            # 2. POST 시도 (urllib)
             res = api_request(api_url, method="POST", headers=HEADERS, data={})
             status = res.status_code
             
             repo = None
             pa_id = None
+            metadata = {'subject': None, 'level': None, 'title': None}
             
-            # 2.1 JSON 파싱 및 데이터 추출 (Regex Fallback 추가)
             try:
                 r_json = res.json()
                 repo = r_json.get('repositoryUrl')
                 pa_id = r_json.get('id')
+                
+                # 메타데이터 추출 (URL이 없어도 넘어오는 정보)
+                prob = r_json.get('problem', {})
+                metadata['subject'] = prob.get('subjectCd')
+                metadata['level'] = prob.get('levelCd')
+                metadata['title'] = prob.get('title')
             except:
                 pass
             
@@ -180,51 +183,50 @@ def get_repo_info(course_id, pr_id):
                  mp = re.search(r'"id"\s*:\s*"(PA[0-9]+)"', res.text)
                  if mp: pa_id = mp.group(1)
             
-            # 2.2 Repo URL이 바로 있으면 성공
+            # URL이 있으면 즉시 성공
             if repo:
-                result = (repo, pa_id)
+                result = (repo, pa_id, metadata)
                 REPO_CACHE[pr_id] = result
                 return result
                 
-            # 2.3 Repo URL은 없는데 PA ID(답안 ID)가 있으면 -> 상세 조회 시도
+            # URL은 없는데 PA ID가 있으면 상세 조회 시도
             if pa_id:
-                # 0.1초 대기 (생성 직후 조회 시 404/동기화 지연 방지)
-                time.sleep(0.1)
+                # 첫 발견 시 약간 대기하여 동기화 유도
+                if attempt == 0: time.sleep(0.5)
                 
-                print(f"⚠️ [Info] {pr_id}: Found ID {pa_id}, Fetching details...", file=sys.stderr)
+                # 서버 지연 로그 (마지막 시도에서만 출력하거나 주기를 조절하여 깔끔하게 유지)
+                if attempt % 2 == 0:
+                    print(f"⏳ [Wait] {pr_id}: Repository is being provisioned...", file=sys.stderr)
+
                 detail_url = f"https://project.ssafy.com/ssafy/api/courses/{course_id}/practices/{pr_id}/answers/{pa_id}"
-                
                 try:
                     res_detail = api_request(detail_url, method="GET", headers=HEADERS)
-                    
                     if res_detail.status_code == 200:
-                        repo = res_detail.json().get('repositoryUrl')
+                        d_json = res_detail.json()
+                        repo = d_json.get('repositoryUrl')
                         if repo:
-                            result = (repo, pa_id)
+                            result = (repo, pa_id, metadata)
                             REPO_CACHE[pr_id] = result
                             return result
-                        else:
-                             print(f"⚠️ [Detail No Repo] {res_detail.text[:100]}", file=sys.stderr)
-                    else:
-                        print(f"⚠️ [Detail Fail] Status {res_detail.status_code} Body {res_detail.text[:100]}", file=sys.stderr)
-                except Exception as e:
-                    print(f"⚠️ [Detail Error] {e}", file=sys.stderr)
+                except:
+                    pass
 
-            # 2.4 여전히 없으면 재시도
+            # 여전히 없으면 메타데이터라도 반환할 수 있는지 확인 (스캔 중단용)
+            if attempt == 0 and pa_id and metadata['subject']:
+                 # 첫 시도에 정보는 있으나 URL만 없는 경우, 일단 루프 계속 진행 (다음 시도에서 URL 확보 기대)
+                 pass
+
             if attempt < max_retries - 1:
-                print(f"⚠️ [Retry {attempt+1}/{max_retries}] {pr_id}: Status {status} (No URL), Retrying...", file=sys.stderr)
-                time.sleep(0.5) 
+                time.sleep(1.5) # 0.5 -> 1.5
             else:
-                 print(f"❌ [GiveUp] {pr_id}: Status {status}", file=sys.stderr)
-                 try:
-                     print(f"   [Body]: {res.text[:300]}", file=sys.stderr)
-                 except: pass
+                 # 마지막까지 URL을 못 가져온 경우 메타데이터 정보라도 반환
+                 return (None, pa_id, metadata)
 
         except Exception as e:
             print(f"Error fetching {pr_id}: {e}", file=sys.stderr)
             time.sleep(1)
             
-    return (None, None)
+    return (None, None, {'subject': None, 'level': None, 'title': None})
 
 def find_round_start(course_id, start_pr_num):
     """
@@ -234,7 +236,7 @@ def find_round_start(course_id, start_pr_num):
     current_pr_num = start_pr_num
     
     # 기준 Round 파악
-    base_repo, _ = get_repo_info(course_id, f"PR{str(current_pr_num).zfill(8)}")
+    base_repo, _, _ = get_repo_info(course_id, f"PR{str(current_pr_num).zfill(8)}")
     target_round = detect_round_from_repo(base_repo)
     
     if not target_round:
@@ -248,7 +250,7 @@ def find_round_start(course_id, start_pr_num):
         prev_num = start_pr_num - i
         prev_id = f"PR{str(prev_num).zfill(8)}"
         
-        repo, _ = get_repo_info(course_id, prev_id)
+        repo, _, _ = get_repo_info(course_id, prev_id)
         rnd = detect_round_from_repo(repo)
         
         if rnd == target_round:
@@ -282,14 +284,35 @@ def batch_create(start_url, count, is_pipe=False):
     found_items = []
     failed_items = []
     
+    initial_subject = None
+    last_level = 0
+    
     for i in range(count):
         curr_num = real_start_num + i
         pr_id = f"PR{str(curr_num).zfill(8)}" 
         
-        repo_url, pa_id = get_repo_info(course_id, pr_id)
+        repo_url, pa_id, meta = get_repo_info(course_id, pr_id)
         
         print(f"👉 {pr_id} 확인... ", end="", file=sys.stderr)
         
+        # [Metadata Guard] URL이 없더라도 주차 변경 여부를 판단
+        if pa_id:
+            # 과목 코드 변경 감지
+            if initial_subject is None:
+                initial_subject = meta['subject']
+            elif meta['subject'] and meta['subject'] != initial_subject:
+                print(f"🛑 과목 변경 감지 ({initial_subject} -> {meta['subject']}). 스캔 종료.", file=sys.stderr)
+                break
+            
+            # 레벨 역전 감지 (Lv3+ 이후에 Lv1이 나오면 다음 주차)
+            try:
+                curr_level = int(meta['level']) if meta['level'] else 0
+                if last_level >= 3 and curr_level == 1:
+                    print(f"🛑 차시 경계 감지 (Level {last_level} -> {curr_level}). 스캔 종료.", file=sys.stderr)
+                    break
+                if curr_level > 0: last_level = curr_level
+            except: pass
+
         if repo_url: 
             print(f"✅ {repo_url}", file=sys.stderr)
             
@@ -297,15 +320,20 @@ def batch_create(start_url, count, is_pipe=False):
             
             # [Strict Round Check] 라운드가 다르면 리스트에 추가하지 않고 즉시 종료
             if target_round and curr_rnd and curr_rnd != target_round:
-                print(f"🛑 차시 변경 감지 (Round {target_round} -> {curr_rnd}). 스캔 종료.", file=sys.stderr)
+                print(f"🛑 차시 접두어 변경 감지 (Round {target_round} -> {curr_rnd}). 스캔 종료.", file=sys.stderr)
                 break
                 
             # 성공 목록에 추가
             found_items.append({'url': repo_url, 'pa': pa_id, 'pr': pr_id})
 
         else: 
-            print(f"❌ (실패/없음)", file=sys.stderr)
-            failed_items.append((course_id, pr_id))
+            if pa_id:
+                print(f"⏳ (지연 중: {meta['title'][:20]}...)", file=sys.stderr)
+                failed_items.append((course_id, pr_id))
+            else:
+                print(f"❌ (실패/없음)", file=sys.stderr)
+                # 완전히 없는 경우는 목록의 끝일 가능성이 높으므로 중단 고려 가능하나, 일단 failed 처리
+                failed_items.append((course_id, pr_id))
             
         time.sleep(0.1)
 
@@ -316,7 +344,7 @@ def batch_create(start_url, count, is_pipe=False):
         
         for cid, pid in failed_items:
             print(f"👉 [Retry] {pid} 재확인... ", end="", file=sys.stderr)
-            repo_url, pa_id = get_repo_info(cid, pid)
+            repo_url, pa_id, meta = get_repo_info(cid, pid)
             if repo_url:
                 print(f"✅ 복구 성공: {repo_url}", file=sys.stderr)
                 
