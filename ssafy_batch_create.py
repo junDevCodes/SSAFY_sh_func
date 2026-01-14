@@ -255,10 +255,12 @@ def find_round_start(course_id, start_pr_num):
         
         if rnd == target_round:
             found_start = prev_num
-        else:
-            if rnd is not None: 
-                break
+        elif rnd is not None:
+            # 다른 라운드가 발견되면 즉시 중단 (더 이전 라운드로 넘어감)
             break
+        else:
+            # rnd is None (정보 없음/삭제됨) -> 건너뛰고 계속 검색 (Skip logic)
+            continue
             
     return found_start, target_round
 
@@ -286,6 +288,7 @@ def batch_create(start_url, count, is_pipe=False):
     
     initial_subject = None
     last_level = 0
+    consecutive_failures = 0
     
     for i in range(count):
         curr_num = real_start_num + i
@@ -295,24 +298,6 @@ def batch_create(start_url, count, is_pipe=False):
         
         print(f"👉 {pr_id} 확인... ", end="", file=sys.stderr)
         
-        # [Metadata Guard] URL이 없더라도 주차 변경 여부를 판단
-        if pa_id:
-            # 과목 코드 변경 감지
-            if initial_subject is None:
-                initial_subject = meta['subject']
-            elif meta['subject'] and meta['subject'] != initial_subject:
-                print(f"🛑 과목 변경 감지 ({initial_subject} -> {meta['subject']}). 스캔 종료.", file=sys.stderr)
-                break
-            
-            # 레벨 역전 감지 (Lv3+ 이후에 Lv1이 나오면 다음 주차)
-            try:
-                curr_level = int(meta['level']) if meta['level'] else 0
-                if last_level >= 3 and curr_level == 1:
-                    print(f"🛑 차시 경계 감지 (Level {last_level} -> {curr_level}). 스캔 종료.", file=sys.stderr)
-                    break
-                if curr_level > 0: last_level = curr_level
-            except: pass
-
         if repo_url: 
             print(f"✅ {repo_url}", file=sys.stderr)
             
@@ -322,18 +307,48 @@ def batch_create(start_url, count, is_pipe=False):
             if target_round and curr_rnd and curr_rnd != target_round:
                 print(f"🛑 차시 접두어 변경 감지 (Round {target_round} -> {curr_rnd}). 스캔 종료.", file=sys.stderr)
                 break
+            
+            # 레벨 정보 업데이트 (성공한 경우에만)
+            try:
+                if meta['level']: last_level = int(meta['level'])
+            except: pass
                 
             # 성공 목록에 추가
             found_items.append({'url': repo_url, 'pa': pa_id, 'pr': pr_id})
+            consecutive_failures = 0 # 성공 시 리셋
 
         else: 
+            # [Metadata Guard] URL이 없는 경우에만 메타데이터로 추측
+            # (URL이 있으면 detect_round_from_repo가 더 정확하므로 건너뜀)
             if pa_id:
+                # 과목 코드 변경 감지
+                if initial_subject is None:
+                    initial_subject = meta['subject']
+                elif meta['subject'] and meta['subject'] != initial_subject:
+                    print(f"🛑 과목 변경 감지 ({initial_subject} -> {meta['subject']}). 스캔 종료.", file=sys.stderr)
+                    break
+                
+                # 레벨 역전 감지 (Lv3+ 이후에 Lv1이 나오면 다음 주차일 확률 높음)
+                try:
+                    curr_level = int(meta['level']) if meta['level'] else 0
+                    if last_level >= 3 and curr_level == 1:
+                        print(f"🛑 차시 경계 감지 (Level {last_level} -> {curr_level}). 스캔 종료.", file=sys.stderr)
+                        break
+                    # URL은 없지만 레벨 정보는 신뢰하여 업데이트
+                    if curr_level > 0: last_level = curr_level
+                except: pass
+                
                 print(f"⏳ (지연 중: {meta['title'][:20]}...)", file=sys.stderr)
                 failed_items.append((course_id, pr_id))
+                consecutive_failures = 0
             else:
-                print(f"❌ (실패/없음)", file=sys.stderr)
-                # 완전히 없는 경우는 목록의 끝일 가능성이 높으므로 중단 고려 가능하나, 일단 failed 처리
-                failed_items.append((course_id, pr_id))
+                print(f"❌ (정보 없음)", file=sys.stderr)
+                consecutive_failures += 1
+                
+                # 연속 3회 이상 정보가 없으면, PR 목록이 끝난 것으로 간주
+                if consecutive_failures >= 3:
+                     print(f"🛑 연속 실패({consecutive_failures}회) -> 목록 끝으로 판단. 스캔 종료.", file=sys.stderr)
+                     break
             
         time.sleep(0.1)
 
