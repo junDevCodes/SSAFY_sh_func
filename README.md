@@ -102,3 +102,5 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests/run_tests.ps1
 # Python 직접 실행 (결과 JSON 저장)
 python tests/run_tests.py --out tests/test_results.json
 ```
+
+test_noti
