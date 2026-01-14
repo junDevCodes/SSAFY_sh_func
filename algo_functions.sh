@@ -1071,7 +1071,7 @@ gitup() {
                 repos+=("$line")
             fi
         # 주의: 스크립트 경로는 절대경로 사용
-        done < <(python "c:/Users/SSAFY/Desktop/SSAFY_sh_func/ssafy_batch_create.py" "$input" 20 --pipe)
+        done < <(python "c:/Users/SSAFY/Desktop/SSAFY_sh_func/ssafy_batch_create.py" "$input" 12 --pipe)
         
         if [ "${#repos[@]}" -eq 0 ]; then
             echo "❌ 생성된 실습실이 없거나 URL 분석에 실패했습니다."
