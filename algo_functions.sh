@@ -11,6 +11,71 @@ unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commi
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
 ALGO_FUNCTIONS_VERSION="V5"
+ALGO_UPDATE_CHECK_FILE="$HOME/.algo_update_last_check"
+
+_check_update() {
+    # .git 디렉토리가 없으면 패스 (git clone으로 설치하지 않은 경우)
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    if [ ! -d "$script_dir/.git" ]; then
+        return 0
+    fi
+
+    # 하루에 한 번만 체크
+    if [ -f "$ALGO_UPDATE_CHECK_FILE" ]; then
+        local last_check
+        last_check=$(cat "$ALGO_UPDATE_CHECK_FILE")
+        local current_time
+        current_time=$(date +%s)
+        local diff=$((current_time - last_check))
+        
+        # 86400초 = 24시간
+        if [ $diff -lt 86400 ]; then
+            return 0
+        fi
+    fi
+
+    # 백그라운드에서 체크하지 않고, 타임아웃을 짧게 주어 확인
+    # (사용자 경험을 해치지 않기 위해 1초 내에 응답 없으면 넘어감)
+    if command -v git > /dev/null 2>&1; then
+        (
+            cd "$script_dir" || exit
+            # 원격 정보 갱신 (1초 타임아웃)
+            if timeout 1s git fetch origin main > /dev/null 2>&1; then
+                local local_hash
+                local remote_hash
+                local_hash=$(git rev-parse HEAD)
+                remote_hash=$(git rev-parse origin/main)
+                
+                if [ "$local_hash" != "$remote_hash" ]; then
+                    echo ""
+                    echo "📦 [Update info] 새로운 버전이 감지되었습니다!"
+                    echo "   현재: $ALGO_FUNCTIONS_VERSION -> 최신 버전으로 업데이트 가능"
+                    echo "   👉 'algo-update'를 입력하여 업데이트하세요."
+                    echo ""
+                fi
+                # 체크 시간 갱신
+                date +%s > "$ALGO_UPDATE_CHECK_FILE"
+            fi
+        ) & # 백그라운드 실행으로 셸 로딩 지연 방지
+    fi
+}
+
+algo-update() {
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
+    echo "🔄 최신 버전으로 업데이트 중..."
+    (
+        cd "$script_dir" || exit 1
+        if git pull origin main; then
+            echo "✅ 업데이트 완료! 변경 사항을 적용하려면 터미널을 다시 시작하거나 아래 명령어를 실행하세요:"
+            echo "   source $ALGO_CONFIG_FILE"
+        else
+            echo "❌ 업데이트 실패. 직접 git pull을 시도해보세요."
+        fi
+    )
+}
 
 _is_interactive() {
     [ -t 0 ] && [ -t 1 ]
@@ -1487,6 +1552,7 @@ ssafy_batch() {
 }
 
 init_algo_config
+_check_update
 
 echo "✅ 알고리즘 셸 함수 로드 완료! (${ALGO_FUNCTIONS_VERSION})"
 echo "💡 'algo-config edit'로 설정을 변경할 수 있습니다"
