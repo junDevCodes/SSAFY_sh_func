@@ -55,11 +55,18 @@ gitup --ssafy <ssafy-topic>
 - 저장소를 clone 한 뒤, 루트 근처에서 적당한 파일을 찾아 IDE로 엽니다.
 - 파일이 여러 개면 `py/ipynb/cpp` 파일 목록을 우선 보여주고, 필요하면 트리(번호 선택)로 다른 파일도 열 수 있습니다.
 - SSAFY 전용 모드에서는 같은 주제/차시의 `ws(1~5)`, `hw(2,4)`를 한 번에 클론합니다.
+- **NEW**: `project.ssafy.com` 실습실 링크를 넣으면, **실습실 1~7번 자동 생성 + 전체 클론 + 1번 문제 실행**까지 한 번에 처리합니다.
+- **Smart Sorting**: 실습(ws) -> 과제(hw) 순서로 정렬하며, 생성 시간(PA ID)을 기준으로 정확한 순서를 보장합니다.
+- **Playlist**: `gitup` 실행 시 `.ssafy_playlist` 파일을 생성하여 `gitdown`이 순서대로 이동하도록 돕습니다.
 - 없는 저장소는 건너뛰고 요약만 출력합니다.
 - `data_ws`처럼 주제만 넣으면 차시 번호를 입력받습니다.
 
 SSAFY 예시:
 ```bash
+# [추천] 링크 하나로 생성부터 클론까지 끝내기
+gitup https://project.ssafy.com/practiceroom/.../answer/PA...
+
+# 기존 방식
 gitup data_ws
 gitup https://lab.ssafy.com/jylee1702/data_ws_4_1
 gitup --ssafy data_ws
@@ -81,6 +88,8 @@ gitdown --msg <message>
 - `--ssafy` 옵션을 쓰면 push 성공 시에만 다음 문제 디렉터리로 자동 이동하고 IDE를 엽니다.
 - `--ssafy`는 현재 폴더명이 `<주제>_(ws|hw)_<차시>_<문제번호>` 형식일 때 동작합니다.
 - `gitup --ssafy`로 클론한 루트를 `.ssafy_session_root`로 기록하고, `gitdown --ssafy`는 해당 루트를 기준으로 이동합니다.
+- **Smart Navigation**: `gitup`이 생성한 플레이리스트 순서대로 정확하게 다음 문제로 이동합니다.
+- **Completion Message**: 모든 문제를 다 풀면 "OO 과목의 해당 차시가 종료되었습니다" 메시지를 출력합니다.
 
 푸시 브랜치 결정 규칙:
 - 원격 default 브랜치(`origin/HEAD`)를 우선 사용합니다.
@@ -110,12 +119,15 @@ ssafy_batch <URL> [COUNT]
 
 ---
 
-## 로컬 적용(설치)
+## 설치 및 적용 (권장)
+
+이 스크립트는 **파일 복사** 방식으로 사용하는 것을 권장합니다.
 
 ### 1) 파일 위치 결정
 ```bash
 mkdir -p ~/scripts
-cp /path/to/algo_functions.sh ~/scripts/
+# 스크립트 파일 2개를 모두 복사해야 합니다.
+cp ./algo_functions.sh ./ssafy_batch_create.py ~/scripts/
 ```
 
 ### 2) 셸 설정 파일에 source 추가
@@ -132,18 +144,11 @@ source ~/.bashrc
 
 ---
 
-## 업데이트 방법
+## 업데이트
 
-### 1) 저장소에서 바로 쓰는 경우
+기존 파일을 덮어쓰면 됩니다.
 ```bash
-cd /path/to/SSAFY_sh_func
-git pull
-source ~/.bashrc
-```
-
-### 2) 복사해서 쓰는 경우
-```bash
-cp ./algo_functions.sh ~/scripts/
+cp ./algo_functions.sh ./ssafy_batch_create.py ~/scripts/
 source ~/.bashrc
 ```
 
@@ -166,7 +171,7 @@ GIT_COMMIT_PREFIX="solve"
 GIT_AUTO_PUSH=true
 IDE_PRIORITY="code pycharm idea subl"
 SSAFY_BASE_URL="https://lab.ssafy.com"   # 처음 실행 시 입력받음
-SSAFY_USER_ID="your-id-or-namespace"     # 예: jylee1702 또는 group/user
+SSAFY_USER_ID="your-id-or-namespace"     # 예: group/user
 ```
 
 ---
