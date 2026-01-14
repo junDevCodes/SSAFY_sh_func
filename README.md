@@ -48,9 +48,9 @@ source ~/.bashrc
     ```javascript
     javascript:(function(){var t=localStorage.getItem('accessToken');if(!t)alert('SSAFY 로그인 후 클릭하세요!');else prompt('Ctrl+C로 복사:','Bearer '+t);})();
     ```
-    ![예시 이미지](image.png)
+    [![token_setting.png](https://i.postimg.cc/qR7Nr7NK/image.png)](https://postimg.cc/zL9zS8SD)
 4.  실습실 주소(`project.ssafy.com`)에 로그인된 상태로 북마크를 클릭하면 토큰이 팝업으로 뜹니다. `Ctrl+C`로 복사하세요.
-    ![alt text](image-1.png)
+    [![token_copy.png](https://i.postimg.cc/tT73XbJk/image-1.png)](https://postimg.cc/1nhnHLpV)
 
 ### 토큰 입력 및 저장
 - `gitup` 실행 시 토큰이 없거나 만료되었다면 입력창이 뜹니다.
