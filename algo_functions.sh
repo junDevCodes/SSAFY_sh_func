@@ -10,7 +10,7 @@ unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commi
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V5-prot"
+ALGO_FUNCTIONS_VERSION="V5"
 
 _is_interactive() {
     [ -t 0 ] && [ -t 1 ]
@@ -599,6 +599,14 @@ gitdown() {
     local push_ok=false
     local current_repo=$(basename "$(pwd)" 2>/dev/null)
 
+    # 기본적으로 SSAFY 폴더 패턴이면 자동 모드 활성화 (User Request)
+    if [[ "$current_repo" =~ ^[A-Za-z0-9]+_(ws|hw|ex)(_[0-9]+(_[0-9]+)?)?$ ]]; then
+        if [ "$ssafy_mode" = false ]; then
+            ssafy_mode=true
+            echo "✨ SSAFY 폴더 감지: 자동 모드 활성화"
+        fi
+    fi
+
     while [ $# -gt 0 ]; do
         case "$1" in
             --ssafy|-s)
@@ -776,7 +784,14 @@ gitdown() {
                 echo "➡️  다음 문제로 이동: $next_repo"
                 _open_repo_file "$next_repo" || echo "⚠️  다음 디렉터리로 이동할 수 없습니다: $next_repo"
             else
-                echo "⚠️  다음 문제를 찾을 수 없습니다."
+                if [[ "$current_repo" =~ ^([A-Za-z0-9]+)_(ws|hw|ex)_([0-9]+)(_[0-9]+)?$ ]]; then
+                    local topic="${BASH_REMATCH[1]}"
+                    local session="${BASH_REMATCH[3]}"
+                    echo ""
+                    echo "🎉 [${topic}] 과목의 해당 [${session}]차시가 종료되었습니다. 고생하셨습니다"
+                else
+                    echo "⚠️  다음 문제를 찾을 수 없습니다."
+                fi
             fi
         else
             echo "⚠️  푸시 실패/미실행으로 다음 문제 이동을 건너뜁니다."
@@ -924,6 +939,31 @@ _gitup_ssafy() {
 
 _ssafy_next_repo() {
     local repo_name="$1"
+    
+    # [Playlist] 순서 파일이 있으면 우선 사용
+    # 현재 폴더(SSAFY 세션 루트)에 .ssafy_playlist 확인
+    if [ -f ".ssafy_playlist" ]; then
+        local -a playlist=()
+        while IFS= read -r line; do
+            # 윈도우 줄바꿈(\r) 제거
+            line="${line//$'\r'/}"
+            if [ -n "$line" ]; then
+                playlist+=("$line")
+            fi
+        done < ".ssafy_playlist"
+        
+        local i
+        for i in "${!playlist[@]}"; do
+            if [ "${playlist[$i]}" == "$repo_name" ]; then
+                local next_idx=$((i + 1))
+                if [ -n "${playlist[$next_idx]}" ]; then
+                    echo "${playlist[$next_idx]}"
+                    return 0
+                fi
+            fi
+        done
+    fi
+
     local topic=""
     local kind=""
     local session=""
@@ -997,11 +1037,87 @@ gitup() {
         ssafy_detected=true
     elif [[ "$input" =~ ^https?://lab\.ssafy\.com/ ]]; then
         ssafy_detected=true
-    elif [[ "$input" =~ ^[A-Za-z0-9]+_(ws|hw)(_[0-9]+(_[0-9]+)?)?$ ]]; then
-        ssafy_detected=true
     fi
 
-    if [ "$ssafy_detected" = true ]; then
+    # 0. SSAFY 실습실 생성 URL 감지 (https://project.ssafy.com/...)
+    if [[ "$input" == https://project.ssafy.com/* ]]; then
+        echo "🚀 SSAFY 실습실 일괄 생성 및 클론 모드 (Smart Batch)"
+        echo "⏳ 실습실 생성 및 URL 분석 중..."
+        
+        # 파이썬 스크립트 실행 (Pipe 모드)
+        # 결과: 생성된/유추된 레포 URL들이 줄바꿈으로 출력됨
+        local -a repos=()
+        while IFS= read -r line; do
+            # Windows 호환: \r 제거
+            line="${line//$'\r'/}"
+            # 빈 줄이나 공백 제외
+            if [ -n "${line//[[:space:]]/}" ]; then
+                repos+=("$line")
+            fi
+        # 주의: 스크립트 경로는 절대경로 사용
+        done < <(python "c:/Users/SSAFY/Desktop/SSAFY_sh_func/ssafy_batch_create.py" "$input" 20 --pipe)
+        
+        if [ "${#repos[@]}" -eq 0 ]; then
+            echo "❌ 생성된 실습실이 없거나 URL 분석에 실패했습니다."
+            return 1
+        fi
+        
+    # [Playlist] .ssafy_playlist 파일 생성
+    # 파이썬에서 받은 URL 목록을 기반으로 순서 파일 생성
+    if [ "${#repos[@]}" -gt 0 ]; then
+        rm -f .ssafy_playlist
+        for r_url in "${repos[@]}"; do
+            # URL에서 마지막 부분(디렉토리명) 추출
+            local dname=$(basename "$r_url")
+            dname="${dname%.git}"
+            echo "$dname" >> .ssafy_playlist
+        done
+        echo "📋 자동 이동 순서 생성됨 (.ssafy_playlist)"
+    fi
+        
+    local first_dir=""
+    local priority_dir=""
+    
+    for repo_url in "${repos[@]}"; do
+        echo "⬇️  Clone: $repo_url"
+            # 백그라운드 말고 순차 실행 (오류 확인 위해)
+            # 이미 있으면 git clone이 알아서 에러/패스 처리함
+            git clone "$repo_url"
+            
+            # 디렉토리명 추출
+            local dname=$(basename "$repo_url" .git)
+            
+            # 첫 번째 발견된 폴더 저장 (Fallback)
+            if [ -z "$first_dir" ] && [ -d "$dname" ]; then
+                first_dir="$dname"
+            fi
+            
+            # 우선순위: 이름이 _1 로 끝나는 폴더 (예: vue_ws_3_1)
+            # 여러 개일 경우 가장 먼저 발견된 _1 (보통 ex_1)
+            if [ -z "$priority_dir" ] && [ -d "$dname" ] && [[ "$dname" == *_1 ]]; then
+                priority_dir="$dname"
+            fi
+        done
+        
+        echo "✅ 일괄 작업 완료!"
+        
+        # 우선순위 폴더가 있으면 교체
+        if [ -n "$priority_dir" ]; then
+            first_dir="$priority_dir"
+        fi
+        
+        if [ -n "$first_dir" ]; then
+            echo "👉 첫 번째 문제로 이동합니다: $first_dir"
+            _open_repo_file "$first_dir"
+            return 0
+        else
+            echo "⚠️  클론된 디렉토리를 찾을 수 없습니다."
+            return 1
+        fi
+    fi
+
+    # 1. SSAFY Topic 감지 (예: ws_3_1, data_ws 등)
+    if [[ "$input" =~ ^[A-Za-z0-9]+_(ws|hw)(_[0-9]+(_[0-9]+)?)?$ ]]; then
         _gitup_ssafy "$input" || return 1
         return 0
     fi
@@ -1203,7 +1319,7 @@ _open_repo_file() {
     done < <(
         find . -maxdepth "$maxdepth" \
             \( -path './.git' -o -path './.git/*' -o -path './.vscode' -o -path './.vscode/*' -o -path './.idea' -o -path './.idea/*' -o -path './node_modules' -o -path './node_modules/*' -o -path './venv' -o -path './venv/*' -o -path './.venv' -o -path './.venv/*' -o -path './__pycache__' -o -path './__pycache__/*' \) -prune -o \
-            -type f \( -name '*.py' -o -name '*.ipynb' -o -name '*.cpp' \) -print0 2>/dev/null
+            -type f \( -name '*.py' -o -name '*.ipynb' -o -name '*.cpp' -o -name '*.vue' -o -name '*.js' -o -name '*.html' -o -name '*.css' -o -name '*.java' \) -print0 2>/dev/null
     )
 
     local chosen=""
@@ -1211,27 +1327,31 @@ _open_repo_file() {
     if _is_interactive; then
         while true; do
             echo ""
-            echo "?? 추천 코드 파일 (py/ipynb/cpp):"
+            echo "============================================================"
+            echo " 📂 [Code Selector] 자주 사용하는 파일"
+            echo "============================================================"
             if [ "${#primary_files[@]}" -gt 0 ]; then
                 local i=""
                 for i in "${!primary_files[@]}"; do
-                    printf "  %d) %s\n" "$((i + 1))" "${primary_files[$i]}"
+                    printf "  %2d. %s\n" "$((i + 1))" "${primary_files[$i]}"
                 done
             else
-                echo "  (없음)"
+                echo "  (추천 파일 없음)"
             fi
 
-            echo "  0) 다른 파일 목록 보기 (트리)"
-            echo "  q) 취소"
+            echo "------------------------------------------------------------"
+            echo "  t. 🌳 전체 파일 트리 보기"
+            echo "  q. ❌ 취소"
+            echo "============================================================"
 
             local choice=""
-            read -r -p "열 파일 번호 선택: " choice
+            read -r -p "👉 원하시는 파일 번호 또는 메뉴를 입력하세요: " choice
 
             if [ "$choice" = "q" ] || [ "$choice" = "Q" ]; then
                 return 1
             fi
 
-            if [ "$choice" = "0" ]; then
+            if [ "$choice" = "t" ] || [ "$choice" = "T" ]; then
                 local -a all_files=()
                 while IFS= read -r -d '' af; do
                     af="${af#./}"
@@ -1248,21 +1368,25 @@ _open_repo_file() {
                 )
 
                 if [ "${#all_files[@]}" -eq 0 ]; then
-                    echo "??  열 수 있는 파일을 찾을 수 없습니다."
+                    echo "⚠️  열 수 있는 파일을 찾을 수 없습니다."
                     continue
                 fi
 
                 echo ""
-                echo "?? 파일 트리:"
+                echo "============================================================"
+                echo " 🌳 [File Tree] 전체 파일 목록"
+                echo "============================================================"
                 local j=""
                 for j in "${!all_files[@]}"; do
-                    printf "  %d) %s\n" "$((j + 1))" "${all_files[$j]}"
+                    printf "  %2d. %s\n" "$((j + 1))" "${all_files[$j]}"
                 done
-                echo "  b) 뒤로"
-                echo "  q) 취소"
+                echo "------------------------------------------------------------"
+                echo "  b. 🔙 뒤로 가기"
+                echo "  q. ❌ 취소"
+                echo "============================================================"
 
                 local tchoice=""
-                read -r -p "열 파일 번호 선택: " tchoice
+                read -r -p "👉 번호를 입력하세요: " tchoice
 
                 if [ "$tchoice" = "q" ] || [ "$tchoice" = "Q" ]; then
                     return 1
@@ -1275,7 +1399,7 @@ _open_repo_file() {
                     break
                 fi
 
-                echo "??  잘못된 선택입니다."
+                echo "⚠️  잘못된 선택입니다."
                 continue
             fi
 
@@ -1284,7 +1408,7 @@ _open_repo_file() {
                 break
             fi
 
-            echo "??  잘못된 선택입니다."
+            echo "⚠️  잘못된 선택입니다."
         done
     else
         if [ "${#primary_files[@]}" -gt 0 ]; then
@@ -1321,9 +1445,19 @@ ssafy_batch() {
         return 1
     fi
     
-    # Python 스크립트 실행
-    # (주의: 스크립트 위치가 변경되면 아래 경로도 수정해야 함)
-    python "c:/Users/SSAFY/Desktop/SSAFY_sh_func/ssafy_batch_create.py" "$1" "$2"
+    # 현재 스크립트(알고리즘 함수 파일)가 위치한 디렉토리 파악
+    # (source 되는 경우 BASH_SOURCE 사용)
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
+    # Python 스크립트 실행 (동일 디렉토리에 있다고 가정)
+    if [ ! -f "$script_dir/ssafy_batch_create.py" ]; then
+        echo "❌ 실행 오류: '$script_dir/ssafy_batch_create.py' 파일을 찾을 수 없습니다."
+        echo "   algo_functions.sh와 ssafy_batch_create.py는 같은 폴더에 있어야 합니다."
+        return 1
+    fi
+    
+    python "$script_dir/ssafy_batch_create.py" "$1" "$2"
 }
 
 init_algo_config
