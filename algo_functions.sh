@@ -68,6 +68,15 @@ _ensure_ssafy_config() {
             fi
         fi
     fi
+
+    if [ -z "${SSAFY_AUTH_TOKEN:-}" ] || [[ "$SSAFY_AUTH_TOKEN" == "Bearer your_token_here" ]]; then
+        if _is_interactive; then
+            local input=""
+            # 자동으로 묻지 않음 (실행 시점에 물어보도록 스킵하거나, init 때는 빈값 허용)
+            # 여기서는 파일에 값이 없으면 초기화만
+            :
+        fi
+    fi
 }
 
 _find_ssafy_session_root() {
@@ -106,11 +115,18 @@ IDE_PRIORITY="code pycharm idea subl"
 # SSAFY 설정 (처음 실행 시 입력받아 저장합니다)
 SSAFY_BASE_URL=""
 SSAFY_USER_ID=""
+SSAFY_AUTH_TOKEN="Bearer your_token_here"
 EOF
         echo "✅ 설정 파일 생성: $ALGO_CONFIG_FILE"
         echo "💡 'algo-config' 명령어로 설정을 변경할 수 있습니다"
     fi
     source "$ALGO_CONFIG_FILE"
+    
+    # Python 스크립트를 위해 토큰 자동 export
+    if [ -n "$SSAFY_AUTH_TOKEN" ] && [[ "$SSAFY_AUTH_TOKEN" != "Bearer your_token_here" ]]; then
+        export SSAFY_AUTH_TOKEN
+    fi
+    
     _ensure_ssafy_config
 }
 
@@ -1443,6 +1459,16 @@ ssafy_batch() {
         echo "Usage: ssafy_batch <URL> [COUNT=7]"
         echo "Example: ssafy_batch \"https://project.ssafy.com/.../PR00147645/...\" 7"
         return 1
+    fi
+    
+    # 설정 파일 로드
+    if [ -f "$ALGO_CONFIG_FILE" ]; then
+        source "$ALGO_CONFIG_FILE"
+    fi
+    
+    # 토큰 초기화 확인 (없으면 Python 스크립트에서 로그인 진행)
+    if [ -n "$SSAFY_AUTH_TOKEN" ] && [[ "$SSAFY_AUTH_TOKEN" != "Bearer your_token_here" ]]; then
+        export SSAFY_AUTH_TOKEN
     fi
     
     # 현재 스크립트(알고리즘 함수 파일)가 위치한 디렉토리 파악

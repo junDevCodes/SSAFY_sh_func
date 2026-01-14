@@ -1,9 +1,15 @@
 import sys
+import os
 import re
 import time
 import json
 import urllib.request
 import urllib.error
+import base64
+
+# Windows 인코딩 문제 해결
+sys.stdout.reconfigure(encoding='utf-8')
+sys.stderr.reconfigure(encoding='utf-8')
 
 # [Helper] Requests 모듈 의존성 제거를 위한 간단한 래퍼
 class MockResponse:
@@ -37,9 +43,79 @@ def api_request(url, method="GET", data=None, headers=None):
 # ==================================================================================
 # [사용자 설정 영역]
 # ==================================================================================
+def update_config_file(token):
+    config_path = os.path.expanduser('~/.algo_config')
+    try:
+        lines = []
+        if os.path.exists(config_path):
+            with open(config_path, 'r', encoding='utf-8') as f:
+                lines = f.readlines()
+        
+        new_lines = []
+        updated = False
+        for line in lines:
+            if line.strip().startswith('SSAFY_AUTH_TOKEN='):
+                new_lines.append(f'SSAFY_AUTH_TOKEN="{token}"\n')
+                updated = True
+            else:
+                new_lines.append(line)
+        
+        if not updated:
+            new_lines.append(f'SSAFY_AUTH_TOKEN="{token}"\n')
+            
+        with open(config_path, 'w', encoding='utf-8') as f:
+            f.writelines(new_lines)
+        print("✅ Token saved to ~/.algo_config")
+    except Exception as e:
+        print(f"⚠️ Failed to save token to config: {e}", file=sys.stderr)
+
+
+
+AUTH_TOKEN = os.environ.get('SSAFY_AUTH_TOKEN')
+SSAFY_BASE_URL = "https://project.ssafy.com/ssafy/api"
+
+def is_token_expired(token_str):
+    try:
+        if not token_str or "Bearer " not in token_str: return True
+        token = token_str.split("Bearer ")[1].strip()
+        parts = token.split('.')
+        if len(parts) != 3: return True
+        
+        payload_part = parts[1]
+        rem = len(payload_part) % 4
+        if rem > 0: payload_part += '=' * (4 - rem)
+        
+        payload_data = base64.urlsafe_b64decode(payload_part)
+        payload = json.loads(payload_data)
+        
+        exp = payload.get('exp', 0)
+        # Expired if expiration time < current time (with 60s buffer)
+        if exp < time.time() + 60:
+            return True
+        return False
+    except:
+        return True
+
+if not AUTH_TOKEN or AUTH_TOKEN == "Bearer your_token_here" or is_token_expired(AUTH_TOKEN):
+    if AUTH_TOKEN and AUTH_TOKEN != "Bearer your_token_here" and is_token_expired(AUTH_TOKEN):
+        print("⚠️  Saved token has EXPIRED (24h passed).", file=sys.stderr)
+    else:
+        print("⚠️  SSAFY_AUTH_TOKEN is missing or invalid.", file=sys.stderr)
+        
+    print("\n   [💡 Bookmarklet Helper]", file=sys.stderr)
+    print("   Create a bookmark with this URL to copy token easily:", file=sys.stderr)
+    print("   javascript:(function(){var t=localStorage.getItem('accessToken');if(!t)alert('Login first!');else prompt('Ctrl+C to copy:','Bearer '+t);})();\n", file=sys.stderr)
+    print("   Enter Token (Bearer ...): ", end='', file=sys.stderr, flush=True)
+    AUTH_TOKEN = input("").strip()
+    if AUTH_TOKEN:
+        update_config_file(AUTH_TOKEN)
+
+if not AUTH_TOKEN:
+    sys.exit(1)
+
 HEADERS = {
     "accept": "application/json, text/plain, */*",
-    "authorization": "Bearer eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiI4YTgxOTQ4OTk3ZTU3NjAxMDE5ODA2YTg5M2U2MDI2MiIsImlhdCI6MTc2ODI3MzgwNSwiZXhwIjoxNzY4MzYwMjA1fQ.FwVXPaHSxRbsxEi2tn-tkmtrncbExJOBgWT3COOPbgEkGw4bg56mCUmvVLy01cYJj2bKlM5zsZ60SB5wnFFrQA",
+    "authorization": AUTH_TOKEN,
     "cookie": "SCOUTER=z57ch88if8g7a9",
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"
 }
@@ -112,8 +188,8 @@ def get_repo_info(course_id, pr_id):
                 
             # 2.3 Repo URL은 없는데 PA ID(답안 ID)가 있으면 -> 상세 조회 시도
             if pa_id:
-                # 0.5초 대기 (생성 직후 조회 시 404/동기화 지연 방지)
-                time.sleep(0.5)
+                # 0.1초 대기 (생성 직후 조회 시 404/동기화 지연 방지)
+                time.sleep(0.1)
                 
                 print(f"⚠️ [Info] {pr_id}: Found ID {pa_id}, Fetching details...", file=sys.stderr)
                 detail_url = f"https://project.ssafy.com/ssafy/api/courses/{course_id}/practices/{pr_id}/answers/{pa_id}"
@@ -137,7 +213,7 @@ def get_repo_info(course_id, pr_id):
             # 2.4 여전히 없으면 재시도
             if attempt < max_retries - 1:
                 print(f"⚠️ [Retry {attempt+1}/{max_retries}] {pr_id}: Status {status} (No URL), Retrying...", file=sys.stderr)
-                time.sleep(1.5) 
+                time.sleep(0.5) 
             else:
                  print(f"❌ [GiveUp] {pr_id}: Status {status}", file=sys.stderr)
                  try:
