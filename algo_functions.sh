@@ -605,7 +605,9 @@ _handle_git_commit() {
     echo "✅ Git 저장소: $git_root"
     echo "📁 대상: $relative_path"
     
-    git add "$relative_path"
+    # 파일이 있는 디렉토리를 통째로 add (sample_input.txt 등 포함)
+    local relative_dir=$(dirname "$relative_path")
+    git add "$relative_dir"
     
     local commit_msg=""
     if [ -n "$custom_msg" ]; then
