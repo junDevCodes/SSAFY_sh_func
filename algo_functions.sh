@@ -30,6 +30,54 @@ algo-update() {
     )
 }
 
+# 업데이트 알림 체크 (하루 1회, 백그라운드)
+ALGO_UPDATE_CHECK_FILE="$HOME/.algo_update_last_check"
+
+_check_update() {
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
+    # .git 디렉토리가 없으면 패스
+    if [ ! -d "$script_dir/.git" ]; then
+        return 0
+    fi
+
+    # 하루에 한 번만 체크
+    if [ -f "$ALGO_UPDATE_CHECK_FILE" ]; then
+        local last_check
+        last_check=$(cat "$ALGO_UPDATE_CHECK_FILE" 2>/dev/null || echo 0)
+        local current_time
+        current_time=$(date +%s)
+        local diff=$((current_time - last_check))
+        
+        # 86400초 = 24시간
+        if [ $diff -lt 86400 ]; then
+            return 0
+        fi
+    fi
+
+    # 백그라운드에서 체크 (1초 타임아웃)
+    if command -v git > /dev/null 2>&1; then
+        (
+            cd "$script_dir" || exit
+            if timeout 2s git fetch origin main > /dev/null 2>&1; then
+                local local_hash remote_hash
+                local_hash=$(git rev-parse HEAD 2>/dev/null)
+                remote_hash=$(git rev-parse origin/main 2>/dev/null)
+                
+                if [ -n "$local_hash" ] && [ -n "$remote_hash" ] && [ "$local_hash" != "$remote_hash" ]; then
+                    echo ""
+                    echo "📦 [Update] 새로운 버전이 있습니다! (현재: $ALGO_FUNCTIONS_VERSION)"
+                    echo "   👉 'algo-update'를 실행하여 업데이트하세요."
+                    echo ""
+                fi
+                # 체크 시간 기록
+                date +%s > "$ALGO_UPDATE_CHECK_FILE"
+            fi
+        ) &
+    fi
+}
+
 _is_interactive() {
     [ -t 0 ] && [ -t 1 ]
 }
@@ -1507,6 +1555,7 @@ ssafy_batch() {
 }
 
 init_algo_config
+_check_update
 
 echo "✅ 알고리즘 셸 함수 로드 완료! (${ALGO_FUNCTIONS_VERSION})"
 echo "💡 'algo-config edit'로 설정을 변경할 수 있습니다"
