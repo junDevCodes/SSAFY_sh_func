@@ -135,5 +135,6 @@ EOF
     echo "✅ 초기 설정 완료!"
     echo "💡 토큰은 gitup 실행 시 자동으로 안내됩니다."
     echo ""
-    echo "🎉 이제 터미널을 다시 열거나 'source ~/.bashrc'를 실행하세요!"
+    read -r -p "🎉 Enter를 누르면 설정을 적용합니다..." _
+    exec bash
 fi
