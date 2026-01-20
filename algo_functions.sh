@@ -10,72 +10,7 @@ unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commi
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V6"
-ALGO_UPDATE_CHECK_FILE="$HOME/.algo_update_last_check"
-
-_check_update() {
-    # .git 디렉토리가 없으면 패스 (git clone으로 설치하지 않은 경우)
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    if [ ! -d "$script_dir/.git" ]; then
-        return 0
-    fi
-
-    # 하루에 한 번만 체크
-    if [ -f "$ALGO_UPDATE_CHECK_FILE" ]; then
-        local last_check
-        last_check=$(cat "$ALGO_UPDATE_CHECK_FILE")
-        local current_time
-        current_time=$(date +%s)
-        local diff=$((current_time - last_check))
-        
-        # 86400초 = 24시간
-        if [ $diff -lt 86400 ]; then
-            return 0
-        fi
-    fi
-
-    # 백그라운드에서 체크하지 않고, 타임아웃을 짧게 주어 확인
-    # (사용자 경험을 해치지 않기 위해 1초 내에 응답 없으면 넘어감)
-    if command -v git > /dev/null 2>&1; then
-        (
-            cd "$script_dir" || exit
-            # 원격 정보 갱신 (1초 타임아웃)
-            if timeout 1s git fetch origin main > /dev/null 2>&1; then
-                local local_hash
-                local remote_hash
-                local_hash=$(git rev-parse HEAD)
-                remote_hash=$(git rev-parse origin/main)
-                
-                if [ "$local_hash" != "$remote_hash" ]; then
-                    echo ""
-                    echo "📦 [Update info] 새로운 버전이 감지되었습니다!"
-                    echo "   현재: $ALGO_FUNCTIONS_VERSION -> 최신 버전으로 업데이트 가능"
-                    echo "   👉 'algo-update'를 입력하여 업데이트하세요."
-                    echo ""
-                fi
-                # 체크 시간 갱신
-                date +%s > "$ALGO_UPDATE_CHECK_FILE"
-            fi
-        ) & # 백그라운드 실행으로 셸 로딩 지연 방지
-    fi
-}
-
-algo-update() {
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    
-    echo "🔄 최신 버전으로 업데이트 중..."
-    (
-        cd "$script_dir" || exit 1
-        if git pull origin main; then
-            echo "✅ 업데이트 완료! 변경 사항을 적용하려면 터미널을 다시 시작하거나 아래 명령어를 실행하세요:"
-            echo "   source $ALGO_CONFIG_FILE"
-        else
-            echo "❌ 업데이트 실패. 직접 git pull을 시도해보세요."
-        fi
-    )
-}
+ALGO_FUNCTIONS_VERSION="V5"
 
 _is_interactive() {
     [ -t 0 ] && [ -t 1 ]
@@ -126,7 +61,7 @@ _ensure_ssafy_config() {
     if [ -z "${SSAFY_USER_ID:-}" ]; then
         if _is_interactive; then
             local input=""
-            read -r -p "SSAFY namespace/user id (e.g. jylee1702 or group/user): " input
+            read -r -p "SSAFY GitLab 사용자명 (lab.ssafy.com/{여기} 부분): " input
             if [ -n "${input//[[:space:]]/}" ]; then
                 SSAFY_USER_ID="$input"
                 _set_config_value "SSAFY_USER_ID" "$SSAFY_USER_ID" >/dev/null 2>&1 || true
@@ -384,27 +319,10 @@ al() {
             _create_algo_file "$file" "$site_name" "$site_display" "$problem" "$lang"
         else
             echo "📄 기존 파일 발견!"
-            # 변경사항이 있는지 확인
-            local has_changes=false
-            if [ -d "$dir/.git" ] || git -C "$dir" rev-parse --git-dir > /dev/null 2>&1; then
-                local git_root=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)
-                if [ -n "$git_root" ]; then
-                    local rel_dir=$(realpath --relative-to="$git_root" "$dir" 2>/dev/null || echo "$dir")
-                    if git -C "$git_root" status --porcelain "$rel_dir" 2>/dev/null | grep -q .; then
-                        has_changes=true
-                    fi
-                fi
-            fi
-            
-            if [ "$has_changes" = true ] && [ "$skip_git" = false ]; then
-                echo "✨ 변경사항 감지 → 커밋/푸시 모드"
+            if [ "$skip_git" = false ]; then
                 _handle_git_commit "$file" "$problem" "$custom_commit_msg" "$lang"
             else
-                if [ "$has_changes" = false ]; then
-                    echo "📝 변경사항 없음 → 파일 열기만 수행"
-                else
-                    echo "⏭️  Git 작업 건너뛰기"
-                fi
+                echo "⏭️  Git 작업 건너뛰기"
             fi
         fi
     else
@@ -413,20 +331,7 @@ al() {
             lang="py"
             _create_algo_file "$file" "$site_name" "$site_display" "$problem" "$lang"
         else
-            # 변경사항이 있는지 확인
-            local has_changes=false
-            if git -C "$dir" rev-parse --git-dir > /dev/null 2>&1; then
-                local git_root=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)
-                if [ -n "$git_root" ]; then
-                    local rel_dir=$(realpath --relative-to="$git_root" "$dir" 2>/dev/null || echo "$dir")
-                    if git -C "$git_root" status --porcelain "$rel_dir" 2>/dev/null | grep -q .; then
-                        has_changes=true
-                    fi
-                fi
-            fi
-            
-            if [ "$has_changes" = true ] && [ "$skip_git" = false ]; then
-                echo "✨ 변경사항 감지 → 커밋/푸시 모드"
+            if [ "$skip_git" = false ]; then
                 if [ "$has_py" = true ]; then
                     _handle_git_commit "$py_file" "$problem" "$custom_commit_msg" "py"
                 fi
@@ -434,11 +339,7 @@ al() {
                     _handle_git_commit "$cpp_file" "$problem" "$custom_commit_msg" "cpp"
                 fi
             else
-                if [ "$has_changes" = false ]; then
-                    echo "📝 변경사항 없음 → 파일 열기만 수행"
-                else
-                    echo "⏭️  Git 작업 건너뛰기"
-                fi
+                echo "⏭️  Git 작업 건너뛰기"
             fi
 
             if [ "$has_py" = true ]; then
@@ -627,11 +528,6 @@ _handle_git_commit() {
     echo "✅ Git 저장소: $git_root"
     echo "📁 대상: $relative_path"
     
-    # 파일이 있는 폴더 전체를 추가 (sample_input.txt 등 포함)
-    local relative_dir=$(dirname "$relative_path")
-    # 디렉토리 내 모든 파일 추가 (슬래시 추가로 확실하게)
-    git add "$relative_dir/"
-    # 혹시 놓친 파일이 있을 경우 개별 파일도 추가
     git add "$relative_path"
     
     local commit_msg=""
@@ -1177,7 +1073,7 @@ gitup() {
         # 스크립트 위치 동적 감지
         local script_dir
         script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-        done < <(python "$script_dir/ssafy_batch_create.py" "$input" 12 --pipe)
+        done < <(python "$script_dir/ssafy_batch_create.py" "$input" 20 --pipe)
         
         if [ "${#repos[@]}" -eq 0 ]; then
             echo "❌ 생성된 실습실이 없거나 URL 분석에 실패했습니다."
@@ -1593,7 +1489,6 @@ ssafy_batch() {
 }
 
 init_algo_config
-_check_update
 
 echo "✅ 알고리즘 셸 함수 로드 완료! (${ALGO_FUNCTIONS_VERSION})"
 echo "💡 'algo-config edit'로 설정을 변경할 수 있습니다"

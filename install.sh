@@ -62,6 +62,19 @@ if [ -f "$HOME/.zshrc" ]; then
     add_source_line "$HOME/.zshrc"
 fi
 
+# 4. 기존 설정 초기화 여부 확인
+if [ -f "$HOME/.algo_config" ]; then
+    echo ""
+    echo "⚠️  기존 사용자 설정이 감지되었습니다: ~/.algo_config"
+    read -r -p "   기존 설정을 초기화할까요? (새 PC 사용 시 권장) (y/N): " reset_config
+    if [[ "$reset_config" =~ ^[Yy]$ ]]; then
+        rm "$HOME/.algo_config"
+        echo "   ✅ 설정 초기화 완료 (첫 실행 시 새로 설정됩니다)"
+    else
+        echo "   ⏭️  기존 설정 유지"
+    fi
+fi
+
 # 4. 완료 메시지
 echo ""
 echo "============================================================"
@@ -75,6 +88,7 @@ echo ""
 echo "💡 주요 명령어:"
 echo "   - gitup <URL>          : Git 저장소 클론 및 파일 열기"
 echo "   - gitdown              : 커밋 후 푸시"
+echo "   - algo-config show     : 설정 보기"
 echo "   - algo-config edit     : 설정 편집"
 echo "   - algo-update          : 최신 버전으로 업데이트"
 echo ""
