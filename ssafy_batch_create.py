@@ -120,7 +120,6 @@ if not AUTH_TOKEN:
 HEADERS = {
     "accept": "application/json, text/plain, */*",
     "authorization": AUTH_TOKEN,
-    "cookie": "SCOUTER=z57ch88if8g7a9",
     "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36"
 }
 # ==================================================================================
