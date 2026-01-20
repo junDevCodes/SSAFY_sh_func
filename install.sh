@@ -63,16 +63,21 @@ if [ -f "$HOME/.zshrc" ]; then
 fi
 
 # 4. 기존 설정 초기화 여부 확인
+RUN_SETUP=false
 if [ -f "$HOME/.algo_config" ]; then
     echo ""
     echo "⚠️  기존 사용자 설정이 감지되었습니다: ~/.algo_config"
     read -r -p "   기존 설정을 초기화할까요? (새 PC 사용 시 권장) (y/N): " reset_config
     if [[ "$reset_config" =~ ^[Yy]$ ]]; then
         rm "$HOME/.algo_config"
-        echo "   ✅ 설정 초기화 완료 (첫 실행 시 새로 설정됩니다)"
+        echo "   ✅ 설정 초기화 완료"
+        RUN_SETUP=true
     else
         echo "   ⏭️  기존 설정 유지"
     fi
+else
+    # 새 설치인 경우도 설정 시작
+    RUN_SETUP=true
 fi
 
 # 4. 완료 메시지
@@ -94,3 +99,10 @@ echo "   - algo-update          : 최신 버전으로 업데이트"
 echo ""
 echo "📖 자세한 사용법: https://github.com/junDevCodes/SSAFY_sh_func"
 echo ""
+
+# 5. 설정 초기화 시 바로 설정 시작
+if [ "$RUN_SETUP" = true ]; then
+    echo "🔧 초기 설정을 시작합니다..."
+    echo ""
+    source "$INSTALL_DIR/algo_functions.sh"
+fi
