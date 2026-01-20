@@ -10,7 +10,7 @@ unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commi
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V5"
+ALGO_FUNCTIONS_VERSION="V6"
 ALGO_UPDATE_CHECK_FILE="$HOME/.algo_update_last_check"
 
 _check_update() {
