@@ -21,8 +21,18 @@
 - `install.sh` - 자동 설치 스크립트
 - `updatenote.md` - 버전별 변경사항 문서
 
+### 🛠️ 추가 업데이트 (Hotfixes)
+- **macOS 설치 지원**: `install.sh`의 `sed` 호환성 문제 해결 (모든 OS 지원)
+- **CI/CD 구축**: GitHub Actions를 통한 자동 테스트 환경 구성 (`tests/` 폴더 트래킹)
+- **안정성 개선**: `timeout` 명령어 호환성 확보 (Git Bash), 이모지 깨짐 수정
+- **기능 확장**: `ex` 타입 SSAFY 프로젝트 인식 추가
+- **코드 클린업**: 불필요한 쿠키/중복 코드 제거
+
 ### 커밋 로그
 - `61923f0` Feat: Add install.sh & fixes
+- `51e0825` fix: resolve critical issues (func dup, mac compat, regex, timeout)
+- `3ee5822` feat: setup CI and remove cookie
+- `2e7282c` fix: git add directory instead of file in al command
 
 ---
 
