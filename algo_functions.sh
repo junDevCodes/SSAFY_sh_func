@@ -1128,6 +1128,11 @@ gitup() {
         
         # 파이썬 스크립트 실행 (Pipe 모드)
         # 결과: 생성된/유추된 레포 URL들이 줄바꿈으로 출력됨
+        
+        # 스크립트 위치 동적 감지 (루프 밖에서 정의해야 함)
+        local script_dir
+        script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        
         local -a repos=()
         while IFS= read -r line; do
             # Windows 호환: \r 제거
@@ -1136,9 +1141,6 @@ gitup() {
             if [ -n "${line//[[:space:]]/}" ]; then
                 repos+=("$line")
             fi
-        # 스크립트 위치 동적 감지
-        local script_dir
-        script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
         done < <(python "$script_dir/ssafy_batch_create.py" "$input" 20 --pipe)
         
         if [ "${#repos[@]}" -eq 0 ]; then
