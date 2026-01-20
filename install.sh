@@ -33,12 +33,28 @@ else
     exit 1
 fi
 
-# 3. 셸 설정 파일에 source 문 추가
+# 3. 기존 설치 정리 (중복 방지)
+cleanup_old_install() {
+    local rc_file="$1"
+    if [ -f "$rc_file" ]; then
+        # 기존 algo_functions.sh source 라인 제거 (ssafy-tools 제외)
+        if grep -q "algo_functions.sh" "$rc_file"; then
+            # ssafy-tools가 아닌 다른 경로의 source 라인 제거
+            sed -i '/algo_functions\.sh/{ /ssafy-tools/!d; }' "$rc_file"
+            # 빈 주석 라인도 정리
+            sed -i '/^# SSAFY Shell Functions$/{ N; /\n$/d; }' "$rc_file" 2>/dev/null || true
+        fi
+    fi
+}
+
 add_source_line() {
     local rc_file="$1"
     local source_line="source \"$INSTALL_DIR/algo_functions.sh\""
     
     if [ -f "$rc_file" ]; then
+        # 기존 다른 경로 정리
+        cleanup_old_install "$rc_file"
+        
         # 이미 추가되어 있는지 확인
         if grep -q "ssafy-tools/algo_functions.sh" "$rc_file"; then
             echo "   ⏭️  $rc_file 에 이미 설정되어 있습니다."
