@@ -59,7 +59,7 @@ _check_update() {
         fi
     fi
 
-    # 백그라운드에서 체크 (1초 타임아웃)
+    # 백그라운드에서 체크 (2초 타임아웃)
     if command -v git > /dev/null 2>&1; then
         (
             cd "$script_dir" || exit
@@ -78,6 +78,7 @@ _check_update() {
                 date +%s > "$ALGO_UPDATE_CHECK_FILE"
             fi
         ) &
+        disown  # 백그라운드 작업 완료 메시지 억제
     fi
 }
 
