@@ -104,5 +104,36 @@ echo ""
 if [ "$RUN_SETUP" = true ]; then
     echo "🔧 초기 설정을 시작합니다..."
     echo ""
-    source "$INSTALL_DIR/algo_functions.sh"
+    
+    # 설정 파일 생성
+    CONFIG_FILE="$HOME/.algo_config"
+    cat > "$CONFIG_FILE" << 'EOF'
+# 알고리즘 문제 풀이 디렉토리 설정
+ALGO_BASE_DIR="$HOME/Desktop/Algorithm-Practics"
+
+# Git 설정
+GIT_DEFAULT_BRANCH="main"
+GIT_COMMIT_PREFIX="solve"
+GIT_AUTO_PUSH=true
+
+# IDE 우선순위 (공백으로 구분)
+IDE_PRIORITY="code pycharm idea subl"
+
+# SSAFY 설정
+SSAFY_BASE_URL="https://lab.ssafy.com"
+SSAFY_USER_ID=""
+SSAFY_AUTH_TOKEN=""
+EOF
+    
+    # SSAFY GitLab 사용자명 입력
+    read -r -p "SSAFY GitLab 사용자명 (lab.ssafy.com/{여기} 부분): " ssafy_user
+    if [ -n "$ssafy_user" ]; then
+        sed -i "s/SSAFY_USER_ID=\"\"/SSAFY_USER_ID=\"$ssafy_user\"/" "$CONFIG_FILE"
+    fi
+    
+    echo ""
+    echo "✅ 초기 설정 완료!"
+    echo "💡 토큰은 gitup 실행 시 자동으로 안내됩니다."
+    echo ""
+    echo "🎉 이제 터미널을 다시 열거나 'source ~/.bashrc'를 실행하세요!"
 fi
