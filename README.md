@@ -74,7 +74,7 @@ algo-update
   - `ALGO_BASE_DIR`: 알고리즘 문제 저장 경로
   - `GIT_AUTO_PUSH`: `gitdown` 시 자동 push 여부
   - `IDE_PRIORITY`: 추천 IDE 우선순위 (`code`, `pycharm` 등)
-  - `SSAFY_USER_ID`: 본인의 SSAFY 학번/ID
+  - `SSAFY_USER_ID`: SSAFY GitLab 사용자명 (lab.ssafy.com/{여기} 부분)
 
 ---
 
