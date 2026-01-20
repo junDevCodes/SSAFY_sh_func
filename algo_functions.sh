@@ -59,11 +59,18 @@ _check_update() {
         fi
     fi
 
-    # 백그라운드에서 체크 (2초 타임아웃)
+    # 백그라운드에서 체크
     if command -v git > /dev/null 2>&1; then
         (
             cd "$script_dir" || exit
-            if timeout 2s git fetch origin main > /dev/null 2>&1; then
+            # timeout 명령어가 있으면 사용, 없으면 그냥 실행 (백그라운드이므로)
+            if command -v timeout > /dev/null 2>&1; then
+                git_cmd="timeout 2s git fetch origin main"
+            else
+                git_cmd="git fetch origin main"
+            fi
+            
+            if $git_cmd > /dev/null 2>&1; then
                 local local_hash remote_hash
                 local_hash=$(git rev-parse HEAD 2>/dev/null)
                 remote_hash=$(git rev-parse origin/main 2>/dev/null)
@@ -853,7 +860,7 @@ gitdown() {
         fi
         if [ -n "$ssafy_root" ]; then
             cd "$ssafy_root" || {
-                echo "??  SSAFY 루트로 이동할 수 없습니다: $ssafy_root"
+                echo "⚠️  SSAFY 루트로 이동할 수 없습니다: $ssafy_root"
                 return 1
             }
         fi
@@ -863,8 +870,8 @@ gitdown() {
         if [ "$push_ok" = true ]; then
             local next_repo=$(_ssafy_next_repo "$current_repo")
             if [ -n "$next_repo" ] && [ ! -d "$next_repo" ]; then
-                echo "??  다음 문제 레포가 로컬에 없습니다: $next_repo"
-                echo "??  SSAFY에서 실습실/과제를 생성해야 레포가 만들어질 수 있습니다."
+                echo "⚠️  다음 문제 레포가 로컬에 없습니다: $next_repo"
+                echo "💡  SSAFY에서 실습실/과제를 생성해야 레포가 만들어질 수 있습니다."
             fi
             if [ -n "$next_repo" ] && [ -d "$next_repo" ]; then
                 echo "➡️  다음 문제로 이동: $next_repo"
@@ -889,47 +896,20 @@ gitdown() {
 # gitup - Git 저장소 클론 및 시작
 # =============================================================================
 
-_open_repo_file() {
-    local repo_dir="$1"
-
-    if [ ! -d "$repo_dir" ]; then
-        echo "⚠️  디렉터리를 찾을 수 없습니다: $repo_dir"
-        return 1
-    fi
-
-    cd "$repo_dir" || return 1
-
-    local target_file=""
-    local file_types=("*.py" "*.html" "README*" "*.js" "*.css" "*.json" "*.md" "*.txt")
-
-    for pattern in "${file_types[@]}"; do
-        target_file=$(find . -maxdepth 2 -name "$pattern" -type f | head -n 1)
-        if [ -n "$target_file" ]; then
-            echo "📄 파일 발견: $target_file"
-            break
-        fi
-    done
-
-    if [ -n "$target_file" ]; then
-        local editor=$(get_active_ide)
-        echo "📌 감지된 IDE: $editor"
-        echo "🎉 에디터에서 파일 열기..."
-        _open_in_editor "$editor" "$target_file"
-    else
-        echo "⚠️  적절한 파일을 찾을 수 없습니다"
-        echo "📋 클론된 폴더 내용:"
-        ls -la
-    fi
-
-    echo "✅ 프로젝트 준비 완료!"
-}
-
 _gitup_ssafy() {
     local input="$1"
 
     _ensure_ssafy_config
     if [ -z "${SSAFY_BASE_URL:-}" ] || [ -z "${SSAFY_USER_ID:-}" ]; then
-        echo "?? SSAFY 설정이 필요합니다. 'algo-config edit'로 SSAFY_BASE_URL/SSAFY_USER_ID를 설정하세요."
+        echo "⚠️  SSAFY 설정이 필요합니다. 'algo-config edit'로 SSAFY_BASE_URL/SSAFY_USER_ID를 설정하세요."
+        return 1
+    fi
+    # ... (rest of _gitup_ssafy implementation) ... (This is too large to replace in one go efficiently if not changing. I will use multi_replace for accuracy)
+    local input="$1"
+
+    _ensure_ssafy_config
+    if [ -z "${SSAFY_BASE_URL:-}" ] || [ -z "${SSAFY_USER_ID:-}" ]; then
+        echo "⚠️  SSAFY 설정이 필요합니다. 'algo-config edit'로 SSAFY_BASE_URL/SSAFY_USER_ID를 설정하세요."
         return 1
     fi
 
@@ -944,20 +924,20 @@ _gitup_ssafy() {
         repo_name="${repo_name%.git}"
     fi
 
-    if [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw)_([0-9]+)_[0-9]+$ ]]; then
+    if [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw|ex)_([0-9]+)_[0-9]+$ ]]; then
         topic="${BASH_REMATCH[1]}"
         session="${BASH_REMATCH[3]}"
-    elif [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw)_([0-9]+)$ ]]; then
+    elif [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw|ex)_([0-9]+)$ ]]; then
         topic="${BASH_REMATCH[1]}"
         session="${BASH_REMATCH[3]}"
-    elif [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw)$ ]]; then
+    elif [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw|ex)$ ]]; then
         topic="${BASH_REMATCH[1]}"
         read -r -p "차시 입력: " session
     elif [[ "$repo_name" =~ ^([A-Za-z0-9]+)$ ]]; then
         topic="$repo_name"
         read -r -p "차시 입력: " session
     else
-        if [[ "$repo_name" =~ ^(ws|hw)_[0-9]+(_[0-9]+)?$ ]]; then
+        if [[ "$repo_name" =~ ^(ws|hw|ex)_[0-9]+(_[0-9]+)?$ ]]; then
             echo "?? SSAFY 입력 형식이 올바르지 않습니다: $repo_name"
             echo "   예: <topic>_ws_<차시> 또는 <topic>_ws_<차시>_<번호>"
             echo "   예: ds_ws_2 또는 ds_ws_2_1"
@@ -1055,7 +1035,7 @@ _ssafy_next_repo() {
     local session=""
     local number=""
 
-    if ! [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw)_([0-9]+)_([0-9]+)$ ]]; then
+    if ! [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw|ex)_([0-9]+)_([0-9]+)$ ]]; then
         return 1
     fi
 
@@ -1510,16 +1490,16 @@ _open_repo_file() {
     fi
 
     if [ -n "$chosen" ] && [ -f "$chosen" ]; then
-        echo "?? 감지된 IDE: $editor"
-        echo "?? 에디터에서 파일 열기: $chosen"
+        echo "📌 감지된 IDE: $editor"
+        echo "🎉 에디터에서 파일 열기: $chosen"
         _open_in_editor "$editor" "$chosen"
     else
-        echo "??  열 파일을 찾을 수 없습니다"
-        echo "?? 클론된 폴더 내용:"
+        echo "⚠️  열 파일을 찾을 수 없습니다"
+        echo "📋 클론된 폴더 내용:"
         ls -la
     fi
 
-    echo "? 프로젝트 준비 완료!"
+    echo "✅ 프로젝트 준비 완료!"
 }
 
 # =============================================================================

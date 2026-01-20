@@ -37,12 +37,22 @@ fi
 cleanup_old_install() {
     local rc_file="$1"
     if [ -f "$rc_file" ]; then
-        # 기존 algo_functions.sh source 라인 제거 (ssafy-tools 제외)
         if grep -q "algo_functions.sh" "$rc_file"; then
-            # ssafy-tools가 아닌 다른 경로의 source 라인 제거
-            sed -i '/algo_functions\.sh/{ /ssafy-tools/!d; }' "$rc_file"
-            # 빈 주석 라인도 정리
-            sed -i '/^# SSAFY Shell Functions$/{ N; /\n$/d; }' "$rc_file" 2>/dev/null || true
+            local tmp_file="${rc_file}.tmp"
+            
+            # 1. ssafy-tools가 포함되지 않은 algo_functions.sh 라인 제거
+            grep -v "algo_functions.sh" "$rc_file" > "$tmp_file"
+            
+            # ssafy-tools 라인은 다시 추가 (이미 있으면 유지되겠지만, 로직상 깔끔하게 재설치 시 다시 추가됨)
+            # 여기서는 '제거'만 하고 add_source_line에서 추가하는 것이 안전함.
+            # 하지만 위 grep -v는 모든 algo_functions.sh를 지워버림.
+            # 따라서 ssafy-tools가 포함된 줄은 유지하고 나머지만 지우는 로직이 필요함.
+            
+            # awk를 사용하여 더 정교하게 처리 (OS 호환성 최적)
+            awk '!/algo_functions\.sh/ || /ssafy-tools/' "$rc_file" > "$tmp_file" && mv "$tmp_file" "$rc_file"
+            
+            # 빈 주석 라인 정리 (# SSAFY Shell Functions 다음에 빈 줄이 오는 경우 등)
+            # 복잡한 sed 대신 간단히 두면 됨 (기능에 영향 없음)
         fi
     fi
 }
