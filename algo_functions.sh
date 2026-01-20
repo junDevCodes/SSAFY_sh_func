@@ -20,14 +20,17 @@ algo-update() {
     echo "🔄 최신 버전으로 업데이트 중..."
     (
         cd "$script_dir" || exit 1
-        if git pull origin main; then
-            echo ""
-            echo "✅ 업데이트 완료!"
-            echo "💡 변경 사항을 적용하려면: source ~/.bashrc"
-        else
-            echo "❌ 업데이트 실패. 직접 'cd $script_dir && git pull'을 시도해보세요."
-        fi
+        git pull origin main
     )
+    
+    if [ $? -eq 0 ]; then
+        echo ""
+        echo "✅ 업데이트 완료!"
+        read -r -p "🎉 Enter를 누르면 변경사항을 적용합니다..." _
+        exec bash
+    else
+        echo "❌ 업데이트 실패. 직접 'cd $script_dir && git pull'을 시도해보세요."
+    fi
 }
 
 # 업데이트 알림 체크 (하루 1회, 백그라운드)
