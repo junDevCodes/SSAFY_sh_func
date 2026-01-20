@@ -7,9 +7,13 @@ import urllib.request
 import urllib.error
 import base64
 
-# Windows 인코딩 문제 해결
-sys.stdout.reconfigure(encoding='utf-8')
-sys.stderr.reconfigure(encoding='utf-8')
+# Windows 인코딩 문제 해결 (Python 3.7+ 전용, 하위 버전은 무시)
+try:
+    sys.stdout.reconfigure(encoding='utf-8')
+    sys.stderr.reconfigure(encoding='utf-8')
+except AttributeError:
+    # Python 3.6 이하에서는 reconfigure가 없음 - 무시
+    pass
 
 # [Helper] Requests 모듈 의존성 제거를 위한 간단한 래퍼
 class MockResponse:

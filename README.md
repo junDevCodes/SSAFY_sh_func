@@ -7,19 +7,22 @@
 
 ## 🛠 1. 설치 및 적용
 
-이 스크립트는 **파일 복사** 방식으로 사용하는 것을 권장합니다.
+### 방법 1: 원라이너 설치 (권장) ⭐
+터미널에 아래 한 줄만 복사해서 붙여넣으세요. 자동으로 설치되고 설정됩니다.
 
-### 1) 파일 위치 결정
 ```bash
-mkdir -p ~/scripts
-# 아래 두 파일을 같은 폴더에 복사하세요.
-cp ./algo_functions.sh ./ssafy_batch_create.py ~/scripts/
+bash <(curl -sL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)
 ```
 
-### 2) 셸 설정 파일에 적용
-사용 중인 셸 설정 파일(`~/.bashrc` 또는 `~/.zshrc`) 끝에 아래 내용을 추가합니다.
+설치가 끝나면 `source ~/.bashrc`를 실행하거나 터미널을 다시 열어주세요.
+
+### 방법 2: 수동 설치
 ```bash
-echo 'source ~/scripts/algo_functions.sh' >> ~/.bashrc
+# 1. 저장소 복제
+git clone https://github.com/junDevCodes/SSAFY_sh_func.git ~/.ssafy-tools
+
+# 2. 셸 설정 파일에 추가
+echo 'source ~/.ssafy-tools/algo_functions.sh' >> ~/.bashrc
 source ~/.bashrc
 ```
 
@@ -27,11 +30,11 @@ source ~/.bashrc
 
 ## 🔄 2. 업데이트
 
-새로운 기능이 추가되었을 때 기존 파일을 덮어쓰기만 하면 됩니다.
+새로운 기능이 추가되면 아래 명령어로 간단히 업데이트할 수 있습니다.
 ```bash
-cp ./algo_functions.sh ./ssafy_batch_create.py ~/scripts/
-source ~/.bashrc
+algo-update
 ```
+
 
 ---
 

@@ -384,10 +384,27 @@ al() {
             _create_algo_file "$file" "$site_name" "$site_display" "$problem" "$lang"
         else
             echo "📄 기존 파일 발견!"
-            if [ "$skip_git" = false ]; then
+            # 변경사항이 있는지 확인
+            local has_changes=false
+            if [ -d "$dir/.git" ] || git -C "$dir" rev-parse --git-dir > /dev/null 2>&1; then
+                local git_root=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)
+                if [ -n "$git_root" ]; then
+                    local rel_dir=$(realpath --relative-to="$git_root" "$dir" 2>/dev/null || echo "$dir")
+                    if git -C "$git_root" status --porcelain "$rel_dir" 2>/dev/null | grep -q .; then
+                        has_changes=true
+                    fi
+                fi
+            fi
+            
+            if [ "$has_changes" = true ] && [ "$skip_git" = false ]; then
+                echo "✨ 변경사항 감지 → 커밋/푸시 모드"
                 _handle_git_commit "$file" "$problem" "$custom_commit_msg" "$lang"
             else
-                echo "⏭️  Git 작업 건너뛰기"
+                if [ "$has_changes" = false ]; then
+                    echo "📝 변경사항 없음 → 파일 열기만 수행"
+                else
+                    echo "⏭️  Git 작업 건너뛰기"
+                fi
             fi
         fi
     else
@@ -396,7 +413,20 @@ al() {
             lang="py"
             _create_algo_file "$file" "$site_name" "$site_display" "$problem" "$lang"
         else
-            if [ "$skip_git" = false ]; then
+            # 변경사항이 있는지 확인
+            local has_changes=false
+            if git -C "$dir" rev-parse --git-dir > /dev/null 2>&1; then
+                local git_root=$(git -C "$dir" rev-parse --show-toplevel 2>/dev/null)
+                if [ -n "$git_root" ]; then
+                    local rel_dir=$(realpath --relative-to="$git_root" "$dir" 2>/dev/null || echo "$dir")
+                    if git -C "$git_root" status --porcelain "$rel_dir" 2>/dev/null | grep -q .; then
+                        has_changes=true
+                    fi
+                fi
+            fi
+            
+            if [ "$has_changes" = true ] && [ "$skip_git" = false ]; then
+                echo "✨ 변경사항 감지 → 커밋/푸시 모드"
                 if [ "$has_py" = true ]; then
                     _handle_git_commit "$py_file" "$problem" "$custom_commit_msg" "py"
                 fi
@@ -404,7 +434,11 @@ al() {
                     _handle_git_commit "$cpp_file" "$problem" "$custom_commit_msg" "cpp"
                 fi
             else
-                echo "⏭️  Git 작업 건너뛰기"
+                if [ "$has_changes" = false ]; then
+                    echo "📝 변경사항 없음 → 파일 열기만 수행"
+                else
+                    echo "⏭️  Git 작업 건너뛰기"
+                fi
             fi
 
             if [ "$has_py" = true ]; then
@@ -593,6 +627,11 @@ _handle_git_commit() {
     echo "✅ Git 저장소: $git_root"
     echo "📁 대상: $relative_path"
     
+    # 파일이 있는 폴더 전체를 추가 (sample_input.txt 등 포함)
+    local relative_dir=$(dirname "$relative_path")
+    # 디렉토리 내 모든 파일 추가 (슬래시 추가로 확실하게)
+    git add "$relative_dir/"
+    # 혹시 놓친 파일이 있을 경우 개별 파일도 추가
     git add "$relative_path"
     
     local commit_msg=""
@@ -1135,8 +1174,10 @@ gitup() {
             if [ -n "${line//[[:space:]]/}" ]; then
                 repos+=("$line")
             fi
-        # 주의: 스크립트 경로는 절대경로 사용
-        done < <(python "c:/Users/SSAFY/Desktop/SSAFY_sh_func/ssafy_batch_create.py" "$input" 12 --pipe)
+        # 스크립트 위치 동적 감지
+        local script_dir
+        script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        done < <(python "$script_dir/ssafy_batch_create.py" "$input" 12 --pipe)
         
         if [ "${#repos[@]}" -eq 0 ]; then
             echo "❌ 생성된 실습실이 없거나 URL 분석에 실패했습니다."
