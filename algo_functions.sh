@@ -12,6 +12,24 @@ unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commi
 ALGO_CONFIG_FILE="$HOME/.algo_config"
 ALGO_FUNCTIONS_VERSION="V6"
 
+# 업데이트 명령어
+algo-update() {
+    local script_dir
+    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    
+    echo "🔄 최신 버전으로 업데이트 중..."
+    (
+        cd "$script_dir" || exit 1
+        if git pull origin main; then
+            echo ""
+            echo "✅ 업데이트 완료!"
+            echo "💡 변경 사항을 적용하려면: source ~/.bashrc"
+        else
+            echo "❌ 업데이트 실패. 직접 'cd $script_dir && git pull'을 시도해보세요."
+        fi
+    )
+}
+
 _is_interactive() {
     [ -t 0 ] && [ -t 1 ]
 }
