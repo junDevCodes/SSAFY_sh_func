@@ -11,7 +11,7 @@
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V6"
+ALGO_FUNCTIONS_VERSION="V6.1"
 
 # 업데이트 명령어
 algo-update() {
@@ -187,8 +187,8 @@ GIT_DEFAULT_BRANCH="main"
 GIT_COMMIT_PREFIX="solve"
 GIT_AUTO_PUSH=true
 
-# IDE 우선순위 (공백으로 구분)
-IDE_PRIORITY="code pycharm idea subl"
+# IDE 설정 (지원: code, pycharm, idea)
+IDE_EDITOR="code"
 
 # SSAFY 설정 (처음 실행 시 입력받아 저장합니다)
 SSAFY_BASE_URL=""
@@ -680,10 +680,214 @@ _open_in_editor() {
 }
 
 # =============================================================================
+# _gitdown_all - 전체 실습실 일괄 Push
+# =============================================================================
+_gitdown_all() {
+    local ssafy_root=""
+    ssafy_root=$(_find_ssafy_session_root "$(pwd)" 2>/dev/null || true)
+    
+    if [ -z "$ssafy_root" ] && [ -n "${SSAFY_SESSION_ROOT:-}" ] && [ -d "$SSAFY_SESSION_ROOT" ]; then
+        ssafy_root="$SSAFY_SESSION_ROOT"
+    fi
+    
+    if [ -z "$ssafy_root" ]; then
+        echo "❌ SSAFY 세션 루트를 찾을 수 없습니다."
+        echo "💡 gitup으로 실습실을 먼저 생성하세요."
+        return 1
+    fi
+    
+    cd "$ssafy_root" || return 1
+    echo "📂 세션 루트: $ssafy_root"
+    
+    # 폴더 목록 수집 (playlist 또는 패턴 매칭)
+    local folders=()
+    if [ -f ".ssafy_playlist" ]; then
+        while IFS= read -r folder; do
+            [ -d "$folder" ] && folders+=("$folder")
+        done < ".ssafy_playlist"
+    else
+        for folder in */; do
+            folder="${folder%/}"
+            if [[ "$folder" =~ ^[A-Za-z0-9]+_(ws|hw|ex)_[0-9]+(_[0-9]+)?$ ]]; then
+                folders+=("$folder")
+            fi
+        done
+    fi
+    
+    if [ ${#folders[@]} -eq 0 ]; then
+        echo "⚠️  처리할 폴더가 없습니다."
+        return 0
+    fi
+    
+    echo "📋 처리할 폴더: ${#folders[@]}개"
+    echo ""
+    
+    local success_count=0
+    local fail_count=0
+    local skip_count=0
+    local progress_file="$ssafy_root/.ssafy_progress"
+    local pushed_folders=()
+    
+    for folder in "${folders[@]}"; do
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "📁 [$folder]"
+        
+        cd "$ssafy_root/$folder" || {
+            echo "  ❌ 폴더 이동 실패"
+            ((fail_count++))
+            continue
+        }
+        
+        # 변경사항 확인
+        if [ -z "$(git status --porcelain 2>/dev/null)" ]; then
+            echo "  ⏭️  변경사항 없음 (스킵)"
+            ((skip_count++))
+            cd "$ssafy_root"
+            continue
+        fi
+        
+        # Git 작업
+        git add .
+        if git commit -m "${GIT_COMMIT_PREFIX:-solve}: $folder" 2>/dev/null; then
+            if git push 2>/dev/null; then
+                echo "  ✅ 푸시 완료"
+                ((success_count++))
+                pushed_folders+=("$folder")
+                # .ssafy_progress에 완료 기록
+                echo "$folder=done" >> "$progress_file"
+            else
+                echo "  ❌ 푸시 실패"
+                ((fail_count++))
+            fi
+        else
+            echo "  ⚠️  커밋 실패 (이미 커밋됨?)"
+            ((skip_count++))
+        fi
+        
+        cd "$ssafy_root"
+    done
+    
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📊 결과: ✅ ${success_count} 성공 | ❌ ${fail_count} 실패 | ⏭️ ${skip_count} 스킵"
+    
+    # 미완료 폴더 확인 (동적 Playlist)
+    _check_unsolved_folders "$ssafy_root" "${folders[@]}"
+    
+    # 제출 링크 일괄 출력 (Phase 3)
+    if [ ${#pushed_folders[@]} -gt 0 ]; then
+        _show_submission_links "$ssafy_root" "${pushed_folders[@]}"
+    fi
+}
+
+# =============================================================================
+# _check_unsolved_folders - 미완료 폴더 감지
+# =============================================================================
+_check_unsolved_folders() {
+    local ssafy_root="$1"
+    shift
+    local all_folders=("$@")
+    local progress_file="$ssafy_root/.ssafy_progress"
+    local unsolved=()
+    
+    for folder in "${all_folders[@]}"; do
+        if ! grep -q "^${folder}=done" "$progress_file" 2>/dev/null; then
+            unsolved+=("$folder")
+        fi
+    done
+    
+    if [ ${#unsolved[@]} -gt 0 ]; then
+        echo ""
+        echo "⚠️  아직 완료되지 않은 문제가 있습니다:"
+        local i=1
+        for folder in "${unsolved[@]}"; do
+            echo "  $i. $folder"
+            ((i++))
+        done
+        echo ""
+        echo "👉 번호 입력 시 해당 폴더로 이동 | Enter → 종료"
+        read -r choice
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#unsolved[@]} ]; then
+            local selected="${unsolved[$((choice-1))]}"
+            echo "➡️  $selected 로 이동합니다."
+            _open_repo_file "$ssafy_root/$selected"
+        fi
+    else
+        echo ""
+        echo "🎉 모든 문제를 완료했습니다! 고생하셨습니다!"
+    fi
+}
+
+# =============================================================================
+# _show_submission_links - 제출 링크 출력
+# =============================================================================
+_show_submission_links() {
+    local ssafy_root="$1"
+    shift
+    local folders=("$@")
+    
+    # 메타데이터 파일에서 course_id, practice_id 읽기
+    local meta_file="$ssafy_root/.ssafy_session_meta"
+    if [ ! -f "$meta_file" ]; then
+        return 0
+    fi
+    
+    local course_id=""
+    local practice_id=""
+    course_id=$(grep "^course_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
+    practice_id=$(grep "^practice_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
+    
+    if [ -z "$course_id" ] || [ -z "$practice_id" ]; then
+        return 0
+    fi
+    
+    echo ""
+    echo "📋 제출 링크 목록:"
+    local base_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${practice_id}/answer"
+    local i=1
+    for folder in "${folders[@]}"; do
+        echo "  $i. $folder: $base_url"
+        ((i++))
+    done
+    echo ""
+    echo "👉 'a' → 전체 열기 | 번호 → 해당 링크 열기 | Enter → 종료"
+    read -r choice
+    
+    if [ "$choice" = "a" ]; then
+        _open_browser "$base_url"
+    elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#folders[@]} ]; then
+        _open_browser "$base_url"
+    fi
+}
+
+# =============================================================================
+# _open_browser - 브라우저에서 URL 열기
+# =============================================================================
+_open_browser() {
+    local url="$1"
+    if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]] || command -v powershell.exe > /dev/null 2>&1; then
+        start "" "$url" 2>/dev/null || powershell.exe -Command "Start-Process '$url'" 2>/dev/null
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        open "$url"
+    else
+        xdg-open "$url" 2>/dev/null || echo "🔗 $url"
+    fi
+}
+
+# =============================================================================
 # gitdown - Git 작업 완료 자동화
 # =============================================================================
+
 gitdown() {
     init_algo_config
+    
+    # --all 플래그 체크 (먼저 처리)
+    for arg in "$@"; do
+        if [ "$arg" = "--all" ] || [ "$arg" = "-a" ]; then
+            _gitdown_all
+            return $?
+        fi
+    done
     
     echo "🔍 현재 Git 상태:"
     git status --short
@@ -718,6 +922,7 @@ gitdown() {
                 custom_msg=true
                 ;;
             --msg=*)
+
                 commit_msg="${1#--msg=}"
                 if [ -z "$commit_msg" ]; then
                     echo "❗ --msg 옵션에는 커밋 메시지가 필요합니다."
@@ -1202,54 +1407,33 @@ gitup() {
     _open_repo_file "$repo_name"
 }
 
-# =============================================================================
-# get_active_ide - 활성 IDE 감지
-# =============================================================================
-get_active_ide() {
+# ===================================================
+# get_ide - 설정된 IDE 반환
+# ===================================================
+get_ide() {
     init_algo_config
     
-    local os_type=""
-    
-    # 운영체제 감지
-    if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]] || command -v powershell.exe > /dev/null 2>&1; then
-        os_type="windows"
-    elif [[ "$OSTYPE" == "darwin"* ]]; then
-        os_type="mac"
-    elif [[ "$OSTYPE" == "linux-gnu"* ]]; then
-        os_type="linux"
+    # IDE_EDITOR가 설정되어 있으면 사용
+    if [ -n "${IDE_EDITOR:-}" ]; then
+        echo "$IDE_EDITOR"
+        return
     fi
     
-    # 설정된 우선순위에 따라 IDE 검색
-    for ide in $IDE_PRIORITY; do
-        case "$os_type" in
-            "windows")
-                local process_name="${ide}*"
-                if powershell.exe -Command "Get-Process | Where-Object {\$_.ProcessName -like '$process_name'}" 2>/dev/null | grep -q "$ide"; then
-                    case "$ide" in
-                        pycharm) echo "pycharm64.exe" ;;
-                        idea) echo "idea64.exe" ;;
-                        *) echo "$ide" ;;
-                    esac
-                    return
-                fi
-                ;;
-            "mac")
-                if pgrep -f "$ide" > /dev/null; then
-                    echo "$ide"
-                    return
-                fi
-                ;;
-            "linux")
-                if pgrep -f "$ide" > /dev/null; then
-                    echo "${ide}.sh"
-                    return
-                fi
-                ;;
-        esac
-    done
+    # 하위 호환: IDE_PRIORITY가 있으면 첫 번째 값 사용
+    if [ -n "${IDE_PRIORITY:-}" ]; then
+        local first_ide
+        first_ide=$(echo "$IDE_PRIORITY" | awk '{print $1}')
+        echo "$first_ide"
+        return
+    fi
     
     # 기본값
     echo "code"
+}
+
+# 하위 호환성을 위한 별칭
+get_active_ide() {
+    get_ide
 }
 
 # =============================================================================

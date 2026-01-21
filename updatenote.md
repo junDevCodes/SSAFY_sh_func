@@ -2,6 +2,19 @@
 
 ---
 
+## V6.1 (2026-01-21) - User Experience Upgrade ✨
+
+### ✨ 주요 기능
+- **IDE 설정 단순화**: 프로세스 감지 방식 대신 설정 파일(`~/.algo_config`)에서 단일 IDE 지정 (`IDE_EDITOR="code"`)
+- **일괄 Push (`gitdown --all`)**: SSAFY 세션 루트에서 하위 모든 실습실을 한 번에 add -> commit -> push
+- **제출 바로가기**: `gitdown` 완료 시 해당 문제의 제출 페이지 URL 출력 및 브라우저 열기 옵션 제공
+- **동적 Playlist**: 아직 풀지 않은 문제(Git 커밋이 없는 폴더)를 자동 감지하여 이동 제안
+
+### 📝 개선 사항
+- `ssafy_batch_create.py` 파이프라인 데이터 포맷 변경으로 메타데이터 연동 강화
+
+---
+
 ## V6 (2026-01-20) - One-liner Installer 🚀
 
 ### ✨ 주요 기능

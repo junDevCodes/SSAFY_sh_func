@@ -396,10 +396,14 @@ def batch_create(start_url, count, is_pipe=False):
     
     for item in found_items:
         url = item['url']
+        pr_id = item['pr']
         if is_pipe:
-            print(url)
+            # Metadata 전달을 위해 파이프(|) 구분자 사용
+            print(f"{url}|{course_id}|{pr_id}")
             sys.stdout.flush()
-        print(f"✅ [Sorted] {item['url']} (PA: {item['pa']})", file=sys.stderr)
+        else:
+            print(f" - {url}")
+            print(f"✅ [Sorted] {item['url']} (PA: {item['pa']})", file=sys.stderr)
             
     print(f"🏁 작업 완료.", file=sys.stderr)
 
