@@ -1382,78 +1382,69 @@ gitup() {
         echo "🚀 SSAFY 실습실 일괄 생성 및 클론 모드 (Smart Batch)"
         echo "⏳ 실습실 생성 및 URL 분석 중..."
         
-        # 파이썬 스크립트 실행 (Pipe 모드)
-        # 결과: 생성된/유추된 레포 URL들이 줄바꿈으로 출력됨
-        
-        # 스크립트 위치 동적 감지 (루프 밖에서 정의해야 함)
+        # 스크립트 위치 동적 감지
         local script_dir
         script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
         
-        local -a repos=()
-        while IFS= read -r line; do
-            # Windows 호환: \r 제거
-            line="${line//$'\r'/}"
-            # 빈 줄이나 공백 제외
-            if [ -n "${line//[[:space:]]/}" ]; then
-                repos+=("$line")
-            fi
-        done < <(python "$script_dir/ssafy_batch_create.py" "$input" 20 --pipe)
+        local first_dir=""
+        local priority_dir=""
         
-        if [ "${#repos[@]}" -eq 0 ]; then
-            echo "❌ 생성된 실습실이 없거나 URL 분석에 실패했습니다."
-            return 1
-        fi
-        
-    # [Playlist] .ssafy_playlist 파일 생성
-    # 파이썬에서 받은 URL 목록을 기반으로 순서 파일 생성
-    if [ "${#repos[@]}" -gt 0 ]; then
+        # .ssafy_playlist 초기화
         rm -f .ssafy_playlist
-        for r_url in "${repos[@]}"; do
-            # URL에서 마지막 부분(디렉토리명) 추출
-            local dname=$(basename "$r_url")
-            dname="${dname%.git}"
-            echo "$dname" >> .ssafy_playlist
-        done
-        echo "📋 자동 이동 순서 생성됨 (.ssafy_playlist)"
-    fi
         
-    local first_dir=""
-    local priority_dir=""
-    
-    for repo_url in "${repos[@]}"; do
-        echo "⬇️  Clone: $repo_url"
-            # 백그라운드 말고 순차 실행 (오류 확인 위해)
-            # 이미 있으면 git clone이 알아서 에러/패스 처리함
-            git clone "$repo_url"
+        # 파이썬 스크립트 실행 및 결과 파싱
+        # 출력형식: URL|CourseID|PracticeID
+        python "$script_dir/ssafy_batch_create.py" "$input" 20 --pipe 2>/dev/null | while IFS='|' read -r url course_id pr_id; do
+            # Windows 호환: \r 제거 (필수)
+            url=$(echo "$url" | tr -d '\r')
+            course_id=$(echo "$course_id" | tr -d '\r')
+            pr_id=$(echo "$pr_id" | tr -d '\r')
             
-            # 디렉토리명 추출
-            local dname=$(basename "$repo_url" .git)
-            
-            # 첫 번째 발견된 폴더 저장 (Fallback)
-            if [ -z "$first_dir" ] && [ -d "$dname" ]; then
-                first_dir="$dname"
-            fi
-            
-            # 우선순위: 이름이 _1 로 끝나는 폴더 (예: vue_ws_3_1)
-            # 여러 개일 경우 가장 먼저 발견된 _1 (보통 ex_1)
-            if [ -z "$priority_dir" ] && [ -d "$dname" ] && [[ "$dname" == *_1 ]]; then
-                priority_dir="$dname"
+            if [ -n "$url" ]; then
+                local repo_name=$(basename "$url" .git)
+                echo "⬇️  Clone: $repo_name"
+                
+                # git clone 실행
+                git clone "$url" 2>/dev/null
+                
+                # 플레이리스트 추가
+                echo "$repo_name" >> .ssafy_playlist
+                
+                # 메타데이터 저장 (첫 번째 유효한 항목 기준)
+                if [ ! -f ".ssafy_session_meta" ] && [ -n "$course_id" ] && [ -n "$pr_id" ]; then
+                    echo "course_id=$course_id" > .ssafy_session_meta
+                    echo "practice_id=$pr_id" >> .ssafy_session_meta
+                fi
             fi
         done
         
         echo "✅ 일괄 작업 완료!"
+        echo "📋 자동 이동 순서 생성됨 (.ssafy_playlist)"
         
-        # 우선순위 폴더가 있으면 교체
+        # playlist 파일에서 첫 번째 항목 읽기 (Subshell 문제 회피)
+        if [ -f ".ssafy_playlist" ]; then
+             local top_dir=$(head -n 1 .ssafy_playlist)
+             first_dir="$top_dir"
+             
+             # 우선순위(_1) 찾기 - grep 결과가 여러 줄일 수 있으니 head -n 1
+             priority_dir=$(grep "_1$" .ssafy_playlist 2>/dev/null | head -n 1)
+        fi
+        
         if [ -n "$priority_dir" ]; then
             first_dir="$priority_dir"
         fi
         
-        if [ -n "$first_dir" ]; then
+        if [ -n "$first_dir" ] && [ -d "$first_dir" ]; then
             echo "👉 첫 번째 문제로 이동합니다: $first_dir"
             _open_repo_file "$first_dir"
             return 0
         else
-            echo "⚠️  클론된 디렉토리를 찾을 수 없습니다."
+            if [ -f ".ssafy_playlist" ]; then
+                echo "⚠️  클론은 완료되었으나 폴더 이동에 실패했습니다."
+                echo "    (직접 폴더로 이동해주세요: $(head -n 1 .ssafy_playlist))"
+            else
+                echo "⚠️  클론된 디렉토리를 찾을 수 없습니다."
+            fi
             return 1
         fi
     fi
