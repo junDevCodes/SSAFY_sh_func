@@ -929,23 +929,38 @@ _show_submission_links() {
         return 0
     fi
     
-    local course_id=""
-    local practice_id=""
-    course_id=$(grep "^course_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
-    practice_id=$(grep "^practice_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
+    local course_id=$(grep "^course_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
     
-    if [ -z "$course_id" ] || [ -z "$practice_id" ]; then
+    if [ -z "$course_id" ]; then
         return 0
     fi
     
     echo ""
     echo "📋 제출 링크 목록:"
-    local base_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${practice_id}/answer"
+    
     local i=1
+    local has_link=false
+    
     for folder in "${folders[@]}"; do
-        echo "  $i. $folder: $base_url"
+        # 폴더별 practice_id 조회 (folder=ID)
+        local pr_id=$(grep "^$folder=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        
+        # 하위 호환: practice_id=ID (단일)
+        if [ -z "$pr_id" ]; then
+            pr_id=$(grep "^practice_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        fi
+        
+        if [ -n "$pr_id" ]; then
+            local base_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/answer"
+            echo "  $i. $folder: $base_url"
+            has_link=true
+        else
+            echo "  $i. $folder: (링크 정보 없음)"
+        fi
         ((i++))
     done
+    
+    if [ "$has_link" = false ]; then return 0; fi
     echo ""
     echo "👉 'a' → 전체 열기 | 번호 → 해당 링크 열기 | Enter → 종료"
     read -r choice
@@ -1446,10 +1461,17 @@ gitup() {
                 # 플레이리스트 추가
                 echo "$repo_name" >> .ssafy_playlist
                 
-                # 메타데이터 저장 (첫 번째 유효한 항목 기준)
-                if [ ! -f ".ssafy_session_meta" ] && [ -n "$course_id" ] && [ -n "$pr_id" ]; then
-                    echo "course_id=$course_id" > .ssafy_session_meta
-                    echo "practice_id=$pr_id" >> .ssafy_session_meta
+                # 메타데이터 저장
+                # 1. course_id (없으면 저장)
+                if [ -n "$course_id" ] && ! grep -q "^course_id=" .ssafy_session_meta 2>/dev/null; then
+                    echo "course_id=$course_id" >> .ssafy_session_meta
+                fi
+                
+                # 2. practice_id (폴더별 매핑 저장: folder=pr_id)
+                if [ -n "$pr_id" ]; then
+                    if ! grep -q "^$repo_name=" .ssafy_session_meta 2>/dev/null; then
+                        echo "$repo_name=$pr_id" >> .ssafy_session_meta
+                    fi
                 fi
             fi
         done
