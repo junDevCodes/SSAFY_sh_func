@@ -104,10 +104,65 @@ test_cpp_with_msg_flag() {
   assert_file_not_exists "$dir/boj_1015.py"
 }
 
+# Git 커밋 테스트를 위한 임시 Git 저장소 설정
+setup_git_repo() {
+  cd "$ALGO_BASE_DIR" || return 1
+  git init -q
+  git config user.email "test@test.com"
+  git config user.name "Test User"
+}
+
+# 테스트: 파일 변경 후 al 실행 시 커밋 발생
+test_commit_when_file_changed() {
+  local dir="$ALGO_BASE_DIR/boj/1016"
+  
+  # 1. cpp 파일 생성
+  al b 1016 cpp --no-git --no-open
+  assert_file_exists "$dir/boj_1016.cpp"
+  
+  # 2. Git 저장소 초기화 및 첫 커밋
+  setup_git_repo
+  git add .
+  git commit -q -m "initial"
+  
+  # 3. 파일 수정 (문제 풀이 시뮬레이션)
+  echo "// solution" >> "$dir/boj_1016.cpp"
+  
+  # 4. al 실행 (--no-open만, git은 활성화)
+  al b 1016 --no-open
+  
+  # 5. 커밋이 발생했는지 확인 (최신 커밋 메시지에 "solve" 포함)
+  local last_commit
+  last_commit=$(git log -1 --pretty=%B 2>/dev/null || echo "")
+  if [[ "$last_commit" != *"solve"* ]]; then
+    echo "  expected commit with 'solve' prefix, got: $last_commit"
+    return 1
+  fi
+}
+
+# 테스트: cpp 존재 시 명시적 py 지정으로 py 파일 생성
+test_explicit_py_creates_py_when_cpp_exists() {
+  local dir="$ALGO_BASE_DIR/boj/1017"
+  
+  # 1. cpp 파일 먼저 생성
+  al b 1017 cpp --no-git --no-open
+  assert_file_exists "$dir/boj_1017.cpp"
+  assert_file_not_exists "$dir/boj_1017.py"
+  
+  # 2. 명시적으로 py 지정하여 실행
+  al b 1017 py --no-git --no-open
+  
+  # 3. 이제 둘 다 존재해야 함
+  assert_file_exists "$dir/boj_1017.cpp"
+  assert_file_exists "$dir/boj_1017.py"
+}
+
 run_test "cpp only creates cpp" test_cpp_only_creates_cpp
 run_test "py default creates py" test_py_default_creates_py
 run_test "cpp exists without lang keeps cpp only" test_cpp_no_lang_when_cpp_exists
 run_test "cpp with msg flag creates cpp" test_cpp_with_msg_flag
+run_test "commit when file changed" test_commit_when_file_changed
+run_test "explicit py creates py when cpp exists" test_explicit_py_creates_py_when_cpp_exists
 
 echo ""
 echo "Tests: $pass_count passed, $fail_count failed"

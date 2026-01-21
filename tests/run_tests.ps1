@@ -115,6 +115,46 @@ Run-Test 'cpp with msg flag creates cpp' {
     Assert-FileNotExists (Join-Path $dir 'boj_1015.py')
 }
 
+Run-Test 'commit when file changed' {
+    $dir = Join-Path $algoBase 'boj\1016'
+    $algoPosix = To-PosixPath $algoBase
+    
+    # 1. cpp 파일 생성
+    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; al b 1016 cpp --no-git --no-open"
+    Assert-FileExists (Join-Path $dir 'boj_1016.cpp')
+    
+    # 2. Git 저장소 초기화 및 첫 커밋
+    Invoke-Bash "cd '$algoPosix' && git init -q && git config user.email 'test@test.com' && git config user.name 'Test User' && git add . && git commit -q -m 'initial'"
+    
+    # 3. 파일 수정
+    Add-Content -Path (Join-Path $dir 'boj_1016.cpp') -Value '// solution'
+    
+    # 4. al 실행 (git 활성화)
+    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; al b 1016 --no-open"
+    
+    # 5. 커밋 확인
+    $lastCommit = & $script:bashExe -lc "cd '$algoPosix' && git log -1 --pretty=%B 2>/dev/null"
+    if ($lastCommit -notlike '*solve*') {
+        throw "expected commit with 'solve' prefix, got: $lastCommit"
+    }
+}
+
+Run-Test 'explicit py creates py when cpp exists' {
+    $dir = Join-Path $algoBase 'boj\1017'
+    
+    # 1. cpp 파일 먼저 생성
+    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; al b 1017 cpp --no-git --no-open"
+    Assert-FileExists (Join-Path $dir 'boj_1017.cpp')
+    Assert-FileNotExists (Join-Path $dir 'boj_1017.py')
+    
+    # 2. 명시적으로 py 지정하여 실행
+    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; al b 1017 py --no-git --no-open"
+    
+    # 3. 이제 둘 다 존재해야 함
+    Assert-FileExists (Join-Path $dir 'boj_1017.cpp')
+    Assert-FileExists (Join-Path $dir 'boj_1017.py')
+}
+
 Write-Host ""
 Write-Host "Tests: $passCount passed, $failCount failed"
 if ($failCount -ne 0) {

@@ -85,7 +85,7 @@ _check_update() {
                 date +%s > "$ALGO_UPDATE_CHECK_FILE"
             fi
         ) &
-        disown  # 백그라운드 작업 완료 메시지 억제
+        disown 2>/dev/null || true  # 백그라운드 작업 완료 메시지 억제 (비대화형 쉘 호환)
     fi
 }
 
