@@ -201,7 +201,7 @@ EOF
     source "$ALGO_CONFIG_FILE"
     
     # Python 스크립트를 위해 토큰 자동 export
-    if [ -n "$SSAFY_AUTH_TOKEN" ] && [[ "$SSAFY_AUTH_TOKEN" != "Bearer your_token_here" ]]; then
+    if [ -n "${SSAFY_AUTH_TOKEN:-}" ] && [[ "${SSAFY_AUTH_TOKEN:-}" != "Bearer your_token_here" ]]; then
         export SSAFY_AUTH_TOKEN
     fi
     
