@@ -73,7 +73,7 @@ algo-update
 - **주요 설정항목:**
   - `ALGO_BASE_DIR`: 알고리즘 문제 저장 경로
   - `GIT_AUTO_PUSH`: `gitdown` 시 자동 push 여부
-  - `IDE_PRIORITY`: 추천 IDE 우선순위 (`code`, `pycharm` 등)
+  - `IDE_EDITOR`: 사용할 IDE 하나만 지정 (`code`, `pycharm`, `idea` 등)
   - `SSAFY_USER_ID`: SSAFY GitLab 사용자명 (lab.ssafy.com/{여기} 부분)
 
 ---
@@ -86,9 +86,13 @@ algo-update
 - **자동 정렬:** 생성 시간을 기준으로 `ws` -> `hw` 순서로 정확하게 정렬합니다.
 
 ### [gitdown] 과제 제출 및 다음 문제 이동
-- **사용법:** `gitdown [커밋메시지] [--ssafy]`
-- **자동화:** `add` + `commit` + `push`를 한 번에 처리합니다.
-- **워크플로우:** `--ssafy` 옵션 사용 시, 제출 성공과 동시에 다음 순서의 문제 폴더로 자동 이동하고 IDE를 엽니다.
+- **사용법:**
+  - `gitdown`: 현재 폴더 제출 및 다음 문제 이동
+  - `gitdown --all`: **(New)** 세션 내 모든 실습실 일괄 제출
+- **스마트 기능:**
+  - **제출 바로가기:** 제출 완료 시 SSAFY 실습실 페이지 URL을 제공하며 브라우저 열기 옵션 지원
+  - **동적 Playlist:** 아직 풀지 않은 문제가 있으면 감지하여 해당 문제로 이동 제안
+  - **자동화:** `add` + `commit` + `push` 및 `gitdown --all` 시 성공/실패 결과 요약
 
 ### [al] 알고리즘 문제 풀이 보조
 - **사용법:** `al <site> <number> [py|cpp]`
