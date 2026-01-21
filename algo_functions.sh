@@ -606,6 +606,39 @@ PROG_CODE
     echo "✅ 파일 생성 완료!"
 }
 
+# =============================================================================
+# Helper: _find_ssafy_session_root
+# 현재 위치에서 상위로 이동하며 세션 루트(.ssafy_session_meta 또는 .ssafy_playlist가 있는 곳)를 찾음
+# =============================================================================
+_find_ssafy_session_root() {
+    local dir="$1"
+    if [ -z "$dir" ]; then dir=$(pwd); fi
+    
+    # 순환 방지용
+    local count=0
+    
+    while [ "$dir" != "/" ] && [ "$dir" != "." ] && [ "$count" -lt 10 ]; do
+        if [ -f "$dir/.ssafy_session_meta" ] || [ -f "$dir/.ssafy_playlist" ]; then
+            echo "$dir"
+            return 0
+        fi
+        
+        # Windows Git Bash 호환 (C:/ 등)
+        if [[ "$dir" =~ ^[A-Za-z]:/[^/]*$ ]]; then
+            # 드라이브 루트면 종료
+            if [ -f "$dir/.ssafy_session_meta" ]; then
+                echo "$dir"
+                return 0
+            fi
+            return 1
+        fi
+        
+        dir=$(dirname "$dir")
+        ((count++))
+    done
+    return 1
+}
+
 # 커밋 메시지 확인/수정
 _confirm_commit_message() {
     local msg="$1"
