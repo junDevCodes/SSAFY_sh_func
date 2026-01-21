@@ -1140,6 +1140,9 @@ gitdown() {
 
     if [ "$ssafy_mode" = true ]; then
         if [ "$push_ok" = true ]; then
+            # 제출 링크 출력
+            _show_submission_links "$(pwd)" "$current_repo"
+            
             local next_repo=$(_ssafy_next_repo "$current_repo")
             if [ -n "$next_repo" ] && [ ! -d "$next_repo" ]; then
                 echo "⚠️  다음 문제 레포가 로컬에 없습니다: $next_repo"
