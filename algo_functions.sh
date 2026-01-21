@@ -947,7 +947,7 @@ gitdown() {
     
     # --all 플래그 체크 (먼저 처리)
     for arg in "$@"; do
-        if [ "$arg" = "--all" ] || [ "$arg" = "-a" ]; then
+        if [ "$arg" = "--all" ] || [ "$arg" = "-a" ] || [ "$arg" = "-all" ]; then
             _gitdown_all
             return $?
         fi
