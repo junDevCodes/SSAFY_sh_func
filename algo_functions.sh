@@ -176,11 +176,31 @@ _find_ssafy_session_root() {
 }
 
 # 기본 설정 초기화
+# 기본 설정 초기화
 init_algo_config() {
+    local ide_selection="code"
+
     if [ ! -f "$ALGO_CONFIG_FILE" ]; then
-        cat > "$ALGO_CONFIG_FILE" << 'EOF'
+        if _is_interactive; then
+            echo "👋 환영합니다! SSAFY 알고리즘 셸 함수 초기 설정을 진행합니다."
+            echo "🔧 주로 사용할 IDE를 선택해주세요:"
+            echo "  1) VS Code (code) [기본값]"
+            echo "  2) PyCharm (pycharm)"
+            echo "  3) IntelliJ IDEA (idea)"
+            echo -n "👉 선택 (Example: 1 또는 code): "
+            read -r ide_choice
+            case "$ide_choice" in
+                2|pycharm) ide_selection="pycharm" ;;
+                3|idea) ide_selection="idea" ;;
+                *) ide_selection="code" ;;
+            esac
+            echo "✅ '$ide_selection'가 선택되었습니다."
+            echo ""
+        fi
+
+        cat > "$ALGO_CONFIG_FILE" << EOF
 # 알고리즘 문제 풀이 디렉토리 설정
-ALGO_BASE_DIR="$HOME/algorithm"
+ALGO_BASE_DIR="\$HOME/algorithm"
 
 # Git 설정
 GIT_DEFAULT_BRANCH="main"
@@ -188,7 +208,7 @@ GIT_COMMIT_PREFIX="solve"
 GIT_AUTO_PUSH=true
 
 # IDE 설정 (지원: code, pycharm, idea)
-IDE_EDITOR="code"
+IDE_EDITOR="$ide_selection"
 
 # SSAFY 설정 (처음 실행 시 입력받아 저장합니다)
 SSAFY_BASE_URL=""
@@ -198,7 +218,51 @@ EOF
         echo "✅ 설정 파일 생성: $ALGO_CONFIG_FILE"
         echo "💡 'algo-config' 명령어로 설정을 변경할 수 있습니다"
     fi
+    
     source "$ALGO_CONFIG_FILE"
+    
+    # 마이그레이션: IDE_EDITOR가 없는 경우 (V6 -> V6.1)
+    if [ -z "${IDE_EDITOR:-}" ]; then
+        # 기존 우선순위에서 첫 번째 가져오기
+        local legacy_ide="code"
+        if [ -n "${IDE_PRIORITY:-}" ]; then
+            legacy_ide=$(echo "$IDE_PRIORITY" | awk '{print $1}')
+        fi
+        
+        if _is_interactive; then
+            echo ""
+            echo "📢 [V6.1 업데이트] IDE 설정 방식이 변경되었습니다."
+            echo "🔧 기본 IDE를 하나만 선택해주세요:"
+            echo "  1) VS Code (code)"
+            if [ "$legacy_ide" != "code" ]; then
+                echo "  2) PyCharm (pycharm)"
+                echo "  3) IntelliJ IDEA (idea)"
+                echo -n "👉 선택 (Enter=${legacy_ide}): "
+            else
+                echo "  2) PyCharm (pycharm)"
+                echo "  3) IntelliJ IDEA (idea)"
+                echo -n "👉 선택 (Enter=code): "
+            fi
+            
+            read -r ide_choice
+            case "$ide_choice" in
+                2|pycharm) ide_selection="pycharm" ;;
+                3|idea) ide_selection="idea" ;;
+                1|code) ide_selection="code" ;;
+                *) ide_selection="$legacy_ide" ;;
+            esac
+            
+            # 설정 파일에 추가
+            {
+                echo ""
+                echo "# IDE 설정 (V6.1 업데이트)"
+                echo "IDE_EDITOR=\"$ide_selection\""
+            } >> "$ALGO_CONFIG_FILE"
+            
+            IDE_EDITOR="$ide_selection"
+            echo "✅ 설정이 업데이트되었습니다: IDE_EDITOR=$IDE_EDITOR"
+        fi
+    fi
     
     # Python 스크립트를 위해 토큰 자동 export
     if [ -n "${SSAFY_AUTH_TOKEN:-}" ] && [[ "${SSAFY_AUTH_TOKEN:-}" != "Bearer your_token_here" ]]; then

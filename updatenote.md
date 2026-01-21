@@ -5,6 +5,7 @@
 ## V6.1 (2026-01-21) - User Experience Upgrade ✨
 
 ### ✨ 주요 기능
+- **IDE 설정 대화형 지원**: 설치 및 업데이트 시 **대화형 메뉴**를 통해 선호하는 IDE(VS Code, PyCharm, IntelliJ)를 간편하게 선택
 - **IDE 설정 단순화**: 프로세스 감지 방식 대신 설정 파일(`~/.algo_config`)에서 단일 IDE 지정 (`IDE_EDITOR="code"`)
 - **일괄 Push (`gitdown --all`)**: SSAFY 세션 루트에서 하위 모든 실습실을 한 번에 add -> commit -> push
 - **제출 바로가기**: `gitdown` 완료 시 해당 문제의 제출 페이지 URL 출력 및 브라우저 열기 옵션 제공
