@@ -1,8 +1,9 @@
 #!/bin/bash
 
 # 이전에 정의된 함수/별칭이 남아 있을 때 새 버전을 확실히 적용하기 위해 초기화
-unalias -- al gitup gitdown algo-config 2>/dev/null
-unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commit_message _create_algo_file _handle_git_commit _open_in_editor _open_repo_file _gitup_ssafy _ssafy_next_repo init_algo_config _is_interactive _set_config_value _ensure_ssafy_config _find_ssafy_session_root _print_file_menu _choose_file_from_list 2>/dev/null
+{ unalias -- al gitup gitdown algo-config 2>/dev/null || true; }
+{ unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commit_message _create_algo_file _handle_git_commit _open_in_editor _open_repo_file _gitup_ssafy _ssafy_next_repo init_algo_config _is_interactive _set_config_value _ensure_ssafy_config _find_ssafy_session_root _print_file_menu _choose_file_from_list 2>/dev/null || true; }
+
 
 # =============================================================================
 # 알고리즘 문제 풀이 자동화 셸 함수 (공개용)
