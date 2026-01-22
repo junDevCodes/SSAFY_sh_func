@@ -371,13 +371,29 @@ algo_config() {
         fi
         
         python "$script_dir/algo_config_wizard.py"
-        echo "✅ 설정 변경이 완료되었습니다. 변경 사항 적용을 위해 'source ~/.bashrc'를 실행해주세요."
+        
+        # [UX] 자동 적용 (엔터 없이 바로 적용)
+        echo "🔄 변경된 설정을 적용 중입니다..."
+        # ~/.bashrc가 있으면 source, 없으면 algo_functions.sh만 다시 로드?
+        # 보통 사용자는 ~/.bashrc를 통해 로드하므로
+        if [ -f "$HOME/.bashrc" ]; then
+             source "$HOME/.bashrc"
+        else
+             init_algo_config
+        fi
+        
+        echo "✅ 설정이 적용되었습니다!"
         return
     fi
     
     if [ "$1" = "show" ]; then
         echo "📋 현재 설정:"
-        cat "$ALGO_CONFIG_FILE"
+        if [ -f "$ALGO_CONFIG_FILE" ]; then
+            # 토큰 마스킹 처리하여 출력
+            sed 's/SSAFY_AUTH_TOKEN=".*"/SSAFY_AUTH_TOKEN="******** (숨김)"/' "$ALGO_CONFIG_FILE"
+        else
+            echo "⚠️  설정 파일이 없습니다."
+        fi
         return
     fi
     
