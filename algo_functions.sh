@@ -914,6 +914,48 @@ _gitdown_all() {
 }
 
 # =============================================================================
+# _sync_playlist_status - Git 로그 기반 완료 여부 동기화 (Auto-Sync)
+# =============================================================================
+_sync_playlist_status() {
+    local ssafy_root="$1"
+    local user_name=$(git config user.name)
+    local prefix="${GIT_COMMIT_PREFIX:-solve}"
+    local progress_file="$ssafy_root/.ssafy_progress"
+    
+    if [ -z "$user_name" ]; then return; fi
+    
+    # .ssafy_progress 없으면 생성
+    if [ ! -f "$progress_file" ]; then touch "$progress_file"; fi
+    
+    local original_dir=$(pwd)
+    cd "$ssafy_root" || return
+    
+    # 진행 상황 표시 (너무 빠르면 시각적 효과 없음, 적당히)
+    # echo "🔄 기존 풀이 동기화 중..."
+    
+    # 1. 파일 이름 규칙으로 폴더 찾기
+    for folder in *_ws_* *_hw_* *_ex_*; do
+        if [ -d "$folder" ] && [ -d "$folder/.git" ]; then
+            # 이미 기록된 경우 스킵
+            if grep -q "^${folder}=done" "$progress_file" 2>/dev/null; then
+                continue
+            fi
+            
+            # 2. Git 로그 확인 (Author + Prefix)
+            # 최근 20개 커밋 검사
+            cd "$folder"
+            if git log --author="$user_name" --oneline -n 20 2>/dev/null | grep -qE "[a-f0-9]+ ${prefix}:"; then
+                 echo "${folder}=done" >> "$progress_file"
+                 # echo "  ✅ [Auto-Sync] $folder 복구됨"
+            fi
+            cd ..
+        fi
+    done
+    
+    cd "$original_dir"
+}
+
+# =============================================================================
 # _check_unsolved_folders - 미완료 폴더 감지
 # =============================================================================
 _check_unsolved_folders() {
@@ -1253,6 +1295,9 @@ gitdown() {
                 _open_repo_file "$next_repo" || echo "⚠️  다음 디렉터리로 이동할 수 없습니다: $next_repo"
             else
                 # [Dynamic Playlist Fallback]
+                # Git 로그 기반으로 기존 완료 내역 동기화 (Auto-Sync)
+                _sync_playlist_status "$ssafy_root"
+                
                 # 다음 번호의 문제가 없더라도, 다른 안 푼 문제가 있는지 확인
                 local all_folders=()
                 local playlist_file="$ssafy_root/.ssafy_playlist"
