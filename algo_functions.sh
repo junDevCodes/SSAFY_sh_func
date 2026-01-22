@@ -11,7 +11,7 @@
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V7.0b"
+ALGO_FUNCTIONS_VERSION="V7.1"
 
 # 업데이트 명령어
 algo-update() {
@@ -2111,7 +2111,7 @@ echo "💡 'algo-config edit'로 설정을 변경할 수 있습니다"
 # =============================================================================
 algo-doctor() {
     echo "=================================================="
-    echo " ��� SSAFY Algo Tools Doctor (V${ALGO_FUNCTIONS_VERSION})"
+    echo " ��� SSAFY Algo Tools Doctor (${ALGO_FUNCTIONS_VERSION})"
     echo "=================================================="
     echo ""
     

@@ -69,7 +69,7 @@ def main_menu(config):
     while True:
         clear_screen()
         print("==========================================")
-        print(" 🛠  SSAFY Algo Tools 설정 마법사 (V7.0b)")
+        print(" 🛠  SSAFY Algo Tools 설정 마법사 (V7.1)")
         print("==========================================")
         
         ide_code = config.get("IDE_EDITOR", "code")
@@ -99,9 +99,17 @@ def main_menu(config):
             print("\n[IDE 선택]")
             for k, v in IDE_POOL.items():
                 print(f"  {k}. {v[0]} ({v[1]})")
+            print("  c. ⌨️  직접 입력 (Custom)")
             ide_sel = input("👉 번호 선택: ").strip()
+            
             if ide_sel in IDE_POOL:
                 config["IDE_EDITOR"] = IDE_POOL[ide_sel][1]
+            elif ide_sel.lower() == 'c':
+                print("\n[직접 입력]")
+                custom_ide = input("실행할 IDE 명령어 (예: cursor, subl, windsurf): ").strip()
+                if custom_ide:
+                    config["IDE_EDITOR"] = custom_ide
+                    print(f"✅ IDE가 '{custom_ide}'(으)로 설정되었습니다.")
             else:
                 input("⚠️ 잘못된 번호입니다. 엔터키를 누르세요.")
                 
