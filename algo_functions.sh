@@ -277,22 +277,27 @@ EOF
         fi
     fi
 
-    # [Cleanup] 설정 파일 포맷 정리 (주석 수정 및 공백 제거)
+    # [Cleanup] 설정 파일 포맷 정리 (주석 수정 및 섹션 간격 복구)
     if [ -f "$ALGO_CONFIG_FILE" ]; then
         # 1. "(V6.1 업데이트)" 문구 제거
         if grep -q "(V6.1 업데이트)" "$ALGO_CONFIG_FILE"; then
-            if sed --version >/dev/null 2>&1; then
+             if sed --version >/dev/null 2>&1; then
                 sed -i 's/# IDE 설정 (V6.1 업데이트)/# IDE 설정/g' "$ALGO_CONFIG_FILE"
             else
                 sed -i '' 's/# IDE 설정 (V6.1 업데이트)/# IDE 설정/g' "$ALGO_CONFIG_FILE" 2>/dev/null || true
             fi
         fi
         
-        # 2. 과도한 빈 줄 정리 (3줄 이상 공백 -> 2줄로, 즉 섹션 간 간격 유지)
-        # sed로 구현이 복잡하므로, 일단 'tr -s'는 제거하여 헤더 간 줄바꿈을 유지함.
-        # 대신 파일 끝의 빈 줄만 정리하는 정도로 타협하거나, 로직을 제거.
-        
-        # 현재는 사용자가 줄바꿈 유지를 원하므로 tr -s 로직 삭제.
+        # 2. 섹션 간 줄바꿈 복구 및 정규화 (awk 사용)
+        # - 주요 섹션 헤더(# ...) 앞에 빈 줄이 없으면 추가
+        # - 연속된 빈 줄은 1개로 축소
+        awk '
+            /^# (Git|SSAFY|IDE) 설정/ { print "" } 
+            { print $0 }
+        ' "$ALGO_CONFIG_FILE" | awk '
+            !NF { if (++n <= 1) print; next } 
+            { n=0; print }
+        ' > "$ALGO_CONFIG_FILE.tmp" && mv "$ALGO_CONFIG_FILE.tmp" "$ALGO_CONFIG_FILE"
     fi
     
     # Python 스크립트를 위해 토큰 자동 export
