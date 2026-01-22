@@ -2,6 +2,18 @@
 
 ---
 
+## V7.3 (2026-01-22) - IDE Automation & Cursor Support ⌨️
+
+### ✨ 주요 변경 사항
+- **IDE 자동 탐색**: `pycharm`, `idea`, `cursor` 명령어가 없어도 설치 경로를 자동 스캔하여 연결 (`_setup_ide_aliases`)
+- **지원 IDE 목록 최적화**: 
+  - **Cursor** 정식 지원 추가
+  - VS Code, PyCharm, IntelliJ, Sublime Text 등 5대장 체제 확립
+  - "Custom" 입력 제거 (안정성 강화)
+- **버전 통합**: 모든 도구 및 스크립트 버전을 **V7.3**으로 동기화
+
+---
+
 ## V7.0b (Beta) (2026-01-22) - Maximum Security & UX 🔥
 
 ### 🛡️ 보안 강화 (Security)
