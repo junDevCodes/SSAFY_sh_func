@@ -1127,6 +1127,8 @@ _show_submission_links() {
     
     local i=1
     local has_link=false
+    local urls=()
+    local folder_indices=()
     
     for folder in "${folders[@]}"; do
         # 폴더별 practice_id 조회 (folder=ID)
@@ -1141,17 +1143,19 @@ _show_submission_links() {
         local pa_id=$(grep "^${folder}_pa=" "$meta_file" 2>/dev/null | cut -d= -f2)
         
         if [ -n "$pr_id" ]; then
-            local base_url=""
+            local current_url=""
             if [ -n "$pa_id" ]; then
-                 base_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/answer/${pa_id}"
+                 current_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/answer/${pa_id}"
             else
                  # Fallback: 상세 페이지
-                 base_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/detail"
+                 current_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/detail"
             fi
-            echo "  $i. $folder: $base_url"
+            echo "  $i. $folder: $current_url"
+            urls+=("$current_url")
             has_link=true
         else
             echo "  $i. $folder: (링크 정보 없음)"
+            urls+=("")
         fi
         ((i++))
     done
@@ -1162,9 +1166,23 @@ _show_submission_links() {
     read -r choice
     
     if [ "$choice" = "a" ]; then
-        _open_browser "$base_url"
-    elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#folders[@]} ]; then
-        _open_browser "$base_url"
+        echo "⏳ 브라우저를 열고 있습니다..."
+        for url in "${urls[@]}"; do
+            if [ -n "$url" ]; then
+                _open_browser "$url"
+                # 브라우저가 씹히지 않게 약간의 딜레이
+                sleep 0.5 
+            fi
+        done
+    elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#urls[@]} ]; then
+        # 1-based index to 0-based
+        local idx=$((choice-1))
+        local selected_url="${urls[$idx]}"
+        if [ -n "$selected_url" ]; then
+            _open_browser "$selected_url"
+        else
+            echo "❌ 해당 항목은 링크가 없습니다."
+        fi
     fi
 }
 
