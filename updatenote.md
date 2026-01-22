@@ -10,6 +10,7 @@
   - **Cursor** 정식 지원 추가
   - VS Code, PyCharm, IntelliJ, Sublime Text 등 5대장 체제 확립
   - "Custom" 입력 제거 (안정성 강화)
+- **UI 개선**: `algo-config show` 출력을 `algo-doctor` 스타일로 깔끔하게 정리
 - **버전 통합**: 모든 도구 및 스크립트 버전을 **V7.3**으로 동기화
 
 ---

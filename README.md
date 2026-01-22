@@ -65,7 +65,7 @@ algo-update
 모든 사용자 설정은 `~/.algo_config`에 저장됩니다.
 
 - **명령어:**
-  - `algo-config show`: 현재 설정값 확인 (**토큰은 숨김 처리됨**)
+  - `algo-config show`: 현재 설정값 확인 (**Clean UI**)
   - `algo-config edit`: **설정 마법사(GUI)** 실행
   - `algo-config reset`: 설정을 초기 상태로 되돌리기
   - `algo-doctor`: **(New)** 시스템 및 설정 상태 정밀 진단

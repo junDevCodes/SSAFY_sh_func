@@ -391,13 +391,45 @@ algo_config() {
     fi
     
     if [ "$1" = "show" ]; then
-        echo "📋 현재 설정:"
-        if [ -f "$ALGO_CONFIG_FILE" ]; then
-            # 토큰 마스킹 처리하여 출력
-            sed 's/SSAFY_AUTH_TOKEN=".*"/SSAFY_AUTH_TOKEN="******** (숨김)"/' "$ALGO_CONFIG_FILE"
+        echo "=================================================="
+        echo " 🛠  SSAFY Algo Config (${ALGO_FUNCTIONS_VERSION})"
+        echo "=================================================="
+        echo ""
+        
+        echo "📂 [기본 설정]"
+        echo "  • 작업 경로 : ${ALGO_BASE_DIR:-미설정}"
+        echo ""
+        
+        echo "💻 [IDE 설정]"
+        if [ -n "${IDE_EDITOR:-}" ]; then
+            echo "  • 사용 IDE  : ${IDE_EDITOR}"
+            # alias 등으로 잡혀있을 수 있으므로 type 사용이 나을 수도 있으나, command -v로 체크
+            local ide_path=$(command -v "$IDE_EDITOR" 2>/dev/null || echo "❌ 연결 안됨 (자동 탐색 필요)")
+            echo "  • 실행 경로 : $ide_path"
         else
-            echo "⚠️  설정 파일이 없습니다."
+            echo "  • 사용 IDE  : 미설정"
         fi
+        echo ""
+        
+        echo "🐙 [Git 설정]"
+        echo "  • 브랜치    : ${GIT_DEFAULT_BRANCH:-main}"
+        echo "  • 접두어    : ${GIT_COMMIT_PREFIX:-solve}"
+        echo "  • 자동푸시  : ${GIT_AUTO_PUSH:-true}"
+        echo ""
+        
+        echo "🔑 [SSAFY 설정]"
+        echo "  • 서버 URL  : ${SSAFY_BASE_URL:-https://lab.ssafy.com}"
+        echo "  • 사용자 ID : ${SSAFY_USER_ID:-미설정}"
+        if [ -n "${SSAFY_AUTH_TOKEN:-}" ]; then
+             echo "  • 인증 토큰 : 🔐 설정됨 (암호화)"
+        else
+             echo "  • 인증 토큰 : ❌ 미설정"
+        fi
+        
+        echo ""
+        echo "=================================================="
+        echo "💡 수정하려면: algo-config edit"
+        echo "=================================================="
         return
     fi
     
