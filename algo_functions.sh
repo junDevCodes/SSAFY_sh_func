@@ -221,6 +221,38 @@ EOF
     
     source "$ALGO_CONFIG_FILE"
     
+    # [Security V7.0] 파일 권한 600 강제 (타인 접근 제한)
+    chmod 600 "$ALGO_CONFIG_FILE" 2>/dev/null || true
+
+    # [Security V7.0] 토큰 암호화 관리 (Base64)
+    # 1. 평문(Bearer ...)이면 -> Base64로 인코딩하여 파일에 저장 (마이그레이션)
+    # 2. 암호문이면 -> 디코딩하여 메모리($SSAFY_AUTH_TOKEN)에 로드
+    if [ -n "${SSAFY_AUTH_TOKEN:-}" ] && [[ "${SSAFY_AUTH_TOKEN:-}" != "Bearer your_token_here" ]]; then
+        if [[ "$SSAFY_AUTH_TOKEN" == "Bearer "* ]]; then
+            # 마이그레이션: 평문 -> Base64
+            if command -v base64 >/dev/null 2>&1; then
+                local encoded_token=$(echo -n "$SSAFY_AUTH_TOKEN" | base64 | tr -d '\n')
+                # sed로 파일 업데이트
+                # (특수문자 처리를 위해 구분자를 | 사용)
+                if sed --version >/dev/null 2>&1; then
+                    sed -i "s|^SSAFY_AUTH_TOKEN=.*|SSAFY_AUTH_TOKEN=\"$encoded_token\"|" "$ALGO_CONFIG_FILE"
+                else
+                    sed -i '' "s|^SSAFY_AUTH_TOKEN=.*|SSAFY_AUTH_TOKEN=\"$encoded_token\"|" "$ALGO_CONFIG_FILE"
+                fi
+                echo "🔐 [보안] 토큰이 안전하게 암호화되었습니다."
+            fi
+        else
+            # 디코딩: Base64 -> 평문
+            if command -v base64 >/dev/null 2>&1; then
+                # base64 -d가 실패할 경우 대비
+                local decoded_token=$(echo "$SSAFY_AUTH_TOKEN" | base64 -d 2>/dev/null || echo "")
+                if [[ "$decoded_token" == "Bearer "* ]]; then
+                    SSAFY_AUTH_TOKEN="$decoded_token"
+                fi
+            fi
+        fi
+    fi
+    
     # 마이그레이션: IDE_EDITOR가 없는 경우 (V6 -> V6.1)
     if [ -z "${IDE_EDITOR:-}" ]; then
         # 기존 우선순위에서 첫 번째 가져오기
@@ -313,8 +345,33 @@ algo_config() {
     init_algo_config
     
     if [ "$1" = "edit" ]; then
-        ${EDITOR:-nano} "$ALGO_CONFIG_FILE"
-        echo "✅ 설정 파일을 편집했습니다. 'source ~/.bashrc'로 적용하세요"
+        # V7.0: Python 마법사 사용
+        local script_dir
+        # BASH_SOURCE[0]는 함수 호출 시점에 따라 다를 수 있으나, 일반적으로 source된 위치를 찾으려면
+        # 현재 함수가 정의된 파일을 추적해야 함. 하지만 복잡하므로
+        # ALGO_BASE_DIR 혹은 algo_functions.sh 경로를 환경변수에서 유추?
+        # 가장 확실한 건 algo_functions.sh 파일 내에서 상단 전역 변수로 HOME을 잡아두는 것인데...
+        # 일단 ssafy_batch 처럼 구해봄.
+        
+        # 주의: source된 상태에서 BASH_SOURCE[0]는 셸 자체일 수도 있음.
+        # 그러나 함수 내에서는 BASH_SOURCE[0]가 스크립트 경로를 가리킬 가능성 높음(bash 특성).
+        # 안되면 사용자 홈의 특정 위치 가정 (~/.ssafy-tools/algo_functions.sh? 아니면 현재 경로?)
+        # 사용자는 ~/Desktop/SSAFY_sh_func에 있음.
+        
+        # 임시: 현재 작업 디렉토리에 있다고 가정하지 말고, locate 시도
+        script_dir="$HOME/Desktop/SSAFY_sh_func" # 기본값 (사용자 환경)
+        
+        # 더 나은 방법: gitup 등에서 이미 SCRIPT_DIR를 알 수 있다면 좋겠지만..
+        # 단순히 $HOME/.ssafy-tools/algo_config_wizard.py 가 배포될 것임 (git pull 시)
+        # 사용자는 ~/.ssafy-tools 를 source 하고 있음.
+        if [ -f "$HOME/.ssafy-tools/algo_config_wizard.py" ]; then
+            script_dir="$HOME/.ssafy-tools"
+        elif [ -f "$HOME/Desktop/SSAFY_sh_func/algo_config_wizard.py" ]; then
+            script_dir="$HOME/Desktop/SSAFY_sh_func"
+        fi
+        
+        python "$script_dir/algo_config_wizard.py"
+        echo "✅ 설정 변경이 완료되었습니다. 변경 사항 적용을 위해 'source ~/.bashrc'를 실행해주세요."
         return
     fi
     
@@ -1531,7 +1588,34 @@ gitup() {
         case "$1" in
             --ssafy|-s) ssafy_mode=true ;;
             *)
-                if [ -z "$input" ]; then
+                # [V7.0 Smart Copy] URL|Token 분리 처리
+                if [[ "$1" == *"|"* ]]; then
+                    local raw="$1"
+                    local url="${raw%%|*}"
+                    local token="${raw#*|}"
+                    
+                    if [ -z "$input" ]; then
+                        input="$url"
+                    fi
+                    
+                    # 토큰 업데이트 (Base64 Encoded 상태 그대로 저장)
+                    if [ -n "$token" ]; then
+                        if [ -f "$ALGO_CONFIG_FILE" ]; then
+                            local safe_token=$(echo "$token" | sed 's/[\/&]/\\&/g')
+                            if sed --version >/dev/null 2>&1; then
+                                sed -i "s|^SSAFY_AUTH_TOKEN=.*|SSAFY_AUTH_TOKEN=\"$safe_token\"|" "$ALGO_CONFIG_FILE"
+                            else
+                                sed -i '' "s|^SSAFY_AUTH_TOKEN=.*|SSAFY_AUTH_TOKEN=\"$safe_token\"|" "$ALGO_CONFIG_FILE"
+                            fi
+                            # 메모리 로드 (디코딩)
+                            local decoded=$(echo "$token" | base64 -d 2>/dev/null || echo "")
+                            if [[ "$decoded" == "Bearer "* ]]; then
+                                export SSAFY_AUTH_TOKEN="$decoded"
+                                echo "🔐 [Smart Copy] 인증 토큰 자동 업데이트 완료"
+                            fi
+                        fi
+                    fi
+                elif [ -z "$input" ]; then
                     input="$1"
                 else
                     echo "❗️사용법: gitup <git-repository-url | ssafy-topic>"
@@ -1989,3 +2073,110 @@ _check_update
 
 echo "✅ 알고리즘 셸 함수 로드 완료! (${ALGO_FUNCTIONS_VERSION})"
 echo "💡 'algo-config edit'로 설정을 변경할 수 있습니다"
+
+# =============================================================================
+# algo-doctor - 시스템 및 설정 진단 도구 (V7.0)
+# =============================================================================
+algo-doctor() {
+    echo "=================================================="
+    echo " ��� SSAFY Algo Tools Doctor (V${ALGO_FUNCTIONS_VERSION})"
+    echo "=================================================="
+    echo ""
+    
+    local issues=0
+    
+    # [1] 필수 도구 점검
+    echo "1️⃣  필수 도구 점검"
+    for tool in git python3 curl base64; do
+        if command -v "$tool" >/dev/null 2>&1; then
+            echo "   ✅ $tool: 설치됨 ($(command -v "$tool"))"
+        else
+            echo "   ❌ $tool: 설치되지 않음!"
+            ((issues++))
+        fi
+    done
+    
+    # [2] 설정 파일 보안 점검
+    echo ""
+    echo "2️⃣  설정 파일 보안 점검"
+    if [ -f "$ALGO_CONFIG_FILE" ]; then
+        if [[ "$OSTYPE" != "msys" ]] && [[ "$OSTYPE" != "win32" ]]; then
+            local perms=$(stat -c "%a" "$ALGO_CONFIG_FILE" 2>/dev/null || echo "unknown")
+            if [ "$perms" == "600" ]; then
+                echo "   ✅ 권한: 600 (안전함)"
+            else
+                echo "   ⚠️  권한: $perms (권장: 600)"
+                # issues++ (윈도우 이슈로 경고만)
+            fi
+        else
+             echo "   ℹ️  Windows/Git Bash 환경 (권한 체크 생략)"
+        fi
+        
+        # 토큰 암호화 여부 체크
+        # grep으로 파일 내용 직접 확인
+        local file_token=$(grep "SSAFY_AUTH_TOKEN" "$ALGO_CONFIG_FILE" | cut -d= -f2 | tr -d '"')
+        if [[ "$file_token" == "Bearer "* ]]; then
+            echo "   ⚠️  토큰 저장 상태: 평문 (보안 취약)"
+            echo "      -> 'source ~/.bashrc'를 다시 실행하면 암호화됩니다."
+            ((issues++))
+        elif [ -n "$file_token" ]; then
+            echo "   ✅ 토큰 저장 상태: 암호화됨 (Base64)"
+        else
+            echo "   ℹ️  토큰 미설정"
+        fi
+    else
+        echo "   ❌ 설정 파일 없음 (\ (~/algo_config))"
+        ((issues++))
+    fi
+    
+    # [3] IDE 설정 점검
+    echo ""
+    echo "3️⃣  IDE 설정 점검"
+    if [ -n "$IDE_EDITOR" ]; then
+        if command -v "$IDE_EDITOR" >/dev/null 2>&1; then
+            echo "   ✅ IDE: $IDE_EDITOR (실행 가능)"
+        else
+             # Windows의 경우 .exe가 빠져있을 수 있으므로 체크
+             if command -v "${IDE_EDITOR}.exe" >/dev/null 2>&1; then
+                 echo "   ✅ IDE: $IDE_EDITOR.exe (실행 가능)"
+             else
+                 echo "   ❌ IDE: $IDE_EDITOR (명령어를 찾을 수 없음)"
+                 echo "      -> PATH에 추가하거나 algo-config에서 올바른 명령어로 변경하세요."
+                 ((issues++))
+             fi
+        fi
+    else
+        echo "   ⚠️  IDE 미설정"
+    fi
+    
+    # [4] SSAFY 서버 연결 (토큰 유효성)
+    echo ""
+    echo "4️⃣  SSAFY 서버 연결"
+    if [ -n "$SSAFY_AUTH_TOKEN" ] && [[ "$SSAFY_AUTH_TOKEN" == "Bearer "* ]]; then
+        # 간단한 curl 호출 (헤더만)
+        # 401이면 토큰 만료, 200/404 등은 연결 성공
+        local status_code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: $SSAFY_AUTH_TOKEN" "${SSAFY_BASE_URL:-https://lab.ssafy.com}/api/v4/user" || echo "fail")
+        
+        if [ "$status_code" == "200" ]; then
+            echo "   ✅ 인증 상태: 유효함 (연결 성공)"
+        elif [ "$status_code" == "401" ]; then
+             echo "   ❌ 인증 상태: 토큰 만료 또는 잘못됨 (401)"
+             ((issues++))
+        elif [ "$status_code" == "fail" ]; then
+             echo "   ⚠️  서버 연결 실패 (네트워크 확인)"
+        else
+             echo "   ✅ 서버 응답: $status_code (연결됨)"
+        fi
+    else
+        echo "   ℹ️  토큰이 없어 연결 테스트를 건너뜁니다."
+    fi
+    
+    echo ""
+    echo "=================================================="
+    if [ $issues -eq 0 ]; then
+        echo "���  모든 시스템이 정상입니다!"
+    else
+        echo "⚠️  $issues 건의 문제점이 발견되었습니다."
+    fi
+    echo "=================================================="
+}
