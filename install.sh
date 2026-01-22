@@ -37,23 +37,27 @@ fi
 cleanup_old_install() {
     local rc_file="$1"
     if [ -f "$rc_file" ]; then
-        if grep -q "algo_functions.sh" "$rc_file"; then
-            local tmp_file="${rc_file}.tmp"
-            
-            # 1. ssafy-tools가 포함되지 않은 algo_functions.sh 라인 제거
-            grep -v "algo_functions.sh" "$rc_file" > "$tmp_file"
-            
-            # ssafy-tools 라인은 다시 추가 (이미 있으면 유지되겠지만, 로직상 깔끔하게 재설치 시 다시 추가됨)
-            # 여기서는 '제거'만 하고 add_source_line에서 추가하는 것이 안전함.
-            # 하지만 위 grep -v는 모든 algo_functions.sh를 지워버림.
-            # 따라서 ssafy-tools가 포함된 줄은 유지하고 나머지만 지우는 로직이 필요함.
-            
-            # awk를 사용하여 더 정교하게 처리 (OS 호환성 최적)
-            awk '!/algo_functions\.sh/ || /ssafy-tools/' "$rc_file" > "$tmp_file" && mv "$tmp_file" "$rc_file"
-            
-            # 빈 주석 라인 정리 (# SSAFY Shell Functions 다음에 빈 줄이 오는 경우 등)
-            # 복잡한 sed 대신 간단히 두면 됨 (기능에 영향 없음)
+        # [V7.5] 안전한 정리를 위해 특정 패턴만 제거
+        # 타겟 패턴 1: ssafy-tools/algo_functions.sh (표준 설치)
+        # 타겟 패턴 2: SSAFY_sh_func/algo_functions.sh (수동 설치)
+        
+        local tmp_file="${rc_file}.tmp"
+        
+        # sed를 사용하여 특정 패턴이 포함된 줄만 삭제 (/d)
+        # 백업 생성 없이 즉시 처리하면 위험하므로 tmp 파일 사용
+        
+        # Windows/Linux 호환 sed 처리
+        if sed --version >/dev/null 2>&1; then
+            # GNU sed
+            sed '/ssafy-tools\/algo_functions\.sh/d' "$rc_file" | \
+            sed '/SSAFY_sh_func\/algo_functions\.sh/d' > "$tmp_file"
+        else
+            # BSD sed (macOS)
+            sed '/ssafy-tools\/algo_functions\.sh/d' "$rc_file" | \
+            sed '/SSAFY_sh_func\/algo_functions\.sh/d' > "$tmp_file"
         fi
+        
+        mv "$tmp_file" "$rc_file"
     fi
 }
 
