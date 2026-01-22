@@ -1252,13 +1252,52 @@ gitdown() {
                 echo "➡️  다음 문제로 이동: $next_repo"
                 _open_repo_file "$next_repo" || echo "⚠️  다음 디렉터리로 이동할 수 없습니다: $next_repo"
             else
-                if [[ "$current_repo" =~ ^([A-Za-z0-9]+)_(ws|hw|ex)_([0-9]+)(_[0-9]+)?$ ]]; then
-                    local topic="${BASH_REMATCH[1]}"
-                    local session="${BASH_REMATCH[3]}"
-                    echo ""
-                    echo "🎉 [${topic}] 과목의 해당 [${session}]차시가 종료되었습니다. 고생하셨습니다"
+                # [Dynamic Playlist Fallback]
+                # 다음 번호의 문제가 없더라도, 다른 안 푼 문제가 있는지 확인
+                local all_folders=()
+                local playlist_file="$ssafy_root/.ssafy_playlist"
+                local meta_file="$ssafy_root/.ssafy_session_meta"
+                
+                if [ -f "$playlist_file" ]; then
+                    # Playlist 파일 사용
+                    while IFS= read -r line || [ -n "$line" ]; do
+                        all_folders+=("$line")
+                    done < "$playlist_file"
+                elif [ -f "$meta_file" ]; then
+                    # Meta 파일에서 폴더 추출 (키 제외)
+                    # course_id=..., practice_id=... 제외, _pa=... 패턴은 별도 라인이므로 폴더명 아님
+                    # 하지만 folder_pa=PA... 형식이므로 cut -d_ -f1하면 folder가 나옴.
+                    # 가장 확실한 건 folder=ID 라인임.
+                    while IFS= read -r line || [ -n "$line" ]; do
+                        if [[ "$line" =~ ^([^=]+)=([^=]+)$ ]]; then
+                            local key="${BASH_REMATCH[1]}"
+                            # key가 예약어가 아니고 _pa로 끝나지 않으면 폴더명으로 간주
+                            if [[ "$key" != "course_id" ]] && [[ "$key" != "practice_id" ]] && [[ "$key" != *"_pa" ]]; then
+                                all_folders+=("$key")
+                            fi
+                        fi
+                    done < "$meta_file"
+                fi
+                
+                # 그래도 비어있으면 현재 디렉토리 스캔
+                if [ ${#all_folders[@]} -eq 0 ]; then
+                    for d in *_ws_* *_hw_* *_ex_*; do
+                        [ -d "$d" ] && all_folders+=("$d")
+                    done
+                fi
+
+                if [ ${#all_folders[@]} -gt 0 ]; then
+                    _check_unsolved_folders "$ssafy_root" "${all_folders[@]}"
                 else
-                    echo "⚠️  다음 문제를 찾을 수 없습니다."
+                    # 기존 종료 메시지 (폴더 목록을 못 구한 경우)
+                    if [[ "$current_repo" =~ ^([A-Za-z0-9]+)_(ws|hw|ex)_([0-9]+)(_[0-9]+)?$ ]]; then
+                        local topic="${BASH_REMATCH[1]}"
+                        local session="${BASH_REMATCH[3]}"
+                        echo ""
+                        echo "🎉 [${topic}] 과목의 해당 [${session}]차시가 종료되었습니다. 고생하셨습니다"
+                    else
+                        echo "⚠️  다음 문제를 찾을 수 없습니다."
+                    fi
                 fi
             fi
         else
