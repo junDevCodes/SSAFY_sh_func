@@ -273,8 +273,25 @@ EOF
             sed -i '/# IDE 우선순위/d' "$ALGO_CONFIG_FILE"
         else
             # BSD sed (macOS)
-            sed -i '' '/IDE_PRIORITY=/d' "$ALGO_CONFIG_FILE"
             sed -i '' '/# IDE 우선순위/d' "$ALGO_CONFIG_FILE" 2>/dev/null || true
+        fi
+    fi
+
+    # [Cleanup] 설정 파일 포맷 정리 (주석 수정 및 공백 제거)
+    if [ -f "$ALGO_CONFIG_FILE" ]; then
+        # 1. "(V6.1 업데이트)" 문구 제거
+        if grep -q "(V6.1 업데이트)" "$ALGO_CONFIG_FILE"; then
+            if sed --version >/dev/null 2>&1; then
+                sed -i 's/# IDE 설정 (V6.1 업데이트)/# IDE 설정/g' "$ALGO_CONFIG_FILE"
+            else
+                sed -i '' 's/# IDE 설정 (V6.1 업데이트)/# IDE 설정/g' "$ALGO_CONFIG_FILE" 2>/dev/null || true
+            fi
+        fi
+        
+        # 2. 과도한 빈 줄 정리 (2줄 이상 공백 -> 1줄)
+        # (매번 실행해도 안전하지만, I/O 줄이기 위해 파일 크기가 0이 아닐 때만)
+        if [ -s "$ALGO_CONFIG_FILE" ]; then
+            tr -s '\n' < "$ALGO_CONFIG_FILE" > "$ALGO_CONFIG_FILE.tmp" && mv "$ALGO_CONFIG_FILE.tmp" "$ALGO_CONFIG_FILE"
         fi
     fi
     
