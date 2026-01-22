@@ -337,7 +337,11 @@ EOF
         export SSAFY_AUTH_TOKEN
     fi
     
+    
     _ensure_ssafy_config
+
+    # [V7.3] IDE 자동 탐색 및 별칭 설정
+    _setup_ide_aliases
 }
 
 # 설정 편집 명령어
@@ -2098,6 +2102,73 @@ ssafy_batch() {
     fi
     
     python "$script_dir/ssafy_batch_create.py" "$1" "$2"
+}
+
+# =============================================================================
+# _setup_ide_aliases - IDE 자동 탐색 및 별칭 설정 (V7.3)
+# =============================================================================
+_setup_ide_aliases() {
+    [ -z "${IDE_EDITOR:-}" ] && return 0
+    
+    # 이미 명령어가 존재하면 패스
+    if command -v "$IDE_EDITOR" >/dev/null 2>&1; then
+        return 0
+    fi
+    
+    local cache_file="$HOME/.ssafy_ide_cache"
+    
+    # 캐시 확인
+    if [ -f "$cache_file" ]; then
+        source "$cache_file"
+        # 로드 후 다시 확인
+        if command -v "$IDE_EDITOR" >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    
+    # 자동 탐색 시작
+    local target_exe=""
+    case "$IDE_EDITOR" in
+        pycharm) target_exe="pycharm64.exe" ;;
+        idea)    target_exe="idea64.exe" ;;
+        subl)    target_exe="subl.exe" ;;
+        cursor)  target_exe="Cursor.exe" ;;
+        *)       return 0 ;; # 모르는 IDE는 탐색 안 함
+    esac
+    
+    # echo "🔎 $IDE_EDITOR 명령어를 찾을 수 없어 설치 경로를 검색합니다..."
+    
+    local found_path=""
+    local search_paths=(
+        "/c/Program Files"
+        "/c/Program Files (x86)"
+        "$HOME/AppData/Local/JetBrains"
+        "$HOME/AppData/Local/Programs"
+        "$HOME/AppData/Local"
+    )
+    
+    for base_path in "${search_paths[@]}"; do
+        [ ! -d "$base_path" ] && continue
+        
+        # 3단계 깊이까지만 빠르게 검색 (속도 최적화)
+        found_path=$(find "$base_path" -maxdepth 5 -name "$target_exe" -print -quit 2>/dev/null)
+        
+        if [ -n "$found_path" ]; then
+            break
+        fi
+    done
+    
+    if [ -n "$found_path" ]; then
+        # 경로에 공백이 있을 수 있으므로 따옴표 처리
+        local alias_cmd="alias $IDE_EDITOR=\"'$found_path'\""
+        
+        # 현재 세션 적용
+        alias "$IDE_EDITOR"="'$found_path'"
+        
+        # 캐시 저장
+        echo "$alias_cmd" >> "$cache_file"
+        # echo "✅ IDE 연결 완료: $found_path"
+    fi
 }
 
 init_algo_config
