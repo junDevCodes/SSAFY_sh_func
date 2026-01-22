@@ -264,6 +264,20 @@ EOF
         fi
     fi
     
+    # [Cleanup] V6.1 이후 레거시 설정 제거 (IDE_PRIORITY)
+    if [ -n "${IDE_EDITOR:-}" ] && grep -q "IDE_PRIORITY=" "$ALGO_CONFIG_FILE"; then
+        # IDE_PRIORITY 줄 제거
+        if sed --version >/dev/null 2>&1; then
+            # GNU sed
+            sed -i '/IDE_PRIORITY=/d' "$ALGO_CONFIG_FILE"
+            sed -i '/# IDE 우선순위/d' "$ALGO_CONFIG_FILE"
+        else
+            # BSD sed (macOS)
+            sed -i '' '/IDE_PRIORITY=/d' "$ALGO_CONFIG_FILE"
+            sed -i '' '/# IDE 우선순위/d' "$ALGO_CONFIG_FILE" 2>/dev/null || true
+        fi
+    fi
+    
     # Python 스크립트를 위해 토큰 자동 export
     if [ -n "${SSAFY_AUTH_TOKEN:-}" ] && [[ "${SSAFY_AUTH_TOKEN:-}" != "Bearer your_token_here" ]]; then
         export SSAFY_AUTH_TOKEN
