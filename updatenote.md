@@ -2,6 +2,19 @@
 
 ---
 
+## V7.0b (Beta) (2026-01-22) - Maximum Security & UX 🔥
+
+### 🛡️ 보안 강화 (Security)
+- **설정 파일 암호화**: `.algo_config` 내 민감정보(토큰)를 **Base64**로 암호화하여 저장
+- **권한 강제**: 설정 파일 권한을 `600` (타인 접근 불가)으로 자동 설정
+
+### ✨ UX/편의성 (Usability)
+- **설정 마법사 (`algo_config_wizard.py`)**: `algo-config edit` 시 직관적인 GUI(TUI) 제공
+- **Smart Copy**: 브라우저 북마크릿을 통해 `URL|Token` 통합 복사 지원 및 `gitup` 자동 인식
+- **시스템 진단**: `algo-doctor` 명렁어로 설정 상태 및 오류 원인 자동 분석
+
+---
+
 ## V6.1 (2026-01-21) - User Experience Upgrade ✨
 
 ### ✨ 주요 기능
