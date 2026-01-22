@@ -986,8 +986,17 @@ _show_submission_links() {
             pr_id=$(grep "^practice_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
         fi
         
+        # 폴더별 pa_id 조회 (folder_pa=ID)
+        local pa_id=$(grep "^${folder}_pa=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        
         if [ -n "$pr_id" ]; then
-            local base_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/answer"
+            local base_url=""
+            if [ -n "$pa_id" ]; then
+                 base_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/answer/${pa_id}"
+            else
+                 # Fallback: 상세 페이지
+                 base_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/detail"
+            fi
             echo "  $i. $folder: $base_url"
             has_link=true
         else
@@ -1224,6 +1233,13 @@ gitdown() {
 
     if [ "$ssafy_mode" = true ]; then
         if [ "$push_ok" = true ]; then
+            # [Playlist Sync] 개별 gitdown 성공 시에도 완료 처리
+            if [ -n "$ssafy_root" ] && [ -f "$ssafy_root/.ssafy_progress" ]; then
+                 if ! grep -q "^${current_repo}=done" "$ssafy_root/.ssafy_progress" 2>/dev/null; then
+                     echo "${current_repo}=done" >> "$ssafy_root/.ssafy_progress"
+                 fi
+            fi
+
             # 제출 링크 출력
             _show_submission_links "$(pwd)" "$current_repo"
             
@@ -1480,12 +1496,13 @@ gitup() {
         rm -f .ssafy_playlist
         
         # 파이썬 스크립트 실행 및 결과 파싱
-        # 출력형식: URL|CourseID|PracticeID
-        python "$script_dir/ssafy_batch_create.py" "$input" 20 --pipe 2>/dev/null | while IFS='|' read -r url course_id pr_id; do
+        # 출력형식: URL|CourseID|PracticeID|PA_ID
+        python "$script_dir/ssafy_batch_create.py" "$input" 20 --pipe 2>/dev/null | while IFS='|' read -r url course_id pr_id pa_id; do
             # Windows 호환: \r 제거 (필수)
             url=$(echo "$url" | tr -d '\r')
             course_id=$(echo "$course_id" | tr -d '\r')
             pr_id=$(echo "$pr_id" | tr -d '\r')
+            pa_id=$(echo "$pa_id" | tr -d '\r')
             
             if [ -n "$url" ]; then
                 local repo_name=$(basename "$url" .git)
@@ -1507,6 +1524,13 @@ gitup() {
                 if [ -n "$pr_id" ]; then
                     if ! grep -q "^$repo_name=" .ssafy_session_meta 2>/dev/null; then
                         echo "$repo_name=$pr_id" >> .ssafy_session_meta
+                    fi
+                fi
+                
+                # 3. pa_id (폴더별 매핑 저장: folder_pa=pa_id)
+                if [ -n "$pa_id" ]; then
+                    if ! grep -q "^${repo_name}_pa=" .ssafy_session_meta 2>/dev/null; then
+                         echo "${repo_name}_pa=$pa_id" >> .ssafy_session_meta
                     fi
                 fi
             fi

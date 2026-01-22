@@ -399,7 +399,8 @@ def batch_create(start_url, count, is_pipe=False):
         pr_id = item['pr']
         if is_pipe:
             # Metadata 전달을 위해 파이프(|) 구분자 사용
-            print(f"{url}|{course_id}|{pr_id}")
+            # URL|CourseID|PracticeID|PA_ID
+            print(f"{url}|{course_id}|{pr_id}|{item['pa']}")
             sys.stdout.flush()
         else:
             print(f" - {url}")
