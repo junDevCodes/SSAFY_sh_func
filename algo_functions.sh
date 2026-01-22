@@ -1600,6 +1600,22 @@ gitup() {
     local ssafy_mode=false
     local input=""
 
+    # [V7.1 Security] 인자가 없으면 Secure Input 모드 진입
+    if [ $# -eq 0 ]; then
+        echo "🔐 [Secure Mode] Smart Link(URL|Token) 또는 URL을 붙여넣으세요."
+        echo "   (입력 내용은 화면에 표시되지 않습니다)"
+        read -s -r -p "👉 Paste Here: " prompt_input
+        echo "" # 줄바꿈
+        
+        if [ -z "$prompt_input" ]; then
+            echo "❌ 입력이 취소되었습니다."
+            return 1
+        fi
+        
+        # 입력값을 인자로 설정하여 아래 로직 그대로 활용
+        set -- "$prompt_input"
+    fi
+
     while [ $# -gt 0 ]; do
         case "$1" in
             --ssafy|-s) ssafy_mode=true ;;

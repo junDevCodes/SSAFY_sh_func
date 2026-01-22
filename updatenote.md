@@ -10,7 +10,8 @@
 
 ### ✨ UX/편의성 (Usability)
 - **설정 마법사 (`algo_config_wizard.py`)**: `algo-config edit` 시 직관적인 GUI(TUI) 제공
-- **Smart Copy**: 브라우저 북마크릿을 통해 `URL|Token` 통합 복사 지원 및 `gitup` 자동 인식
+- **Smart Copy**: 브라우저 북마크릿을 통해 `URL|Token` 통합 복사 지원 데이터 포맷 처리
+- **Secure Input**: `gitup`을 인자 없이 실행 시 **보안 입력 모드**로 진입 (토큰 화면 노출 방지)
 - **시스템 진단**: `algo-doctor` 명렁어로 설정 상태 및 오류 원인 자동 분석
 
 ---
