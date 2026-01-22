@@ -11,7 +11,7 @@
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V7.3"
+ALGO_FUNCTIONS_VERSION="V7.4"
 
 # 업데이트 명령어
 algo-update() {
@@ -1116,7 +1116,15 @@ _show_submission_links() {
         return 0
     fi
     
-    local course_id=$(grep "^course_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
+    # [Security V7.4] course_id 암호화 지원 (Base64)
+    local course_id_enc=$(grep "^course_id_enc=" "$meta_file" 2>/dev/null | cut -d= -f2)
+    local course_id=""
+
+    if [ -n "$course_id_enc" ]; then
+        course_id=$(echo "$course_id_enc" | base64 -d 2>/dev/null)
+    else
+        course_id=$(grep "^course_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
+    fi
     
     if [ -z "$course_id" ]; then
         return 0
@@ -1132,7 +1140,15 @@ _show_submission_links() {
     
     for folder in "${folders[@]}"; do
         # 폴더별 practice_id 조회 (folder=ID)
-        local pr_id=$(grep "^$folder=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        # [Security V7.4] practice_id 암호화 지원
+        local pr_id_enc=$(grep "^${folder}_enc=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        local pr_id=""
+        
+        if [ -n "$pr_id_enc" ]; then
+             pr_id=$(echo "$pr_id_enc" | base64 -d 2>/dev/null)
+        else
+             pr_id=$(grep "^$folder=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        fi
         
         # 하위 호환: practice_id=ID (단일)
         if [ -z "$pr_id" ]; then
@@ -1140,7 +1156,15 @@ _show_submission_links() {
         fi
         
         # 폴더별 pa_id 조회 (folder_pa=ID)
-        local pa_id=$(grep "^${folder}_pa=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        # [Security V7.4] pa_id 암호화 지원
+        local pa_id_enc=$(grep "^${folder}_pa_enc=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        local pa_id=""
+
+        if [ -n "$pa_id_enc" ]; then
+            pa_id=$(echo "$pa_id_enc" | base64 -d 2>/dev/null)
+        else
+            pa_id=$(grep "^${folder}_pa=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        fi
         
         if [ -n "$pr_id" ]; then
             local current_url=""
@@ -1444,7 +1468,8 @@ gitdown() {
                         if [[ "$line" =~ ^([^=]+)=([^=]+)$ ]]; then
                             local key="${BASH_REMATCH[1]}"
                             # key가 예약어가 아니고 _pa로 끝나지 않으면 폴더명으로 간주
-                            if [[ "$key" != "course_id" ]] && [[ "$key" != "practice_id" ]] && [[ "$key" != *"_pa" ]]; then
+                            # key가 예약어가 아니고 _pa로 끝나지 않으면 폴더명으로 간주
+                            if [[ "$key" != "course_id" ]] && [[ "$key" != "course_id_enc" ]] && [[ "$key" != "practice_id" ]] && [[ "$key" != *"_pa" ]] && [[ "$key" != *"_enc" ]]; then
                                 all_folders+=("$key")
                             fi
                         fi
@@ -1687,12 +1712,9 @@ gitup() {
                     # 토큰 업데이트 (Base64 Encoded 상태 그대로 저장)
                     if [ -n "$token" ]; then
                         if [ -f "$ALGO_CONFIG_FILE" ]; then
-                            local safe_token=$(echo "$token" | sed 's/[\/&]/\\&/g')
-                            if sed --version >/dev/null 2>&1; then
-                                sed -i "s|^SSAFY_AUTH_TOKEN=.*|SSAFY_AUTH_TOKEN=\"$safe_token\"|" "$ALGO_CONFIG_FILE"
-                            else
-                                sed -i '' "s|^SSAFY_AUTH_TOKEN=.*|SSAFY_AUTH_TOKEN=\"$safe_token\"|" "$ALGO_CONFIG_FILE"
-                            fi
+                            # [Security V7.5] sed 직접 사용 대신 _set_config_value 사용 (특수문자 안전 처리)
+                            _set_config_value "SSAFY_AUTH_TOKEN" "$token"
+                            
                             # 메모리 로드 (디코딩)
                             local decoded=$(echo "$token" | base64 -d 2>/dev/null || echo "")
                             if [[ "$decoded" == "Bearer "* ]]; then
@@ -1769,22 +1791,27 @@ gitup() {
                 echo "$repo_name" >> .ssafy_playlist
                 
                 # 메타데이터 저장
-                # 1. course_id (없으면 저장)
-                if [ -n "$course_id" ] && ! grep -q "^course_id=" .ssafy_session_meta 2>/dev/null; then
-                    echo "course_id=$course_id" >> .ssafy_session_meta
-                fi
-                
-                # 2. practice_id (폴더별 매핑 저장: folder=pr_id)
-                if [ -n "$pr_id" ]; then
-                    if ! grep -q "^$repo_name=" .ssafy_session_meta 2>/dev/null; then
-                        echo "$repo_name=$pr_id" >> .ssafy_session_meta
+                # 1. course_id (없으면 저장) - [Security V7.4] 암호화(Base64)
+                if [ -n "$course_id" ]; then
+                    if ! grep -q "^course_id" .ssafy_session_meta 2>/dev/null; then
+                        local enc_cid=$(echo -n "$course_id" | base64 | tr -d '\n')
+                        echo "course_id_enc=$enc_cid" >> .ssafy_session_meta
                     fi
                 fi
                 
-                # 3. pa_id (폴더별 매핑 저장: folder_pa=pa_id)
+                # 2. practice_id (폴더별 매핑 저장: folder=pr_id) - [Security V7.4] 암호화
+                if [ -n "$pr_id" ]; then
+                    if ! grep -q "^$repo_name" .ssafy_session_meta 2>/dev/null; then
+                        local enc_pid=$(echo -n "$pr_id" | base64 | tr -d '\n')
+                        echo "${repo_name}_enc=$enc_pid" >> .ssafy_session_meta
+                    fi
+                fi
+                
+                # 3. pa_id (폴더별 매핑 저장: folder_pa=pa_id) - [Security V7.4] 암호화
                 if [ -n "$pa_id" ]; then
-                    if ! grep -q "^${repo_name}_pa=" .ssafy_session_meta 2>/dev/null; then
-                         echo "${repo_name}_pa=$pa_id" >> .ssafy_session_meta
+                    if ! grep -q "^${repo_name}_pa" .ssafy_session_meta 2>/dev/null; then
+                         local enc_paid=$(echo -n "$pa_id" | base64 | tr -d '\n')
+                         echo "${repo_name}_pa_enc=$enc_paid" >> .ssafy_session_meta
                     fi
                 fi
             fi
@@ -1792,6 +1819,9 @@ gitup() {
         
         echo "✅ 일괄 작업 완료!"
         echo "📋 자동 이동 순서 생성됨 (.ssafy_playlist)"
+        
+        # [Auto-Sync] 기존 완료 내역 동기화
+        _sync_playlist_status "$(pwd)"
         
         # playlist 파일에서 첫 번째 항목 읽기 (Subshell 문제 회피)
         if [ -f ".ssafy_playlist" ]; then
@@ -2240,7 +2270,7 @@ algo-doctor() {
     
     # [1] 필수 도구 점검
     echo "1️⃣  필수 도구 점검"
-    for tool in git python3 curl base64; do
+    for tool in git curl base64; do
         if command -v "$tool" >/dev/null 2>&1; then
             echo "   ✅ $tool: 설치됨 ($(command -v "$tool"))"
         else
@@ -2248,6 +2278,16 @@ algo-doctor() {
             ((issues++))
         fi
     done
+    
+    # Python check (allow python or python3)
+    if command -v python3 >/dev/null 2>&1; then
+        echo "   ✅ python3: 설치됨 ($(command -v python3))"
+    elif command -v python >/dev/null 2>&1; then
+        echo "   ✅ python: 설치됨 ($(command -v python))"
+    else
+        echo "   ❌ python: 설치되지 않음! (python3 또는 python 필요)"
+        ((issues++))
+    fi
     
     # [2] 설정 파일 보안 점검
     echo ""
@@ -2304,25 +2344,44 @@ algo-doctor() {
     
     # [4] SSAFY 서버 연결 (토큰 유효성)
     echo ""
+    # [4] SSAFY 서버 연결 (토큰 유효성)
+    echo ""
     echo "4️⃣  SSAFY 서버 연결"
-    if [ -n "$SSAFY_AUTH_TOKEN" ] && [[ "$SSAFY_AUTH_TOKEN" == "Bearer "* ]]; then
-        # 간단한 curl 호출 (헤더만)
-        # 401이면 토큰 만료, 200/404 등은 연결 성공
-        local status_code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: $SSAFY_AUTH_TOKEN" "${SSAFY_BASE_URL:-https://lab.ssafy.com}/api/v4/user" || echo "fail")
-        
-        if [ "$status_code" == "200" ]; then
-            echo "   ✅ 인증 상태: 유효함 (연결 성공)"
-        elif [ "$status_code" == "401" ]; then
-             echo "   ❌ 인증 상태: 토큰 만료 또는 잘못됨 (401)"
-             ((issues++))
-        elif [ "$status_code" == "fail" ]; then
-             echo "   ⚠️  서버 연결 실패 (네트워크 확인)"
+    
+    # 토큰 타입에 따라 검증 방식 분기
+    if [ -n "$SSAFY_AUTH_TOKEN" ]; then
+        if [[ "$SSAFY_AUTH_TOKEN" == "Bearer "* ]]; then
+            # [Case A] LMS Bearer Token (JWT)
+            # GitLab API로 검증 불가하므로, 형식만 체크합니다.
+            
+            if [[ "$SSAFY_AUTH_TOKEN" == *"ey"* ]]; then
+                 echo "   ✅ 인증 상태: 유효 (SSAFY LMS Bearer Token)"
+                 echo "      (참고: LMS 토큰은 로컬에서 형식만 검증되었습니다)"
+            else
+                 echo "   ❌ 인증 상태: 토큰 형식이 올바르지 않음 (Bearer ...)"
+                 ((issues++))
+            fi
         else
-             echo "   ✅ 서버 응답: $status_code (연결됨)"
+            # [Case B] GitLab Private Token (glpat-...)
+            # GitLab API 호출로 검증
+            local status_code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $SSAFY_AUTH_TOKEN" "${SSAFY_BASE_URL:-https://lab.ssafy.com}/api/v4/user" || echo "fail")
+            
+            if [ "$status_code" == "200" ]; then
+                echo "   ✅ 인증 상태: 유효함 (연결 성공)"
+            elif [ "$status_code" == "401" ]; then
+                 echo "   ❌ 인증 상태: 토큰 만료 또는 잘못됨 (401)"
+                 echo "   💡 LMS 토큰이라면 'Bearer '로 시작해야 합니다."
+                 ((issues++))
+            elif [ "$status_code" == "fail" ]; then
+                 echo "   ⚠️  서버 연결 실패 (네트워크 확인)"
+            else
+                 echo "   ❓ 응답 코드: $status_code"
+            fi
         fi
     else
-        echo "   ℹ️  토큰이 없어 연결 테스트를 건너뜁니다."
+        echo "   ⚠️  토큰 미설정 (검증 건너뜀)"
     fi
+
     
     echo ""
     echo "=================================================="
