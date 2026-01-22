@@ -288,11 +288,11 @@ EOF
             fi
         fi
         
-        # 2. 과도한 빈 줄 정리 (2줄 이상 공백 -> 1줄)
-        # (매번 실행해도 안전하지만, I/O 줄이기 위해 파일 크기가 0이 아닐 때만)
-        if [ -s "$ALGO_CONFIG_FILE" ]; then
-            tr -s '\n' < "$ALGO_CONFIG_FILE" > "$ALGO_CONFIG_FILE.tmp" && mv "$ALGO_CONFIG_FILE.tmp" "$ALGO_CONFIG_FILE"
-        fi
+        # 2. 과도한 빈 줄 정리 (3줄 이상 공백 -> 2줄로, 즉 섹션 간 간격 유지)
+        # sed로 구현이 복잡하므로, 일단 'tr -s'는 제거하여 헤더 간 줄바꿈을 유지함.
+        # 대신 파일 끝의 빈 줄만 정리하는 정도로 타협하거나, 로직을 제거.
+        
+        # 현재는 사용자가 줄바꿈 유지를 원하므로 tr -s 로직 삭제.
     fi
     
     # Python 스크립트를 위해 토큰 자동 export
