@@ -11,7 +11,7 @@
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V6.1"
+ALGO_FUNCTIONS_VERSION="V7.4"
 
 # 업데이트 명령어
 algo-update() {
@@ -221,6 +221,38 @@ EOF
     
     source "$ALGO_CONFIG_FILE"
     
+    # [Security V7.0] 파일 권한 600 강제 (타인 접근 제한)
+    chmod 600 "$ALGO_CONFIG_FILE" 2>/dev/null || true
+
+    # [Security V7.0] 토큰 암호화 관리 (Base64)
+    # 1. 평문(Bearer ...)이면 -> Base64로 인코딩하여 파일에 저장 (마이그레이션)
+    # 2. 암호문이면 -> 디코딩하여 메모리($SSAFY_AUTH_TOKEN)에 로드
+    if [ -n "${SSAFY_AUTH_TOKEN:-}" ] && [[ "${SSAFY_AUTH_TOKEN:-}" != "Bearer your_token_here" ]]; then
+        if [[ "$SSAFY_AUTH_TOKEN" == "Bearer "* ]]; then
+            # 마이그레이션: 평문 -> Base64
+            if command -v base64 >/dev/null 2>&1; then
+                local encoded_token=$(echo -n "$SSAFY_AUTH_TOKEN" | base64 | tr -d '\n')
+                # sed로 파일 업데이트
+                # (특수문자 처리를 위해 구분자를 | 사용)
+                if sed --version >/dev/null 2>&1; then
+                    sed -i "s|^SSAFY_AUTH_TOKEN=.*|SSAFY_AUTH_TOKEN=\"$encoded_token\"|" "$ALGO_CONFIG_FILE"
+                else
+                    sed -i '' "s|^SSAFY_AUTH_TOKEN=.*|SSAFY_AUTH_TOKEN=\"$encoded_token\"|" "$ALGO_CONFIG_FILE"
+                fi
+                echo "🔐 [보안] 토큰이 안전하게 암호화되었습니다."
+            fi
+        else
+            # 디코딩: Base64 -> 평문
+            if command -v base64 >/dev/null 2>&1; then
+                # base64 -d가 실패할 경우 대비
+                local decoded_token=$(echo "$SSAFY_AUTH_TOKEN" | base64 -d 2>/dev/null || echo "")
+                if [[ "$decoded_token" == "Bearer "* ]]; then
+                    SSAFY_AUTH_TOKEN="$decoded_token"
+                fi
+            fi
+        fi
+    fi
+    
     # 마이그레이션: IDE_EDITOR가 없는 경우 (V6 -> V6.1)
     if [ -z "${IDE_EDITOR:-}" ]; then
         # 기존 우선순위에서 첫 번째 가져오기
@@ -305,7 +337,11 @@ EOF
         export SSAFY_AUTH_TOKEN
     fi
     
+    
     _ensure_ssafy_config
+
+    # [V7.3] IDE 자동 탐색 및 별칭 설정
+    _setup_ide_aliases
 }
 
 # 설정 편집 명령어
@@ -313,14 +349,87 @@ algo_config() {
     init_algo_config
     
     if [ "$1" = "edit" ]; then
-        ${EDITOR:-nano} "$ALGO_CONFIG_FILE"
-        echo "✅ 설정 파일을 편집했습니다. 'source ~/.bashrc'로 적용하세요"
+        # V7.0: Python 마법사 사용
+        local script_dir
+        # BASH_SOURCE[0]는 함수 호출 시점에 따라 다를 수 있으나, 일반적으로 source된 위치를 찾으려면
+        # 현재 함수가 정의된 파일을 추적해야 함. 하지만 복잡하므로
+        # ALGO_BASE_DIR 혹은 algo_functions.sh 경로를 환경변수에서 유추?
+        # 가장 확실한 건 algo_functions.sh 파일 내에서 상단 전역 변수로 HOME을 잡아두는 것인데...
+        # 일단 ssafy_batch 처럼 구해봄.
+        
+        # 주의: source된 상태에서 BASH_SOURCE[0]는 셸 자체일 수도 있음.
+        # 그러나 함수 내에서는 BASH_SOURCE[0]가 스크립트 경로를 가리킬 가능성 높음(bash 특성).
+        # 안되면 사용자 홈의 특정 위치 가정 (~/.ssafy-tools/algo_functions.sh? 아니면 현재 경로?)
+        # 사용자는 ~/Desktop/SSAFY_sh_func에 있음.
+        
+        # 임시: 현재 작업 디렉토리에 있다고 가정하지 말고, locate 시도
+        script_dir="$HOME/Desktop/SSAFY_sh_func" # 기본값 (사용자 환경)
+        
+        # 더 나은 방법: gitup 등에서 이미 SCRIPT_DIR를 알 수 있다면 좋겠지만..
+        # 단순히 $HOME/.ssafy-tools/algo_config_wizard.py 가 배포될 것임 (git pull 시)
+        # 사용자는 ~/.ssafy-tools 를 source 하고 있음.
+        if [ -f "$HOME/.ssafy-tools/algo_config_wizard.py" ]; then
+            script_dir="$HOME/.ssafy-tools"
+        elif [ -f "$HOME/Desktop/SSAFY_sh_func/algo_config_wizard.py" ]; then
+            script_dir="$HOME/Desktop/SSAFY_sh_func"
+        fi
+        
+        python "$script_dir/algo_config_wizard.py"
+        
+        # [UX] 자동 적용 (엔터 없이 바로 적용)
+        echo "🔄 변경된 설정을 적용 중입니다..."
+        # ~/.bashrc가 있으면 source, 없으면 algo_functions.sh만 다시 로드?
+        # 보통 사용자는 ~/.bashrc를 통해 로드하므로
+        if [ -f "$HOME/.bashrc" ]; then
+             source "$HOME/.bashrc"
+        else
+             init_algo_config
+        fi
+        
+        echo "✅ 설정이 적용되었습니다!"
         return
     fi
     
     if [ "$1" = "show" ]; then
-        echo "📋 현재 설정:"
-        cat "$ALGO_CONFIG_FILE"
+        echo "=================================================="
+        echo " 🛠  SSAFY Algo Config (${ALGO_FUNCTIONS_VERSION})"
+        echo "=================================================="
+        echo ""
+        
+        echo "📂 [기본 설정]"
+        echo "  • 작업 경로 : ${ALGO_BASE_DIR:-미설정}"
+        echo ""
+        
+        echo "💻 [IDE 설정]"
+        if [ -n "${IDE_EDITOR:-}" ]; then
+            echo "  • 사용 IDE  : ${IDE_EDITOR}"
+            # alias 등으로 잡혀있을 수 있으므로 type 사용이 나을 수도 있으나, command -v로 체크
+            local ide_path=$(command -v "$IDE_EDITOR" 2>/dev/null || echo "❌ 연결 안됨 (자동 탐색 필요)")
+            echo "  • 실행 경로 : $ide_path"
+        else
+            echo "  • 사용 IDE  : 미설정"
+        fi
+        echo ""
+        
+        echo "🐙 [Git 설정]"
+        echo "  • 브랜치    : ${GIT_DEFAULT_BRANCH:-main}"
+        echo "  • 접두어    : ${GIT_COMMIT_PREFIX:-solve}"
+        echo "  • 자동푸시  : ${GIT_AUTO_PUSH:-true}"
+        echo ""
+        
+        echo "🔑 [SSAFY 설정]"
+        echo "  • 서버 URL  : ${SSAFY_BASE_URL:-https://lab.ssafy.com}"
+        echo "  • 사용자 ID : ${SSAFY_USER_ID:-미설정}"
+        if [ -n "${SSAFY_AUTH_TOKEN:-}" ]; then
+             echo "  • 인증 토큰 : 🔐 설정됨 (암호화)"
+        else
+             echo "  • 인증 토큰 : ❌ 미설정"
+        fi
+        
+        echo ""
+        echo "=================================================="
+        echo "💡 수정하려면: algo-config edit"
+        echo "=================================================="
         return
     fi
     
@@ -1007,7 +1116,15 @@ _show_submission_links() {
         return 0
     fi
     
-    local course_id=$(grep "^course_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
+    # [Security V7.4] course_id 암호화 지원 (Base64)
+    local course_id_enc=$(grep "^course_id_enc=" "$meta_file" 2>/dev/null | cut -d= -f2)
+    local course_id=""
+
+    if [ -n "$course_id_enc" ]; then
+        course_id=$(echo "$course_id_enc" | base64 -d 2>/dev/null)
+    else
+        course_id=$(grep "^course_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
+    fi
     
     if [ -z "$course_id" ]; then
         return 0
@@ -1018,10 +1135,20 @@ _show_submission_links() {
     
     local i=1
     local has_link=false
+    local urls=()
+    local folder_indices=()
     
     for folder in "${folders[@]}"; do
         # 폴더별 practice_id 조회 (folder=ID)
-        local pr_id=$(grep "^$folder=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        # [Security V7.4] practice_id 암호화 지원
+        local pr_id_enc=$(grep "^${folder}_enc=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        local pr_id=""
+        
+        if [ -n "$pr_id_enc" ]; then
+             pr_id=$(echo "$pr_id_enc" | base64 -d 2>/dev/null)
+        else
+             pr_id=$(grep "^$folder=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        fi
         
         # 하위 호환: practice_id=ID (단일)
         if [ -z "$pr_id" ]; then
@@ -1029,20 +1156,30 @@ _show_submission_links() {
         fi
         
         # 폴더별 pa_id 조회 (folder_pa=ID)
-        local pa_id=$(grep "^${folder}_pa=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        # [Security V7.4] pa_id 암호화 지원
+        local pa_id_enc=$(grep "^${folder}_pa_enc=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        local pa_id=""
+
+        if [ -n "$pa_id_enc" ]; then
+            pa_id=$(echo "$pa_id_enc" | base64 -d 2>/dev/null)
+        else
+            pa_id=$(grep "^${folder}_pa=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        fi
         
         if [ -n "$pr_id" ]; then
-            local base_url=""
+            local current_url=""
             if [ -n "$pa_id" ]; then
-                 base_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/answer/${pa_id}"
+                 current_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/answer/${pa_id}"
             else
                  # Fallback: 상세 페이지
-                 base_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/detail"
+                 current_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/detail"
             fi
-            echo "  $i. $folder: $base_url"
+            echo "  $i. $folder: $current_url"
+            urls+=("$current_url")
             has_link=true
         else
             echo "  $i. $folder: (링크 정보 없음)"
+            urls+=("")
         fi
         ((i++))
     done
@@ -1053,9 +1190,23 @@ _show_submission_links() {
     read -r choice
     
     if [ "$choice" = "a" ]; then
-        _open_browser "$base_url"
-    elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#folders[@]} ]; then
-        _open_browser "$base_url"
+        echo "⏳ 브라우저를 열고 있습니다..."
+        for url in "${urls[@]}"; do
+            if [ -n "$url" ]; then
+                _open_browser "$url"
+                # 브라우저가 씹히지 않게 약간의 딜레이
+                sleep 0.5 
+            fi
+        done
+    elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#urls[@]} ]; then
+        # 1-based index to 0-based
+        local idx=$((choice-1))
+        local selected_url="${urls[$idx]}"
+        if [ -n "$selected_url" ]; then
+            _open_browser "$selected_url"
+        else
+            echo "❌ 해당 항목은 링크가 없습니다."
+        fi
     fi
 }
 
@@ -1317,7 +1468,8 @@ gitdown() {
                         if [[ "$line" =~ ^([^=]+)=([^=]+)$ ]]; then
                             local key="${BASH_REMATCH[1]}"
                             # key가 예약어가 아니고 _pa로 끝나지 않으면 폴더명으로 간주
-                            if [[ "$key" != "course_id" ]] && [[ "$key" != "practice_id" ]] && [[ "$key" != *"_pa" ]]; then
+                            # key가 예약어가 아니고 _pa로 끝나지 않으면 폴더명으로 간주
+                            if [[ "$key" != "course_id" ]] && [[ "$key" != "course_id_enc" ]] && [[ "$key" != "practice_id" ]] && [[ "$key" != *"_pa" ]] && [[ "$key" != *"_enc" ]]; then
                                 all_folders+=("$key")
                             fi
                         fi
@@ -1527,11 +1679,51 @@ gitup() {
     local ssafy_mode=false
     local input=""
 
+    # [V7.1 Security] 인자가 없으면 Secure Input 모드 진입
+    if [ $# -eq 0 ]; then
+        echo "🔐 [Secure Mode] Smart Link(URL|Token) 또는 URL을 붙여넣으세요."
+        echo "   (입력 내용은 화면에 표시되지 않습니다)"
+        read -s -r -p "👉 Paste Here: " prompt_input
+        echo "" # 줄바꿈
+        
+        if [ -z "$prompt_input" ]; then
+            echo "❌ 입력이 취소되었습니다."
+            return 1
+        fi
+        
+        # 입력값을 인자로 설정하여 아래 로직 그대로 활용
+        set -- "$prompt_input"
+    fi
+
     while [ $# -gt 0 ]; do
         case "$1" in
             --ssafy|-s) ssafy_mode=true ;;
             *)
-                if [ -z "$input" ]; then
+                # [V7.0 Smart Copy] URL|Token 분리 처리
+                if [[ "$1" == *"|"* ]]; then
+                    local raw="$1"
+                    local url="${raw%%|*}"
+                    local token="${raw#*|}"
+                    
+                    if [ -z "$input" ]; then
+                        input="$url"
+                    fi
+                    
+                    # 토큰 업데이트 (Base64 Encoded 상태 그대로 저장)
+                    if [ -n "$token" ]; then
+                        if [ -f "$ALGO_CONFIG_FILE" ]; then
+                            # [Security V7.5] sed 직접 사용 대신 _set_config_value 사용 (특수문자 안전 처리)
+                            _set_config_value "SSAFY_AUTH_TOKEN" "$token"
+                            
+                            # 메모리 로드 (디코딩)
+                            local decoded=$(echo "$token" | base64 -d 2>/dev/null || echo "")
+                            if [[ "$decoded" == "Bearer "* ]]; then
+                                export SSAFY_AUTH_TOKEN="$decoded"
+                                echo "🔐 [Smart Copy] 인증 토큰 자동 업데이트 완료"
+                            fi
+                        fi
+                    fi
+                elif [ -z "$input" ]; then
                     input="$1"
                 else
                     echo "❗️사용법: gitup <git-repository-url | ssafy-topic>"
@@ -1599,22 +1791,27 @@ gitup() {
                 echo "$repo_name" >> .ssafy_playlist
                 
                 # 메타데이터 저장
-                # 1. course_id (없으면 저장)
-                if [ -n "$course_id" ] && ! grep -q "^course_id=" .ssafy_session_meta 2>/dev/null; then
-                    echo "course_id=$course_id" >> .ssafy_session_meta
-                fi
-                
-                # 2. practice_id (폴더별 매핑 저장: folder=pr_id)
-                if [ -n "$pr_id" ]; then
-                    if ! grep -q "^$repo_name=" .ssafy_session_meta 2>/dev/null; then
-                        echo "$repo_name=$pr_id" >> .ssafy_session_meta
+                # 1. course_id (없으면 저장) - [Security V7.4] 암호화(Base64)
+                if [ -n "$course_id" ]; then
+                    if ! grep -q "^course_id" .ssafy_session_meta 2>/dev/null; then
+                        local enc_cid=$(echo -n "$course_id" | base64 | tr -d '\n')
+                        echo "course_id_enc=$enc_cid" >> .ssafy_session_meta
                     fi
                 fi
                 
-                # 3. pa_id (폴더별 매핑 저장: folder_pa=pa_id)
+                # 2. practice_id (폴더별 매핑 저장: folder=pr_id) - [Security V7.4] 암호화
+                if [ -n "$pr_id" ]; then
+                    if ! grep -q "^$repo_name" .ssafy_session_meta 2>/dev/null; then
+                        local enc_pid=$(echo -n "$pr_id" | base64 | tr -d '\n')
+                        echo "${repo_name}_enc=$enc_pid" >> .ssafy_session_meta
+                    fi
+                fi
+                
+                # 3. pa_id (폴더별 매핑 저장: folder_pa=pa_id) - [Security V7.4] 암호화
                 if [ -n "$pa_id" ]; then
-                    if ! grep -q "^${repo_name}_pa=" .ssafy_session_meta 2>/dev/null; then
-                         echo "${repo_name}_pa=$pa_id" >> .ssafy_session_meta
+                    if ! grep -q "^${repo_name}_pa" .ssafy_session_meta 2>/dev/null; then
+                         local enc_paid=$(echo -n "$pa_id" | base64 | tr -d '\n')
+                         echo "${repo_name}_pa_enc=$enc_paid" >> .ssafy_session_meta
                     fi
                 fi
             fi
@@ -1622,6 +1819,9 @@ gitup() {
         
         echo "✅ 일괄 작업 완료!"
         echo "📋 자동 이동 순서 생성됨 (.ssafy_playlist)"
+        
+        # [Auto-Sync] 기존 완료 내역 동기화
+        _sync_playlist_status "$(pwd)"
         
         # playlist 파일에서 첫 번째 항목 읽기 (Subshell 문제 회피)
         if [ -f ".ssafy_playlist" ]; then
@@ -1984,8 +2184,211 @@ ssafy_batch() {
     python "$script_dir/ssafy_batch_create.py" "$1" "$2"
 }
 
+# =============================================================================
+# _setup_ide_aliases - IDE 자동 탐색 및 별칭 설정 (V7.3)
+# =============================================================================
+_setup_ide_aliases() {
+    [ -z "${IDE_EDITOR:-}" ] && return 0
+    
+    # 이미 명령어가 존재하면 패스
+    if command -v "$IDE_EDITOR" >/dev/null 2>&1; then
+        return 0
+    fi
+    
+    local cache_file="$HOME/.ssafy_ide_cache"
+    
+    # 캐시 확인
+    if [ -f "$cache_file" ]; then
+        source "$cache_file"
+        # 로드 후 다시 확인
+        if command -v "$IDE_EDITOR" >/dev/null 2>&1; then
+            return 0
+        fi
+    fi
+    
+    # 자동 탐색 시작
+    local target_exe=""
+    case "$IDE_EDITOR" in
+        pycharm) target_exe="pycharm64.exe" ;;
+        idea)    target_exe="idea64.exe" ;;
+        subl)    target_exe="subl.exe" ;;
+        cursor)  target_exe="Cursor.exe" ;;
+        *)       return 0 ;; # 모르는 IDE는 탐색 안 함
+    esac
+    
+    # echo "🔎 $IDE_EDITOR 명령어를 찾을 수 없어 설치 경로를 검색합니다..."
+    
+    local found_path=""
+    local search_paths=(
+        "/c/Program Files"
+        "/c/Program Files (x86)"
+        "$HOME/AppData/Local/JetBrains"
+        "$HOME/AppData/Local/Programs"
+        "$HOME/AppData/Local"
+    )
+    
+    for base_path in "${search_paths[@]}"; do
+        [ ! -d "$base_path" ] && continue
+        
+        # 3단계 깊이까지만 빠르게 검색 (속도 최적화)
+        found_path=$(find "$base_path" -maxdepth 5 -name "$target_exe" -print -quit 2>/dev/null)
+        
+        if [ -n "$found_path" ]; then
+            break
+        fi
+    done
+    
+    if [ -n "$found_path" ]; then
+        # 경로에 공백이 있을 수 있으므로 따옴표 처리
+        local alias_cmd="alias $IDE_EDITOR=\"'$found_path'\""
+        
+        # 현재 세션 적용
+        alias "$IDE_EDITOR"="'$found_path'"
+        
+        # 캐시 저장
+        echo "$alias_cmd" >> "$cache_file"
+        # echo "✅ IDE 연결 완료: $found_path"
+    fi
+}
+
 init_algo_config
 _check_update
 
 echo "✅ 알고리즘 셸 함수 로드 완료! (${ALGO_FUNCTIONS_VERSION})"
 echo "💡 'algo-config edit'로 설정을 변경할 수 있습니다"
+
+# =============================================================================
+# algo-doctor - 시스템 및 설정 진단 도구 (V7.0)
+# =============================================================================
+algo-doctor() {
+    echo "=================================================="
+    echo " ��� SSAFY Algo Tools Doctor (${ALGO_FUNCTIONS_VERSION})"
+    echo "=================================================="
+    echo ""
+    
+    local issues=0
+    
+    # [1] 필수 도구 점검
+    echo "1️⃣  필수 도구 점검"
+    for tool in git curl base64; do
+        if command -v "$tool" >/dev/null 2>&1; then
+            echo "   ✅ $tool: 설치됨 ($(command -v "$tool"))"
+        else
+            echo "   ❌ $tool: 설치되지 않음!"
+            ((issues++))
+        fi
+    done
+    
+    # Python check (allow python or python3)
+    if command -v python3 >/dev/null 2>&1; then
+        echo "   ✅ python3: 설치됨 ($(command -v python3))"
+    elif command -v python >/dev/null 2>&1; then
+        echo "   ✅ python: 설치됨 ($(command -v python))"
+    else
+        echo "   ❌ python: 설치되지 않음! (python3 또는 python 필요)"
+        ((issues++))
+    fi
+    
+    # [2] 설정 파일 보안 점검
+    echo ""
+    echo "2️⃣  설정 파일 보안 점검"
+    if [ -f "$ALGO_CONFIG_FILE" ]; then
+        if [[ "$OSTYPE" != "msys" ]] && [[ "$OSTYPE" != "win32" ]]; then
+            local perms=$(stat -c "%a" "$ALGO_CONFIG_FILE" 2>/dev/null || echo "unknown")
+            if [ "$perms" == "600" ]; then
+                echo "   ✅ 권한: 600 (안전함)"
+            else
+                echo "   ⚠️  권한: $perms (권장: 600)"
+                # issues++ (윈도우 이슈로 경고만)
+            fi
+        else
+             echo "   ℹ️  Windows/Git Bash 환경 (권한 체크 생략)"
+        fi
+        
+        # 토큰 암호화 여부 체크
+        # grep으로 파일 내용 직접 확인
+        local file_token=$(grep "SSAFY_AUTH_TOKEN" "$ALGO_CONFIG_FILE" | cut -d= -f2 | tr -d '"')
+        if [[ "$file_token" == "Bearer "* ]]; then
+            echo "   ⚠️  토큰 저장 상태: 평문 (보안 취약)"
+            echo "      -> 'source ~/.bashrc'를 다시 실행하면 암호화됩니다."
+            ((issues++))
+        elif [ -n "$file_token" ]; then
+            echo "   ✅ 토큰 저장 상태: 암호화됨 (Base64)"
+        else
+            echo "   ℹ️  토큰 미설정"
+        fi
+    else
+        echo "   ❌ 설정 파일 없음 (\ (~/algo_config))"
+        ((issues++))
+    fi
+    
+    # [3] IDE 설정 점검
+    echo ""
+    echo "3️⃣  IDE 설정 점검"
+    if [ -n "$IDE_EDITOR" ]; then
+        if command -v "$IDE_EDITOR" >/dev/null 2>&1; then
+            echo "   ✅ IDE: $IDE_EDITOR (실행 가능)"
+        else
+             # Windows의 경우 .exe가 빠져있을 수 있으므로 체크
+             if command -v "${IDE_EDITOR}.exe" >/dev/null 2>&1; then
+                 echo "   ✅ IDE: $IDE_EDITOR.exe (실행 가능)"
+             else
+                 echo "   ❌ IDE: $IDE_EDITOR (명령어를 찾을 수 없음)"
+                 echo "      -> PATH에 추가하거나 algo-config에서 올바른 명령어로 변경하세요."
+                 ((issues++))
+             fi
+        fi
+    else
+        echo "   ⚠️  IDE 미설정"
+    fi
+    
+    # [4] SSAFY 서버 연결 (토큰 유효성)
+    echo ""
+    # [4] SSAFY 서버 연결 (토큰 유효성)
+    echo ""
+    echo "4️⃣  SSAFY 서버 연결"
+    
+    # 토큰 타입에 따라 검증 방식 분기
+    if [ -n "$SSAFY_AUTH_TOKEN" ]; then
+        if [[ "$SSAFY_AUTH_TOKEN" == "Bearer "* ]]; then
+            # [Case A] LMS Bearer Token (JWT)
+            # GitLab API로 검증 불가하므로, 형식만 체크합니다.
+            
+            if [[ "$SSAFY_AUTH_TOKEN" == *"ey"* ]]; then
+                 echo "   ✅ 인증 상태: 유효 (SSAFY LMS Bearer Token)"
+                 echo "      (참고: LMS 토큰은 로컬에서 형식만 검증되었습니다)"
+            else
+                 echo "   ❌ 인증 상태: 토큰 형식이 올바르지 않음 (Bearer ...)"
+                 ((issues++))
+            fi
+        else
+            # [Case B] GitLab Private Token (glpat-...)
+            # GitLab API 호출로 검증
+            local status_code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $SSAFY_AUTH_TOKEN" "${SSAFY_BASE_URL:-https://lab.ssafy.com}/api/v4/user" || echo "fail")
+            
+            if [ "$status_code" == "200" ]; then
+                echo "   ✅ 인증 상태: 유효함 (연결 성공)"
+            elif [ "$status_code" == "401" ]; then
+                 echo "   ❌ 인증 상태: 토큰 만료 또는 잘못됨 (401)"
+                 echo "   💡 LMS 토큰이라면 'Bearer '로 시작해야 합니다."
+                 ((issues++))
+            elif [ "$status_code" == "fail" ]; then
+                 echo "   ⚠️  서버 연결 실패 (네트워크 확인)"
+            else
+                 echo "   ❓ 응답 코드: $status_code"
+            fi
+        fi
+    else
+        echo "   ⚠️  토큰 미설정 (검증 건너뜀)"
+    fi
+
+    
+    echo ""
+    echo "=================================================="
+    if [ $issues -eq 0 ]; then
+        echo "���  모든 시스템이 정상입니다!"
+    else
+        echo "⚠️  $issues 건의 문제점이 발견되었습니다."
+    fi
+    echo "=================================================="
+}

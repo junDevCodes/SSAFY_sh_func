@@ -2,6 +2,52 @@
 
 ---
 
+## V7.5 (2026-01-23) - Security & Stability Patch 🛡️
+
+### 🛡️ 보안 강화
+- **토큰 입력 보안**: `gitup` 및 `ssafy_batch_create.py`에서 토큰 입력 시 화면에 노출되지 않도록 `getpass` 적용
+- **설정 파일 보호**: 토큰 업데이트 시 `sed` 대신 검증된 내부 함수(`_set_config_value`) 사용으로 데이터 손상 방지
+
+### 🛠 안정성 개선
+- **설치 스크립트 개선**: `install.sh`의 정리(Cleanup) 로직을 정교화하여, 사용자의 다른 프로젝트 설정이 삭제되지 않도록 보호 (레거시 경로 포함)
+
+---
+
+## V7.4 (2026-01-23) - Session Security Upgrade 🔐
+
+### ✨ 주요 변경 사항
+- **세션 메타데이터 암호화**: `.ssafy_session_meta` 파일 내 민감 정보(Course/Practice/PA ID)를 **Base64**로 암호화하여 저장
+- **Gitup Auto-Sync**: `gitup` 실행 시 이미 푼 문제의 진행 상황을 자동으로 동기화
+
+---
+
+## V7.3 (2026-01-22) - IDE Automation & Cursor Support ⌨️
+
+### ✨ 주요 변경 사항
+- **IDE 자동 탐색**: `pycharm`, `idea`, `cursor` 명령어가 없어도 설치 경로를 자동 스캔하여 연결 (`_setup_ide_aliases`)
+- **지원 IDE 목록 최적화**: 
+  - **Cursor** 정식 지원 추가
+  - VS Code, PyCharm, IntelliJ, Sublime Text 등 5대장 체제 확립
+  - "Custom" 입력 제거 (안정성 강화)
+- **UI 개선**: `algo-config show` 출력을 `algo-doctor` 스타일로 깔끔하게 정리
+- **버전 통합**: 모든 도구 및 스크립트 버전을 **V7.3**으로 동기화
+
+---
+
+## V7.0b (Beta) (2026-01-22) - Maximum Security & UX 🔥
+
+### 🛡️ 보안 강화 (Security)
+- **설정 파일 암호화**: `.algo_config` 내 민감정보(토큰)를 **Base64**로 암호화하여 저장
+- **권한 강제**: 설정 파일 권한을 `600` (타인 접근 불가)으로 자동 설정
+
+### ✨ UX/편의성 (Usability)
+- **설정 마법사 (`algo_config_wizard.py`)**: `algo-config edit` 시 직관적인 GUI(TUI) 제공
+- **Smart Copy**: 브라우저 북마크릿을 통해 `URL|Token` 통합 복사 지원 데이터 포맷 처리
+- **Secure Input**: `gitup`을 인자 없이 실행 시 **보안 입력 모드**로 진입 (토큰 화면 노출 방지)
+- **시스템 진단**: `algo-doctor` 명렁어로 설정 상태 및 오류 원인 자동 분석
+
+---
+
 ## V6.1 (2026-01-21) - User Experience Upgrade ✨
 
 ### ✨ 주요 기능

@@ -1,6 +1,8 @@
 import sys
 import os
+import os
 import re
+import getpass
 import time
 import json
 import urllib.request
@@ -110,7 +112,8 @@ if not AUTH_TOKEN or AUTH_TOKEN == "Bearer your_token_here" or is_token_expired(
     print("   Create a bookmark with this URL to copy token easily:", file=sys.stderr)
     print("   javascript:(function(){var t=localStorage.getItem('accessToken');if(!t)alert('Login first!');else prompt('Ctrl+C to copy:','Bearer '+t);})();\n", file=sys.stderr)
     print("   Enter Token (Bearer ...): ", end='', file=sys.stderr, flush=True)
-    AUTH_TOKEN = input("").strip()
+    print("   Enter Token (Bearer ...): ", end='', file=sys.stderr, flush=True)
+    AUTH_TOKEN = getpass.getpass("").strip()
     if AUTH_TOKEN:
         update_config_file(AUTH_TOKEN)
 
