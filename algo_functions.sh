@@ -2313,7 +2313,8 @@ init_algo_config
 _check_update
 
 echo "✅ 알고리즘 셸 함수 로드 완료! (${ALGO_FUNCTIONS_VERSION})"
-echo "💡 'algo-config edit'로 설정을 변경할 수 있습니다"
+echo "📖 가이드: https://jundevcodes.github.io/SSAFY_sh_func/"
+echo "💡 설정 변경: 'algo-config edit' | 업데이트: 'algo-update'"
 
 # =============================================================================
 # algo-doctor - 시스템 및 설정 진단 도구 (V7.0)
