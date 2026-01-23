@@ -2,6 +2,14 @@
 
 ---
 
+## V7.4.3 (2026-01-23) - Hotfix: Revert Masked Input (Rollback) ↩️
+
+### ⚠️ 변경 사항 (Corrections)
+- **Secure Input 롤백**: V7.4.2에서 도입한 Asterisk(*) 입력 표시 기능이 일부 환경에서 입력 지연/오류를 유발하여, **기존의 숨김 입력 방식(V7.4.1)**으로 복구했습니다.
+- **안정성 유지**: 업데이트 편의성을 위한 `algo-update` 강제 동기화 로직은 그대로 유지됩니다.
+
+---
+
 ## V7.4.2 (2026-01-23) - Masked Input Support 🎭
 
 ### ✨ 개선 사항

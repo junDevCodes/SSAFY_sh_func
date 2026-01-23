@@ -11,7 +11,7 @@
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V7.4.2"
+ALGO_FUNCTIONS_VERSION="V7.4.3"
 
 # 업데이트 명령어
 algo-update() {
@@ -1682,38 +1682,7 @@ _ssafy_next_repo() {
 
     return 1
 }
-# =============================================================================
-# _read_masked_input - 비밀번호 입력 시 Asterisk(*) 표시
-# =============================================================================
-_read_masked_input() {
-    local prompt="$1"
-    local password=""
-    local char
-    
-    # -n: 줄바꿈 없음 (프롬프트 옆에 입력)
-    echo -n "$prompt"
-    
-    while IFS= read -r -s -n 1 char; do
-        # Enter Key (공백 또는 널문자로 감지될 수 있음)
-        if [[ -z "$char" ]]; then
-            echo "" # 줄바꿈
-            break
-        fi
-        
-        # Backspace handling (ASCII 127 or 08)
-        if [[ "$char" == $'\x7f' || "$char" == $'\x08' ]]; then
-            if [ ${#password} -gt 0 ]; then
-                password="${password%?}"
-                echo -ne "\b \b" # 지우기 효과
-            fi
-        else
-            password+="$char"
-            echo -n "*"
-        fi
-    done
-    
-    echo "$password"
-}
+
 
 gitup() {
     init_algo_config
@@ -1724,17 +1693,15 @@ gitup() {
     # [V7.1 Security] 인자가 없으면 Secure Input 모드 진입
     if [ $# -eq 0 ]; then
         echo "🔐 [Secure Mode] Smart Link(URL|Token) 또는 URL을 붙여넣으세요."
-        echo "   (입력 시 * 문자로 표시됩니다)"
-        
-        # [V7.4.2] Masked Input 적용
-        local prompt_input=$(_read_masked_input "👉 Paste Here (Ctrl+V + Enter): ")
+        echo "   (입력 내용은 화면에 표시되지 않습니다)"
+        read -s -r -p "👉 Paste Here (Ctrl+V + Enter): " prompt_input
+        echo "" # 줄바꿈
+        echo "✅ 입력 수신 완료! (${#prompt_input}자)"
         
         if [ -z "$prompt_input" ]; then
             echo "❌ 입력이 취소되었습니다."
             return 1
         fi
-        
-        echo "✅ 입력 수신 완료! (${#prompt_input}자)"
         
         # 입력값을 인자로 설정하여 아래 로직 그대로 활용
         set -- "$prompt_input"
