@@ -85,7 +85,7 @@ $script:passCount = 0
 $script:failCount = 0
 
 Run-Test 'cpp only creates cpp' {
-    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; al b 1012 cpp --no-git --no-open"
+    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; ssafy_al b 1012 cpp --no-git --no-open"
     $dir = Join-Path $algoBase 'boj\1012'
     Assert-FileExists (Join-Path $dir 'boj_1012.cpp')
     Assert-FileNotExists (Join-Path $dir 'boj_1012.py')
@@ -93,7 +93,7 @@ Run-Test 'cpp only creates cpp' {
 }
 
 Run-Test 'py default creates py' {
-    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; al b 1013 --no-git --no-open"
+    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; ssafy_al b 1013 --no-git --no-open"
     $dir = Join-Path $algoBase 'boj\1013'
     Assert-FileExists (Join-Path $dir 'boj_1013.py')
     Assert-FileNotExists (Join-Path $dir 'boj_1013.cpp')
@@ -101,15 +101,15 @@ Run-Test 'py default creates py' {
 }
 
 Run-Test 'cpp exists without lang keeps cpp only' {
-    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; al b 1014 cpp --no-git --no-open"
-    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; al b 1014 --no-git --no-open"
+    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; ssafy_al b 1014 cpp --no-git --no-open"
+    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; ssafy_al b 1014 --no-git --no-open"
     $dir = Join-Path $algoBase 'boj\1014'
     Assert-FileExists (Join-Path $dir 'boj_1014.cpp')
     Assert-FileNotExists (Join-Path $dir 'boj_1014.py')
 }
 
 Run-Test 'cpp with msg flag creates cpp' {
-    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; al b 1015 cpp --msg 'feat: test' --no-git --no-open"
+    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; ssafy_al b 1015 cpp --msg 'feat: test' --no-git --no-open"
     $dir = Join-Path $algoBase 'boj\1015'
     Assert-FileExists (Join-Path $dir 'boj_1015.cpp')
     Assert-FileNotExists (Join-Path $dir 'boj_1015.py')
@@ -120,7 +120,7 @@ Run-Test 'commit when file changed' {
     $algoPosix = To-PosixPath $algoBase
     
     # 1. cpp 파일 생성
-    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; al b 1016 cpp --no-git --no-open"
+    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; ssafy_al b 1016 cpp --no-git --no-open"
     Assert-FileExists (Join-Path $dir 'boj_1016.cpp')
     
     # 2. Git 저장소 초기화 및 첫 커밋
@@ -130,10 +130,10 @@ Run-Test 'commit when file changed' {
     Add-Content -Path (Join-Path $dir 'boj_1016.cpp') -Value '// solution'
     
     # 4. al 실행 (git 활성화)
-    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; al b 1016 --no-open"
+    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; ssafy_al b 1016 --no-open"
     
     # 5. 커밋 확인
-    $lastCommit = & $script:bashExe -lc "cd '$algoPosix' && git log -1 --pretty=%B 2>/dev/null"
+    $lastCommit = & $script:bashExe -c "cd '$algoPosix' && git log -1 --pretty=%B 2>/dev/null"
     if ($lastCommit -notlike '*solve*') {
         throw "expected commit with 'solve' prefix, got: $lastCommit"
     }
@@ -143,12 +143,12 @@ Run-Test 'explicit py creates py when cpp exists' {
     $dir = Join-Path $algoBase 'boj\1017'
     
     # 1. cpp 파일 먼저 생성
-    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; al b 1017 cpp --no-git --no-open"
+    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; ssafy_al b 1017 cpp --no-git --no-open"
     Assert-FileExists (Join-Path $dir 'boj_1017.cpp')
     Assert-FileNotExists (Join-Path $dir 'boj_1017.py')
     
     # 2. 명시적으로 py 지정하여 실행
-    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; al b 1017 py --no-git --no-open"
+    Invoke-Bash "export HOME='$homePosix'; source '$scriptPosix'; ssafy_al b 1017 py --no-git --no-open"
     
     # 3. 이제 둘 다 존재해야 함
     Assert-FileExists (Join-Path $dir 'boj_1017.cpp')
