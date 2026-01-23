@@ -11,7 +11,7 @@
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V7.4.4"
+ALGO_FUNCTIONS_VERSION="V7.4.5"
 
 # 업데이트 명령어
 algo-update() {
@@ -1693,12 +1693,12 @@ _read_masked_input() {
     local char
     
     # -n: 줄바꿈 없음 (프롬프트 옆에 입력)
-    echo -n "$prompt"
+    echo -n "$prompt" >&2
     
     while IFS= read -r -s -n 1 char; do
         # Enter Key (공백 또는 널문자로 감지될 수 있음)
         if [[ -z "$char" ]]; then
-            # echo "" # 줄바꿈 (gitup에서 처리하도록 함)
+            # echo "" >&2 # 줄바꿈 (gitup에서 처리하도록 함)
             break
         fi
         
@@ -1706,11 +1706,11 @@ _read_masked_input() {
         if [[ "$char" == $'\x7f' || "$char" == $'\x08' ]]; then
             if [ ${#password} -gt 0 ]; then
                 password="${password%?}"
-                echo -ne "\b \b" # 지우기 효과
+                echo -ne "\b \b" >&2 # 지우기 효과
             fi
         else
             password+="$char"
-            echo -n "*"
+            echo -n "*" >&2
         fi
     done
     

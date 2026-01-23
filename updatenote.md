@@ -2,6 +2,14 @@
 
 ---
 
+## V7.4.5 (2026-01-23) - Masked Input Critical Fix 🚑
+
+### 🐛 버그 수정 (Critial Bug Fix)
+- **Masked Input 입력 오류 해결**: V7.4.4에서 도입된 Masked Input 기능 사용 시, 프롬프트 문자열(`👉 Paste Here...`)이 입력값에 함께 포함되어 인증 및 클론 실패를 유발하던 치명적인 오류를 수정했습니다.
+  - 이제 프롬프트와 별표(`*`) 출력이 정상적으로 분리되어, 오직 사용자가 입력한 토큰/URL 값만 정확하게 인식됩니다.
+
+---
+
 ## V7.4.4 (2026-01-23) - Masked Input Re-implementation 🎭
 
 ### ✨ 개선 사항
