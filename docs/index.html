@@ -260,6 +260,59 @@
             transform: translateX(-50%) translateY(0);
             opacity: 1;
         }
+
+        /* --- Drag Animation Guide --- */
+        .drag-guide-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .hand-cursor {
+            position: absolute;
+            bottom: -20px;
+            right: -20px;
+            font-size: 2rem;
+            pointer-events: none;
+            z-index: 10;
+            animation: drag-demo 3s infinite ease-in-out;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
+            opacity: 0;
+        }
+
+        @keyframes drag-demo {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0;
+            }
+
+            15% {
+                transform: translate(-30px, -20px) scale(1);
+                opacity: 1;
+            }
+
+            /* Approach */
+            25% {
+                transform: translate(-30px, -20px) scale(0.9);
+            }
+
+            /* Grab */
+            60% {
+                transform: translate(-30px, -150px) scale(0.9);
+                opacity: 1;
+            }
+
+            /* Drag Up */
+            80% {
+                transform: translate(-30px, -150px) scale(1);
+                opacity: 0;
+            }
+
+            /* Drop */
+            100% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 
@@ -309,11 +362,14 @@
                 </div>
 
                 <div class="bookmark-area">
-                    <a class="bookmark-btn"
-                        href='javascript:(function(){var t="";var r=/(eyJ[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+)/;function s(o){for(var i=0;i<o.length;i++){var k=o.key(i);var v=o.getItem(k);if(!v)continue;if(v.startsWith("Bearer ")){return v;}var m=v.match(r);if(m){return"Bearer "+m[1];}}return"";}t=s(localStorage)||s(sessionStorage);if(!t){alert("❌ 인증 토큰을 찾을 수 없습니다.\n\n로그인 상태를 확인하세요.");return;}try{var e=btoa(t);var res=window.location.href+"|"+e;navigator.clipboard.writeText(res).then(function(){alert("✅ 복사 완료!\n\ngitup을 인자 없이 실행하고 붙여넣으세요.");},function(){prompt("Ctrl+C로 복사:",res);});}catch(x){alert("오류: "+x.message);}})();'
-                        onclick="return false;">
-                        📑 SSAFY Smart Copy
-                    </a>
+                    <div class="drag-guide-container">
+                        <a class="bookmark-btn"
+                            href='javascript:(function(){var t="";var r=/(eyJ[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+)/;function s(o){for(var i=0;i<o.length;i++){var k=o.key(i);var v=o.getItem(k);if(!v)continue;if(v.startsWith("Bearer ")){return v;}var m=v.match(r);if(m){return"Bearer "+m[1];}}return"";}t=s(localStorage)||s(sessionStorage);if(!t){alert("❌ 인증 토큰을 찾을 수 없습니다.\n\n로그인 상태를 확인하세요.");return;}try{var e=btoa(t);var res=window.location.href+"|"+e;navigator.clipboard.writeText(res).then(function(){alert("✅ 복사 완료!\n\ngitup을 인자 없이 실행하고 붙여넣으세요.");},function(){prompt("Ctrl+C로 복사:",res);});}catch(x){alert("오류: "+x.message);}})();'
+                            onclick="return false;">
+                            SSAFY 실습 가이드
+                        </a>
+                        <div class="hand-cursor">👆</div>
+                    </div>
                     <div class="drag-hint">
                         ⬆️ 이 버튼을 잡고 브라우저 상단 주소창 아래로 끌어다 놓으세요.<br>
                         (북마크바가 안 보인다면? <span class="shortcut">Ctrl</span> + <span class="shortcut">Shift</span> + <span
