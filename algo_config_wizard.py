@@ -63,7 +63,7 @@ def save_config(config):
         f'# Git 설정',
         f'GIT_DEFAULT_BRANCH="{config.get("GIT_DEFAULT_BRANCH", "main")}"',
         f'GIT_COMMIT_PREFIX="{config.get("GIT_COMMIT_PREFIX", "solve")}"',
-        f'GIT_AUTO_PUSH={config.get("GIT_AUTO_PUSH", "true")}',
+        f'GIT_AUTO_PUSH="{config.get("GIT_AUTO_PUSH", "true")}"',
         '',
         f'# SSAFY 설정',
         f'SSAFY_BASE_URL="{config.get("SSAFY_BASE_URL", "https://lab.ssafy.com")}"',
