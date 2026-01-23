@@ -1,4 +1,4 @@
-﻿# 알고리즘/실습 자동화 Shell 함수 (V7.4.5)
+﻿# 알고리즘/실습 자동화 Shell 함수 (V7.5.2)
 
 이 저장소는 Bash 함수들을 제공하여 알고리즘 풀이와 SSAFY 실습 과제 제출을 자동화합니다.
 별도의 복잡한 설치 없이 스크립트 파일만 복사하여 즉시 사용할 수 있습니다.
@@ -15,9 +15,11 @@
 <br>
 
 <div align="center">
+  <h3>✨ 누구나 쉽게 시작하기</h3>
   <a href="https://junDevCodes.github.io/SSAFY_sh_func/">
-    <img src="https://img.shields.io/badge/🚀_설치_및_설정_시작하기-Installation_Portal-blue?style=for-the-badge&logo=rocket" height="50">
+    <img src="https://img.shields.io/badge/🚀_설치_및_설정_마법사_실행-Click_Here_to_Start-3b82f6?style=for-the-badge&logo=rocket&logoColor=white" height="60">
   </a>
+  <p>👆 위 버튼을 클릭하면 <b>설치 포털</b>로 이동합니다.</p>
 </div>
 
 <br>
@@ -87,9 +89,13 @@ algo-update
 
 - **주요 설정항목:**
   - `ALGO_BASE_DIR`: 알고리즘 문제 저장 경로
+  - `GIT_COMMIT_PREFIX`: 커밋 메시지 접두사 (기본값: `solve`)
+  - `GIT_DEFAULT_BRANCH`: 기본 푸시 브랜치 (기본값: `main`)
   - `GIT_AUTO_PUSH`: `gitdown` 시 자동 push 여부
   - `IDE_EDITOR`: 사용할 IDE 자동 감지 및 설정 (`code`, `pycharm`, `idea`, `cursor` 등)
   - `SSAFY_USER_ID`: SSAFY GitLab 사용자명 (lab.ssafy.com/{여기} 부분)
+
+> 💡 **[V7.5.2]** `algo-config edit` 메뉴 5번에서 Git 설정(커밋 접두사, 기본 브랜치, 자동 푸시)을 변경할 수 있습니다.
 
 ---
 
