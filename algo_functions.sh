@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # 이전에 정의된 함수/별칭이 남아 있을 때 새 버전을 확실히 적용하기 위해 초기화
-{ unalias -- al gitup gitdown algo-config 2>/dev/null || true; }
-{ unset -f -- al gitup gitdown algo_config get_active_ide check_ide _confirm_commit_message _create_algo_file _handle_git_commit _open_in_editor _open_repo_file _gitup_ssafy _ssafy_next_repo init_algo_config _is_interactive _set_config_value _ensure_ssafy_config _find_ssafy_session_root _print_file_menu _choose_file_from_list 2>/dev/null || true; }
+{ unalias -- al gitup gitdown algo-config algo-update algo-doctor 2>/dev/null || true; }
+{ unset -f -- al gitup gitdown algo_config algo-update algo-doctor ssafy_al ssafy_gitup ssafy_gitdown ssafy_algo_config ssafy_algo_update ssafy_algo_doctor get_active_ide check_ide _confirm_commit_message _create_algo_file _handle_git_commit _open_in_editor _open_repo_file _gitup_ssafy _ssafy_next_repo init_algo_config _is_interactive _set_config_value _ensure_ssafy_config _find_ssafy_session_root _print_file_menu _choose_file_from_list _create_safe_alias 2>/dev/null || true; }
 
 
 # =============================================================================
@@ -11,10 +11,10 @@
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V7.5.2"
+ALGO_FUNCTIONS_VERSION="V7.6.0"
 
-# 업데이트 명령어
-algo-update() {
+# 업데이트 명령어 (V7.6 네임스페이스)
+ssafy_algo_update() {
     local script_dir
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     
@@ -35,9 +35,13 @@ algo-update() {
     
     if [ $? -eq 0 ]; then
         echo ""
-        echo "✅ 업데이트 완료! (V7.4.1+)"
-        read -r -p "🎉 Enter를 누르면 변경사항을 적용합니다..." _
-        exec bash
+        echo "✅ 업데이트 완료! (V7.6+)"
+        echo "   변경사항을 적용하려면 새 터미널을 열거나 'source ~/.bashrc'를 실행하세요."
+        echo ""
+        read -r -p "🚀 지금 셸을 재시작하시겠습니까? (y/N): " restart_choice
+        if [[ "$restart_choice" =~ ^[Yy]$ ]]; then
+            exec bash
+        fi
     else
         echo "❌ 업데이트 실패. 네트워크 상태를 확인하거나 재설치해주세요."
     fi
@@ -233,22 +237,21 @@ EOF
     # [Security V7.0] 파일 권한 600 강제 (타인 접근 제한)
     chmod 600 "$ALGO_CONFIG_FILE" 2>/dev/null || true
 
-    # [Security V7.0] 토큰 암호화 관리 (Base64)
+    # [Security V7.0] 토큰 인코딩 관리 (Base64 - 노출 방지 목적)
     # 1. 평문(Bearer ...)이면 -> Base64로 인코딩하여 파일에 저장 (마이그레이션)
-    # 2. 암호문이면 -> 디코딩하여 메모리($SSAFY_AUTH_TOKEN)에 로드
+    # 2. 인코딩된 값이면 -> 디코딩하여 메모리($SSAFY_AUTH_TOKEN)에 로드
     if [ -n "${SSAFY_AUTH_TOKEN:-}" ] && [[ "${SSAFY_AUTH_TOKEN:-}" != "Bearer your_token_here" ]]; then
         if [[ "$SSAFY_AUTH_TOKEN" == "Bearer "* ]]; then
             # 마이그레이션: 평문 -> Base64
             if command -v base64 >/dev/null 2>&1; then
                 local encoded_token=$(echo -n "$SSAFY_AUTH_TOKEN" | base64 | tr -d '\n')
-                # sed로 파일 업데이트
-                # (특수문자 처리를 위해 구분자를 | 사용)
-                if sed --version >/dev/null 2>&1; then
-                    sed -i "s|^SSAFY_AUTH_TOKEN=.*|SSAFY_AUTH_TOKEN=\"$encoded_token\"|" "$ALGO_CONFIG_FILE"
-                else
-                    sed -i '' "s|^SSAFY_AUTH_TOKEN=.*|SSAFY_AUTH_TOKEN=\"$encoded_token\"|" "$ALGO_CONFIG_FILE"
-                fi
-                echo "🔐 [보안] 토큰이 안전하게 암호화되었습니다."
+                # sed로 파일 업데이트 (임시파일 방식 - 호환성 개선)
+                sed "s|^SSAFY_AUTH_TOKEN=.*|SSAFY_AUTH_TOKEN=\"$encoded_token\"|" "$ALGO_CONFIG_FILE" > "$ALGO_CONFIG_FILE.tmp" && \
+                mv "$ALGO_CONFIG_FILE.tmp" "$ALGO_CONFIG_FILE"
+                
+                # 메모리 업데이트
+                SSAFY_AUTH_TOKEN="$encoded_token"
+                echo "🔒 토큰이 파일에 인코딩되어 저장되었습니다. (노출 방지)"
             fi
         else
             # 디코딩: Base64 -> 평문
@@ -341,7 +344,8 @@ EOF
         ' > "$ALGO_CONFIG_FILE.tmp" && mv "$ALGO_CONFIG_FILE.tmp" "$ALGO_CONFIG_FILE"
     fi
     
-    # Python 스크립트를 위해 토큰 자동 export
+    # [V7.6 Security] 토큰은 파이프로 직접 전달 (환경변수 노출 최소화)
+    # 호환성을 위해 export는 유지하되, 직접 호출 시에는 파이프 사용 권장
     if [ -n "${SSAFY_AUTH_TOKEN:-}" ] && [[ "${SSAFY_AUTH_TOKEN:-}" != "Bearer your_token_here" ]]; then
         export SSAFY_AUTH_TOKEN
     fi
@@ -353,31 +357,31 @@ EOF
     _setup_ide_aliases
 }
 
-# 설정 편집 명령어
-algo_config() {
+# 설정 편집 명령어 (V7.6 네임스페이스)
+ssafy_algo_config() {
     init_algo_config
     
     if [ "$1" = "edit" ]; then
         # V7.0: Python 마법사 사용
         local script_dir
-        # BASH_SOURCE[0]는 함수 호출 시점에 따라 다를 수 있으나, 일반적으로 source된 위치를 찾으려면
-        # 현재 함수가 정의된 파일을 추적해야 함. 하지만 복잡하므로
-        # ALGO_BASE_DIR 혹은 algo_functions.sh 경로를 환경변수에서 유추?
-        # 가장 확실한 건 algo_functions.sh 파일 내에서 상단 전역 변수로 HOME을 잡아두는 것인데...
-        # 일단 ssafy_batch 처럼 구해봄.
         
-        # 주의: source된 상태에서 BASH_SOURCE[0]는 셸 자체일 수도 있음.
-        # 그러나 함수 내에서는 BASH_SOURCE[0]가 스크립트 경로를 가리킬 가능성 높음(bash 특성).
-        # 안되면 사용자 홈의 특정 위치 가정 (~/.ssafy-tools/algo_functions.sh? 아니면 현재 경로?)
-        # 사용자는 ~/Desktop/SSAFY_sh_func에 있음.
+        # [V7.6] 스크립트 위치 동적 탐지 (하드코딩 제거)
+        # BASH_SOURCE[0]를 이용하여 현재 파일의 위치를 찾음
+        if [ -n "${BASH_SOURCE[0]}" ]; then
+            script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+        else
+            # 폴백: 동적 탐지 실패 시 일반적인 경로 시도
+            script_dir="$HOME/Desktop/SSAFY_sh_func"
+            if [ ! -f "$script_dir/algo_config_wizard.py" ]; then
+                # 다른 후보 경로
+                if [ -f "$HOME/.ssafy-tools/algo_config_wizard.py" ]; then
+                    script_dir="$HOME/.ssafy-tools"
+                fi
+            fi
+        fi
         
-        # 임시: 현재 작업 디렉토리에 있다고 가정하지 말고, locate 시도
-        script_dir="$HOME/Desktop/SSAFY_sh_func" # 기본값 (사용자 환경)
-        
-        # 더 나은 방법: gitup 등에서 이미 SCRIPT_DIR를 알 수 있다면 좋겠지만..
-        # 단순히 $HOME/.ssafy-tools/algo_config_wizard.py 가 배포될 것임 (git pull 시)
-        # 사용자는 ~/.ssafy-tools 를 source 하고 있음.
-        if [ -f "$HOME/.ssafy-tools/algo_config_wizard.py" ]; then
+        # Python 스크립트 실행
+        if [ -f "$script_dir/algo_config_wizard.py" ]; then
             script_dir="$HOME/.ssafy-tools"
         elif [ -f "$HOME/Desktop/SSAFY_sh_func/algo_config_wizard.py" ]; then
             script_dir="$HOME/Desktop/SSAFY_sh_func"
@@ -454,12 +458,14 @@ algo_config() {
     echo "  algo-config show   - 현재 설정 보기"
     echo "  algo-config reset  - 설정 초기화"
 }
-alias algo-config='algo_config'
+# [V7.6] 별칭 등록 (algo_config 사용처 호환성)
+algo_config() { ssafy_algo_config "$@"; }
+alias algo-config='ssafy_algo_config'
 
 # =============================================================================
-# al - 알고리즘 문제 환경 설정
+# al - 알고리즘 문제 환경 설정 (V7.6 네임스페이스)
 # =============================================================================
-al() {
+ssafy_al() {
     init_algo_config
     
     # 인자 검증
@@ -1241,10 +1247,10 @@ _open_browser() {
 }
 
 # =============================================================================
-# gitdown - Git 작업 완료 자동화
+# gitdown - Git 작업 완료 자동화 (V7.6 네임스페이스)
 # =============================================================================
 
-gitdown() {
+ssafy_gitdown() {
     init_algo_config
     
     # --all 플래그 체크 (먼저 처리)
@@ -1724,7 +1730,7 @@ _read_masked_input() {
     echo "$password"
 }
 
-gitup() {
+ssafy_gitup() {
     init_algo_config
 
     local ssafy_mode=false
@@ -1826,7 +1832,8 @@ gitup() {
         
         # 파이썬 스크립트 실행 및 결과 파싱
         # 출력형식: URL|CourseID|PracticeID|PA_ID
-        python "$script_dir/ssafy_batch_create.py" "$input" 20 --pipe | while IFS='|' read -r url course_id pr_id pa_id; do
+        # [V7.6 Security] 토큰을 파이프로 전달 (환경변수 노출 최소화)
+        echo "$SSAFY_AUTH_TOKEN" | python "$script_dir/ssafy_batch_create.py" "$input" 20 --pipe | while IFS='|' read -r url course_id pr_id pa_id; do
             # Windows 호환: \r 제거 (필수)
             url=$(echo "$url" | tr -d '\r')
             course_id=$(echo "$course_id" | tr -d '\r')
@@ -2238,8 +2245,8 @@ ssafy_batch() {
         echo "   algo_functions.sh와 ssafy_batch_create.py는 같은 폴더에 있어야 합니다."
         return 1
     fi
-    
-    python "$script_dir/ssafy_batch_create.py" "$1" "$2"
+    # [V7.6 Security] 토큰을 파이프로 전달 (환경변수 노출 최소화)
+    echo "$SSAFY_AUTH_TOKEN" | python "$script_dir/ssafy_batch_create.py" "$1" "$2"
 }
 
 # =============================================================================
@@ -2316,9 +2323,9 @@ echo "✅ 알고리즘 셸 함수 로드 완료! (${ALGO_FUNCTIONS_VERSION})"
 echo "💡 'algo-config edit'로 설정을 변경할 수 있습니다"
 
 # =============================================================================
-# algo-doctor - 시스템 및 설정 진단 도구 (V7.0)
+# algo-doctor - 시스템 및 설정 진단 도구 (V7.0) (V7.6 네임스페이스)
 # =============================================================================
-algo-doctor() {
+ssafy_algo_doctor() {
     echo "=================================================="
     echo " ��� SSAFY Algo Tools Doctor (${ALGO_FUNCTIONS_VERSION})"
     echo "=================================================="
@@ -2444,9 +2451,41 @@ algo-doctor() {
     echo ""
     echo "=================================================="
     if [ $issues -eq 0 ]; then
-        echo "���  모든 시스템이 정상입니다!"
+        echo "  모든 시스템이 정상입니다!"
     else
         echo "⚠️  $issues 건의 문제점이 발견되었습니다."
     fi
     echo "=================================================="
 }
+
+
+# =============================================================================
+# 안전한 별칭 생성 (V7.6 네임스페이스)
+# =============================================================================
+_create_safe_alias() {
+    local alias_name="$1"
+    local target_func="$2"
+    
+    # 기존 명령어/함수/별칭 존재 여부 확인
+    if ! type "$alias_name" &>/dev/null; then
+        alias "$alias_name"="$target_func"
+    else
+        # 이미 SSAFY 도구로 정의된 경우 재정의 허용 (기존 alias, function 포함)
+        # type 출력 예: "al is a function", "al is aliased to `ssafy_al'"
+        local type_out=$(type "$alias_name" 2>/dev/null)
+        if [[ "$type_out" == *"ssafy_"* ]] || [[ "$type_out" == *"function"* ]]; then
+            alias "$alias_name"="$target_func"
+        else
+            echo "⚠️  '$alias_name' 명령어/별칭이 이미 존재하여 덮어쓰지 않았습니다."
+            echo "    -> '$target_func' 명령어를 직접 사용하세요."
+        fi
+    fi
+}
+
+# 별칭 등록 (V7.6)
+_create_safe_alias "al" "ssafy_al"
+_create_safe_alias "gitup" "ssafy_gitup"
+_create_safe_alias "gitdown" "ssafy_gitdown"
+# algo-config는 위에서 이미 처리됨
+alias algo-update="ssafy_algo_update"
+alias algo-doctor="ssafy_algo_doctor"

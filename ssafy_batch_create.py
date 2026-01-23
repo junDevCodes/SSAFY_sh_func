@@ -7,6 +7,7 @@ import time
 import json
 import urllib.request
 import urllib.error
+import socket  # [V7.6] 타임아웃 처리를 위해 추가
 import base64
 
 # Windows 인코딩 문제 해결 (Python 3.7+ 전용, 하위 버전은 무시)
@@ -38,13 +39,21 @@ def api_request(url, method="GET", data=None, headers=None):
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
     
     try:
-        with urllib.request.urlopen(req) as res:
+        # [V7.6] 네트워크 타임아웃 추가 (10초)
+        with urllib.request.urlopen(req, timeout=10) as res:
             return MockResponse(res.getcode(), res.read())
     except urllib.error.HTTPError as e:
         return MockResponse(e.code, e.read())
+    except urllib.error.URLError as e:
+        # 타임아웃 혹은 네트워크 에러
+        if isinstance(e.reason, socket.timeout):
+            print("⚠️  서버 응답 시간 초과 (Timeout)", file=sys.stderr)
+        return MockResponse(999, str(e).encode('utf-8'))
+    except socket.timeout:
+        print("⚠️  서버 응답 시간 초과 (Timeout)", file=sys.stderr)
+        return MockResponse(999, b"Timeout")
     except Exception as e:
-        # print(f"Network Error: {e}", file=sys.stderr)
-        return MockResponse(999, str(e).encode())
+        return MockResponse(999, str(e).encode('utf-8'))
 
 # ==================================================================================
 # [사용자 설정 영역]
@@ -76,8 +85,20 @@ def update_config_file(token):
         print(f"⚠️ Failed to save token to config: {e}", file=sys.stderr)
 
 
+def get_auth_token():
+    """파이프 또는 환경변수에서 토큰 읽기 (V7.6 보안 강화)"""
+    # 1. 파이프 입력 확인 (가장 안전)
+    if not sys.stdin.isatty():
+        try:
+            token = sys.stdin.readline().strip()
+            if token:
+                return token
+        except:
+            pass
+    # 2. 환경변수 폴백 (호환성)
+    return os.environ.get('SSAFY_AUTH_TOKEN', '')
 
-AUTH_TOKEN = os.environ.get('SSAFY_AUTH_TOKEN')
+AUTH_TOKEN = get_auth_token()
 SSAFY_BASE_URL = "https://project.ssafy.com/ssafy/api"
 
 def is_token_expired(token_str):
