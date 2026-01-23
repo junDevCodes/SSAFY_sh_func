@@ -1,4 +1,4 @@
-﻿# 알고리즘/실습 자동화 Shell 함수 (V6)
+﻿# 알고리즘/실습 자동화 Shell 함수 (V7.4)
 
 이 저장소는 Bash 함수들을 제공하여 알고리즘 풀이와 SSAFY 실습 과제 제출을 자동화합니다.
 별도의 복잡한 설치 없이 스크립트 파일만 복사하여 즉시 사용할 수 있습니다.
@@ -57,6 +57,7 @@ algo-update
 ### 2. 토큰 수동 설정
 - `gitup <URL>` 실행 시 토큰이 필요하면 입력창이 뜹니다.
 - 입력된 토큰은 **Base64로 암호화**되어 `~/.algo_config`에 안전하게 저장됩니다.
+- **[V7.4 Security]**: 세션 메타데이터(`.ssafy_session_meta`)에도 암호화가 적용되어 개인정보를 보호합니다.
 
 ---
 
@@ -73,7 +74,7 @@ algo-update
 - **주요 설정항목:**
   - `ALGO_BASE_DIR`: 알고리즘 문제 저장 경로
   - `GIT_AUTO_PUSH`: `gitdown` 시 자동 push 여부
-  - `IDE_EDITOR`: 사용할 IDE 하나만 지정 (`code`, `pycharm`, `idea` 등)
+  - `IDE_EDITOR`: 사용할 IDE 자동 감지 및 설정 (`code`, `pycharm`, `idea`, `cursor` 등)
   - `SSAFY_USER_ID`: SSAFY GitLab 사용자명 (lab.ssafy.com/{여기} 부분)
 
 ---
@@ -101,6 +102,7 @@ algo-update
   - **제출 바로가기:** 제출 완료 시 SSAFY 실습실 페이지 URL을 제공하며 브라우저 열기 옵션 지원
   - **동적 Playlist:** 아직 풀지 않은 문제가 있으면 감지하여 해당 문제로 이동 제안
   - **자동화:** `add` + `commit` + `push` 및 `gitdown --all` 시 성공/실패 결과 요약
+  - **Auto-Sync:** 이미 푼 문제의 완료 상태를 자동으로 동기화하여 중복 이동 방지
 
 ### [al] 알고리즘 문제 풀이 보조
 - **사용법:** `al <site> <number> [py|cpp]`

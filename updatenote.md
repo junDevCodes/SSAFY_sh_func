@@ -2,22 +2,16 @@
 
 ---
 
-## V7.5 (2026-01-23) - Security & Stability Patch 🛡️
+## V7.4 (2026-01-23) - Security & Stability Update 🔐
 
-### 🛡️ 보안 강화
-- **토큰 입력 보안**: `gitup` 및 `ssafy_batch_create.py`에서 토큰 입력 시 화면에 노출되지 않도록 `getpass` 적용
-- **설정 파일 보호**: 토큰 업데이트 시 `sed` 대신 검증된 내부 함수(`_set_config_value`) 사용으로 데이터 손상 방지
-
-### 🛠 안정성 개선
-- **설치 스크립트 개선**: `install.sh`의 정리(Cleanup) 로직을 정교화하여, 사용자의 다른 프로젝트 설정이 삭제되지 않도록 보호 (레거시 경로 포함)
-
----
-
-## V7.4 (2026-01-23) - Session Security Upgrade 🔐
-
-### ✨ 주요 변경 사항
+### ✨ 주요 변경 사항 (Major Changes)
 - **세션 메타데이터 암호화**: `.ssafy_session_meta` 파일 내 민감 정보(Course/Practice/PA ID)를 **Base64**로 암호화하여 저장
+- **토큰 입력 보안 (Secure Input)**: `gitup` 실행 시 인자가 없으면 토큰/URL을 화면에 보이지 않게 입력 (`read -s`)
+- **설정 파일 보호**: 토큰 업데이트 시 데이터 손상 방지 로직 적용 (`_set_config_value`)
+
+### 🛠 기능 개선 (Improvements)
 - **Gitup Auto-Sync**: `gitup` 실행 시 이미 푼 문제의 진행 상황을 자동으로 동기화
+- **설치 스크립트 개선**: `install.sh`의 정리(Cleanup) 로직을 정교화하여 기존 설정 유지
 
 ---
 
