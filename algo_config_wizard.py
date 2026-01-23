@@ -68,7 +68,7 @@ def main_menu(config):
     while True:
         clear_screen()
         print("==========================================")
-        print(" 🛠  SSAFY Algo Tools 설정 마법사 (V7.4.1)")
+        print(" 🛠  SSAFY Algo Tools 설정 마법사 (V7.4.2)")
         print("==========================================")
         
         ide_code = config.get("IDE_EDITOR", "code")

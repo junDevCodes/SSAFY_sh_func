@@ -2,6 +2,14 @@
 
 ---
 
+## V7.4.2 (2026-01-23) - Masked Input Support 🎭
+
+### ✨ 개선 사항
+- **Secure Input 시각화**: `gitup`에서 토큰/URL 붙여넣기 시, 기존에는 아무것도 보이지 않았으나 이제 **Asterisk(*)** 문자로 입력된 내용을 시각적으로 확인할 수 있습니다.
+- **업데이트 안정성 강화**: `algo-update` 시 강제 동기화(`git reset --hard`) 로직을 추가하여 업데이트 실패율을 최소화했습니다.
+
+---
+
 ## V7.4.1 (2026-01-23) - Feedback & UX Improvements 📣
 
 ### ✨ 개선 사항 (Improvements)
