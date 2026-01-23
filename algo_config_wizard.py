@@ -68,7 +68,7 @@ def main_menu(config):
     while True:
         clear_screen()
         print("==========================================")
-        print(" 🛠  SSAFY Algo Tools 설정 마법사 (V7.4.5)")
+        print(" 🛠  SSAFY Algo Tools 설정 마법사 (V7.5.2)")
         print("==========================================")
         
         ide_code = config.get("IDE_EDITOR", "code")
@@ -83,6 +83,10 @@ def main_menu(config):
         print(f" 2. 💻 IDE 변경           [{ide_name}]")
         print(f" 3. 🔑 SSAFY 토큰 설정     [{token_status}]")
         print(f" 4. 👤 SSAFY ID 설정       [{config.get('SSAFY_USER_ID', '미설정')}]")
+        print(f" 5. 🔀 Git 설정")
+        print(f"     - 커밋 접두사: {config.get('GIT_COMMIT_PREFIX', 'solve')}")
+        print(f"     - 기본 브랜치: {config.get('GIT_DEFAULT_BRANCH', 'main')}")
+        print(f"     - 자동 푸시: {config.get('GIT_AUTO_PUSH', 'true')}")
         print("------------------------------------------")
         print(" 0. 💾 저장 및 종료")
         print(" q. ❌ 취소 (저장 안 함)")
@@ -128,6 +132,34 @@ def main_menu(config):
         elif choice == "4":
              new_id = input(f"SSAFY ID 입력 (현재: {config.get('SSAFY_USER_ID', '')}): ").strip()
              if new_id: config["SSAFY_USER_ID"] = new_id
+        
+        elif choice == "5":
+            print("\n[🔀 Git 설정]")
+            print(f"  1. 커밋 접두사 (GIT_COMMIT_PREFIX) [{config.get('GIT_COMMIT_PREFIX', 'solve')}]")
+            print(f"  2. 기본 브랜치 (GIT_DEFAULT_BRANCH) [{config.get('GIT_DEFAULT_BRANCH', 'main')}]")
+            print(f"  3. 자동 푸시 (GIT_AUTO_PUSH) [{config.get('GIT_AUTO_PUSH', 'true')}]")
+            print("  0. 돌아가기")
+            
+            git_choice = input("👉 선택: ").strip()
+            
+            if git_choice == "1":
+                new_prefix = input(f"새 커밋 접두사 (현재: {config.get('GIT_COMMIT_PREFIX', 'solve')}): ").strip()
+                if new_prefix:
+                    config["GIT_COMMIT_PREFIX"] = new_prefix
+                    print(f"✅ 커밋 접두사가 '{new_prefix}'로 변경되었습니다.")
+                    input("엔터키를 눌러 계속...")
+            elif git_choice == "2":
+                new_branch = input(f"새 기본 브랜치 (현재: {config.get('GIT_DEFAULT_BRANCH', 'main')}): ").strip()
+                if new_branch:
+                    config["GIT_DEFAULT_BRANCH"] = new_branch
+                    print(f"✅ 기본 브랜치가 '{new_branch}'로 변경되었습니다.")
+                    input("엔터키를 눌러 계속...")
+            elif git_choice == "3":
+                current_val = str(config.get('GIT_AUTO_PUSH', 'true')).lower()
+                new_val = 'false' if current_val == 'true' else 'true'
+                config["GIT_AUTO_PUSH"] = new_val
+                print(f"✅ 자동 푸시가 '{new_val}'로 변경되었습니다.")
+                input("엔터키를 눌러 계속...")
              
         elif choice == "0":
             save_config(config)
