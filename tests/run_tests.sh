@@ -74,7 +74,7 @@ run_test() {
 }
 
 test_cpp_only_creates_cpp() {
-  al b 1012 cpp --no-git --no-open
+  ssafy_al b 1012 cpp --no-git --no-open
   local dir="$ALGO_BASE_DIR/boj/1012"
   assert_file_exists "$dir/boj_1012.cpp"
   assert_file_not_exists "$dir/boj_1012.py"
@@ -82,7 +82,7 @@ test_cpp_only_creates_cpp() {
 }
 
 test_py_default_creates_py() {
-  al b 1013 --no-git --no-open
+  ssafy_al b 1013 --no-git --no-open
   local dir="$ALGO_BASE_DIR/boj/1013"
   assert_file_exists "$dir/boj_1013.py"
   assert_file_not_exists "$dir/boj_1013.cpp"
@@ -90,15 +90,15 @@ test_py_default_creates_py() {
 }
 
 test_cpp_no_lang_when_cpp_exists() {
-  al b 1014 cpp --no-git --no-open
-  al b 1014 --no-git --no-open
+  ssafy_al b 1014 cpp --no-git --no-open
+  ssafy_al b 1014 --no-git --no-open
   local dir="$ALGO_BASE_DIR/boj/1014"
   assert_file_exists "$dir/boj_1014.cpp"
   assert_file_not_exists "$dir/boj_1014.py"
 }
 
 test_cpp_with_msg_flag() {
-  al b 1015 cpp --msg "feat: test" --no-git --no-open
+  ssafy_al b 1015 cpp --msg "feat: test" --no-git --no-open
   local dir="$ALGO_BASE_DIR/boj/1015"
   assert_file_exists "$dir/boj_1015.cpp"
   assert_file_not_exists "$dir/boj_1015.py"
@@ -117,7 +117,7 @@ test_commit_when_file_changed() {
   local dir="$ALGO_BASE_DIR/boj/1016"
   
   # 1. cpp 파일 생성
-  al b 1016 cpp --no-git --no-open
+  ssafy_al b 1016 cpp --no-git --no-open
   assert_file_exists "$dir/boj_1016.cpp"
   
   # 2. Git 저장소 초기화 및 첫 커밋
@@ -129,7 +129,7 @@ test_commit_when_file_changed() {
   echo "// solution" >> "$dir/boj_1016.cpp"
   
   # 4. al 실행 (--no-open만, git은 활성화)
-  al b 1016 --no-open
+  ssafy_al b 1016 --no-open
   
   # 5. 커밋이 발생했는지 확인 (최신 커밋 메시지에 "solve" 포함)
   local last_commit
@@ -145,12 +145,12 @@ test_explicit_py_creates_py_when_cpp_exists() {
   local dir="$ALGO_BASE_DIR/boj/1017"
   
   # 1. cpp 파일 먼저 생성
-  al b 1017 cpp --no-git --no-open
+  ssafy_al b 1017 cpp --no-git --no-open
   assert_file_exists "$dir/boj_1017.cpp"
   assert_file_not_exists "$dir/boj_1017.py"
   
   # 2. 명시적으로 py 지정하여 실행
-  al b 1017 py --no-git --no-open
+  ssafy_al b 1017 py --no-git --no-open
   
   # 3. 이제 둘 다 존재해야 함
   assert_file_exists "$dir/boj_1017.cpp"
