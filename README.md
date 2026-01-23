@@ -7,12 +7,26 @@
 
 ## 🛠 1. 설치 및 적용
 
-### 방법 1: 원라이너 설치 (권장) ⭐
-터미널에 아래 한 줄만 복사해서 붙여넣으세요. 자동으로 설치되고 설정됩니다.
+### 🚀 빠른 설치 (Quick Start)
 
-```bash
-bash <(curl -sL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)
-```
+복잡한 명령어 입력이나 설정을 건너뛰고 싶으신가요?  
+아래 버튼을 눌러 **[설치 포털]**로 이동하면 **클릭 두 번**으로 모든 준비가 끝납니다!
+
+<br>
+
+<div align="center">
+  <a href="https://junDevCodes.github.io/SSAFY_sh_func/">
+    <img src="https://img.shields.io/badge/🚀_설치_및_설정_시작하기-Installation_Portal-blue?style=for-the-badge&logo=rocket" height="50">
+  </a>
+</div>
+
+<br>
+
+> **수동 설치를 원하시나요?**  
+> 터미널에서 아래 명령어를 실행하세요:
+> ```bash
+> bash <(curl -fsSL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)
+> ```
 
 설치가 끝나면 `source ~/.bashrc`를 실행하거나 터미널을 다시 열어주세요.
 

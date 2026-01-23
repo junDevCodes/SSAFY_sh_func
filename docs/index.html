@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSAFY Shell Tools 설치 포털</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --bg: #f8fafc;
+            --card-bg: #ffffff;
+            --text: #1e293b;
+            --blue-500: #3b82f6;
+            --blue-600: #2563eb;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 600px;
+            width: 100%;
+            background: var(--card-bg);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+            color: var(--text);
+        }
+
+        p.subtitle {
+            color: #64748b;
+            margin-bottom: 30px;
+        }
+
+        .step {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+
+        .step:hover {
+            border-color: var(--blue-500);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(59, 130, 246, 0.1);
+        }
+
+        .step-title {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        /* Button Styles */
+        .btn {
+            display: inline-block;
+            background: var(--blue-500);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            cursor: pointer;
+            border: none;
+            font-size: 1em;
+            transition: background 0.2s;
+            width: 80%;
+        }
+
+        .btn:hover {
+            background: var(--blue-600);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        /* Drag Button Specifics */
+        .bookmarklet-btn {
+            background: #10b981;
+            cursor: move;
+            /* Drag cursor */
+            cursor: grab;
+        }
+
+        .bookmarklet-btn:active {
+            cursor: grabbing;
+        }
+
+        .code-preview {
+            background: #f1f5f9;
+            padding: 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.85em;
+            color: #475569;
+            margin-top: 10px;
+            word-break: break-all;
+            display: none;
+            /* Hidden by default */
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #334155;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 50px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            pointer-events: none;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>🚀 SSAFY Shell Tools</h1>
+        <p class="subtitle">원클릭 설치 및 설정 포털</p>
+
+        <!-- Step 1: One-Liner Copy -->
+        <div class="step">
+            <span class="step-title">1️⃣ 설치 명령어 복사 (Click)</span>
+            <button class="btn" onclick="copyCommand()">📋 터미널 명령어 복사</button>
+            <div id="cmd-preview" class="code-preview">
+                bash <(curl -fsSL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh) </div>
+                    <p style="font-size: 0.8em; color: #64748b; margin-top: 8px;">
+                        복사 후 터미널(Git Bash)에 <b>붙여넣기(Ctrl+V)</b> 하세요.
+                    </p>
+            </div>
+
+            <!-- Step 2: Bookmarklet Drag -->
+            <div class="step">
+                <span class="step-title">2️⃣ 북마크릿 설치 (Drag)</span>
+                <a class="btn bookmarklet-btn"
+                    href='javascript:(function(){var t="";var r=/(eyJ[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+)/;function s(o){for(var i=0;i<o.length;i++){var k=o.key(i);var v=o.getItem(k);if(!v)continue;if(v.startsWith("Bearer ")){return v;}var m=v.match(r);if(m){return"Bearer "+m[1];}}return"";}t=s(localStorage)||s(sessionStorage);if(!t){alert("❌ 인증 토큰을 찾을 수 없습니다.\n\n로그인 상태를 확인하세요.");return;}try{var e=btoa(t);var res=window.location.href+"|"+e;navigator.clipboard.writeText(res).then(function(){alert("✅ 복사 완료!\n\ngitup을 인자 없이 실행하고 붙여넣으세요.");},function(){prompt("Ctrl+C로 복사:",res);});}catch(x){alert("오류: "+x.message);}})();'
+                    onclick="return false;">
+                    📑 SSAFY Smart Copy
+                </a>
+                <p style="font-size: 0.8em; color: #64748b; margin-top: 8px;">
+                    위 버튼을 브라우저 상단 <b>북마크바(즐겨찾기)</b>로 드래그하세요.<br>
+                    (안 보이면 Ctrl+Shift+B)
+                </p>
+            </div>
+
+            <div style="font-size: 0.8em; color: #94a3b8;">
+                © 2026 SSAFY Algo Tools Team
+            </div>
+        </div>
+
+        <div id="toast" class="toast">✅ 클립보드에 복사되었습니다!</div>
+
+        <script>
+            function copyCommand() {
+                // [V7.5] Auto-Enter: Added \n at the end to attempt auto-execution
+                const cmd = "bash <(curl -fsSL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)\n";
+
+                navigator.clipboard.writeText(cmd).then(() => {
+                    showToast();
+                    document.getElementById('cmd-preview').style.display = 'block';
+                }).catch(err => {
+                    alert('복사 실패: ' + err);
+                });
+            }
+
+            function showToast() {
+                const toast = document.getElementById('toast');
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+            }
+        </script>
+
+</body>
+
+</html>
