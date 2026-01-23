@@ -1790,6 +1790,11 @@ gitup() {
                 # 플레이리스트 추가
                 echo "$repo_name" >> .ssafy_playlist
                 
+                # [Progress V7.4] 초기 상태 기록 (init) - 사용자 요청으로 모든 항목 표시
+                if ! grep -q "^${repo_name}=" .ssafy_progress 2>/dev/null; then
+                    echo "${repo_name}=init" >> .ssafy_progress
+                fi
+                
                 # 메타데이터 저장
                 # 1. course_id (없으면 저장) - [Security V7.4] 암호화(Base64)
                 if [ -n "$course_id" ]; then
