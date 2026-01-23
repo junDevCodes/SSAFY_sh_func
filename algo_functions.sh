@@ -1108,6 +1108,8 @@ _check_unsolved_folders() {
     else
         echo ""
         echo "🎉 모든 문제를 완료했습니다! 고생하셨습니다!"
+        # [V7.5.2] Playlist 완료 시 전체 제출 링크 출력
+        _show_submission_links "$ssafy_root" "${all_folders[@]}"
     fi
 }
 
