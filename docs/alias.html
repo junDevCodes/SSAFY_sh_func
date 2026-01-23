@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSAFY Shell Tools - IDE & 알고리즘</title>
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            /* Dark Navy for main text */
+            --text-sub: #475569;
+            --theme-color: #8b5cf6;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .header {
+            background: var(--primary-gradient);
+            padding: 40px 20px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2em;
+            font-weight: 800;
+        }
+
+        .header p {
+            opacity: 0.9;
+            margin-top: 10px;
+            color: white;
+        }
+
+        .header code {
+            background: rgba(255, 255, 255, 0.25);
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+
+        .content {
+            padding: 40px;
+            line-height: 1.6;
+        }
+
+        h2 {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-top: 50px;
+            font-size: 1.6em;
+            color: #1e293b;
+            font-weight: 800;
+        }
+
+        h2:first-of-type {
+            margin-top: 0;
+        }
+
+        h3 {
+            color: var(--theme-color);
+            margin-top: 40px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h4 {
+            margin-top: 25px;
+            margin-bottom: 10px;
+            color: #334155;
+            font-size: 1.1em;
+            font-weight: 700;
+        }
+
+        p,
+        li {
+            color: #1e293b;
+            margin-bottom: 15px;
+        }
+
+        /* Fixed: Darker text for visibility */
+        ul,
+        ol {
+            margin-bottom: 20px;
+            padding-left: 20px;
+        }
+
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            color: #d946ef;
+            font-weight: bold;
+        }
+
+        /* Terminal Styles */
+        .terminal-window {
+            background: #1e293b;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            margin: 25px 0;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+            color: #f8fafc;
+        }
+
+        .terminal-header {
+            background: #334155;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .red {
+            background: #ef4444;
+        }
+
+        .yellow {
+            background: #f59e0b;
+        }
+
+        .green {
+            background: #22c55e;
+        }
+
+        .terminal-title {
+            color: #94a3b8;
+            font-size: 0.8em;
+            margin-left: 10px;
+            flex-grow: 1;
+            text-align: center;
+            margin-right: 50px;
+        }
+
+        .terminal-body {
+            padding: 20px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* Terminal Syntax */
+        .t-prompt {
+            color: #d946ef;
+            font-weight: bold;
+        }
+
+        .t-cmd {
+            color: #f8fafc;
+            font-weight: bold;
+        }
+
+        .t-dim {
+            color: #94a3b8;
+        }
+
+        .t-success {
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        .t-info {
+            color: #60a5fa;
+            font-weight: bold;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: #94a3b8;
+            animation: blink 1s infinite;
+            vertical-align: bottom;
+        }
+
+        @keyframes blink {
+
+            0%,
+            50% {
+                opacity: 1;
+            }
+
+            51%,
+            100% {
+                opacity: 0;
+            }
+        }
+
+        .btn-back {
+            display: inline-block;
+            margin-top: 60px;
+            padding: 12px 30px;
+            background: #e2e8f0;
+            color: #475569;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-back:hover {
+            background: #cbd5e1;
+            color: #1e293b;
+            transform: translateY(-2px);
+        }
+
+        .info-box {
+            background: #faf5ff;
+            border-left: 4px solid #8b5cf6;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
+
+        th,
+        td {
+            border: 1px solid #e2e8f0;
+            padding: 12px 15px;
+            text-align: left;
+        }
+
+        th {
+            background: #f8fafc;
+            font-weight: 700;
+            color: #334155;
+        }
+
+        td code {
+            background: #f1f5f9;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🧩 알고리즘 문제 풀이 가이드</h1>
+            <p>일반 알고리즘 문제 풀이 전용: <code>al</code> 명령어로 빠르게 시작</p>
+        </div>
+
+        <div class="content">
+            <h2>⚡ 1. 문제 풀이 시작 (al)</h2>
+
+            <h3>🔹 al (알고리즘 환경 생성)</h3>
+            <p>복잡한 폴더 생성, 파일 생성, 그리고 IDE 실행까지 <b>한 번에 처리</b>합니다.</p>
+            <p><b>사용법:</b> <code>al &lt;사이트&gt; &lt;문제번호&gt; [언어] [옵션]</code></p>
+
+            <div class="terminal-window">
+                <div class="terminal-header">
+                    <div class="dot red"></div>
+                    <div class="dot yellow"></div>
+                    <div class="dot green"></div>
+                    <div class="terminal-title">BOJ 1000 Problem Setup</div>
+                </div>
+                <div class="terminal-body"><span class="t-prompt">$</span> <span class="t-cmd">al b 1000</span>
+                    🎯 사이트: BOJ
+                    📝 문제번호: 1000
+                    📁 경로: ~/algorithm/boj/1000
+                    🆕 새 문제 파일 생성 중...
+                    ✅ 파일 생성 완료!
+                    🎉 code.exe에서 파일을 여는 중...</div>
+            </div>
+
+            <h3>🔹 파일 트리 구조</h3>
+            <p><code>al</code> 명령어로 생성된 파일은 사이트별로 정리되어 관리됩니다.</p>
+            <div class="terminal-window">
+                <div class="terminal-body"><span class="t-dim">~/algorithm/</span>
+                    ├── <span class="t-info">boj/</span> <span class="t-dim"># 백준</span>
+                    │ ├── 1000/
+                    │ │ └── boj_1000.py
+                    │ └── 1234/
+                    │ ├── boj_1234.cpp <span class="t-dim">← al b 1234 cpp</span>
+                    │ └── boj_1234.py <span class="t-dim">← al b 1234 (재실행)</span>
+                    ├── <span class="t-info">swea/</span> <span class="t-dim"># SWEA</span>
+                    │ └── 1234/
+                    │ └── swea_1234.py
+                    └── <span class="t-info">programmers/</span> <span class="t-dim"># 프로그래머스</span>
+                    └── 42862/
+                    └── programmers_42862.py
+                </div>
+            </div>
+
+            <h3>🔹 지원 사이트 코드</h3>
+            <table>
+                <tr>
+                    <th>코드</th>
+                    <th>사이트</th>
+                    <th>예시</th>
+                </tr>
+                <tr>
+                    <td><code>b</code> / <code>boj</code></td>
+                    <td>백준 (Baekjoon)</td>
+                    <td><code>al b 1000</code></td>
+                </tr>
+                <tr>
+                    <td><code>s</code> / <code>swea</code></td>
+                    <td>SW Expert Academy</td>
+                    <td><code>al s 1234</code></td>
+                </tr>
+                <tr>
+                    <td><code>p</code> / <code>programmers</code></td>
+                    <td>프로그래머스</td>
+                    <td><code>al p 42862</code></td>
+                </tr>
+            </table>
+
+            <h3>🔹 옵션 목록</h3>
+            <table>
+                <tr>
+                    <th>옵션</th>
+                    <th>설명</th>
+                </tr>
+                <tr>
+                    <td><code>py</code> / <code>cpp</code></td>
+                    <td>언어 선택 (기본값: Python)</td>
+                </tr>
+                <tr>
+                    <td><code>-m "메시지"</code></td>
+                    <td>커밋 메시지를 직접 지정</td>
+                </tr>
+                <tr>
+                    <td><code>--no-git</code></td>
+                    <td>Git 커밋 없이 파일만 생성</td>
+                </tr>
+                <tr>
+                    <td><code>--no-open</code></td>
+                    <td>IDE를 열지 않고 파일만 생성</td>
+                </tr>
+            </table>
+
+            <h3>🔹 기존 파일이 있는 경우</h3>
+            <p>이미 해당 문제 파일이 존재하면, <b>새 파일을 생성하지 않고</b> 기존 파일을 열고 Git 커밋만 수행합니다.</p>
+            <div class="terminal-window">
+                <div class="terminal-body"><span class="t-prompt">$</span> <span class="t-cmd">al b 1000</span>
+                    📁 기존 파일 발견: ~/algorithm/boj/1000/boj_1000.py
+                    <span class="t-info">📝 기존 파일을 열고 Git 커밋을 수행합니다...</span>
+                    [main c3d4e5f] solve: boj_1000
+                    🎉 code.exe에서 파일을 여는 중...
+                </div>
+            </div>
+
+            <h3>🔹 al 재사용 시 동작 흐름</h3>
+            <p>같은 문제에 대해 <code>al</code>을 여러 번 실행하면 <b>상황에 따라 다르게 동작</b>합니다.</p>
+            <div class="terminal-window">
+                <div class="terminal-body"><span class="t-dim"># 1. 처음 실행 - C++ 파일 생성</span>
+                    <span class="t-prompt">$</span> <span class="t-cmd">al b 1234 cpp</span>
+                    🆕 새 문제 파일 생성: boj_1234.cpp
+                    <span class="t-success">✅ 파일 생성 완료!</span>
+
+                    <span class="t-dim"># 2. 문제 해결 후 재실행 - 변경사항 커밋</span>
+                    <span class="t-prompt">$</span> <span class="t-cmd">al b 1234</span>
+                    📁 기존 파일 발견: boj_1234.cpp
+                    <span class="t-info">📝 변경사항 감지 → Git 커밋 수행</span>
+                    [main abc123] solve: boj_1234
+                    <span class="t-success">🚀 푸시 완료!</span>
+
+                    <span class="t-dim"># 3. Python으로도 풀고 싶을 때 - 새 파일 생성</span>
+                    <span class="t-prompt">$</span> <span class="t-cmd">al b 1234</span> <span class="t-dim"># 언어 생략 시
+                        기본값 py</span>
+                    🆕 새 문제 파일 생성: boj_1234.py
+                    <span class="t-success">✅ 파일 생성 완료!</span>
+                </div>
+            </div>
+            <div class="info-box">
+                💡 <b>커밋 조건:</b> 해당 언어 파일이 존재하고 <b>변경사항이 있을 때</b>만 Git 커밋이 수행됩니다.
+            </div>
+
+
+            <h2>⚙️ 2. IDE 설정</h2>
+
+            <h3>🔹 사용하는 IDE 변경</h3>
+            <p>VSCode가 아닌 IntelliJ나 PyCharm을 사용하려면 <code>algo-config edit</code>으로 설정을 변경하세요.</p>
+
+            <div class="terminal-window">
+                <div class="terminal-body"><span class="t-prompt">$</span> <span class="t-cmd">algo-config edit</span>
+
+                    <span class="t-info">===== SSAFY Shell Tools 설정 마법사 =====</span>
+                    메뉴:
+                    1. 📁 작업 디렉토리 변경
+                    2. 💻 IDE 변경
+                    ...
+
+                    선택: <span class="t-cmd">2</span>
+
+                    현재 IDE: code (VS Code)
+                    새 IDE 선택 (code/cursor/pycharm/idea/subl): <span class="t-cmd">pycharm</span>
+                    <span class="t-success">✅ IDE가 pycharm으로 변경되었습니다!</span>
+                </div>
+            </div>
+
+            <div class="info-box">
+                💡 <b>지원 IDE:</b> <code>code</code> (VS Code), <code>cursor</code>, <code>pycharm</code>,
+                <code>idea</code> (IntelliJ), <code>subl</code> (Sublime Text)
+            </div>
+
+
+            <center>
+                <a href="index.html" class="btn-back">⬅️ 설치 포털로 돌아가기</a>
+            </center>
+        </div>
+    </div>
+
+</body>
+
+</html>
