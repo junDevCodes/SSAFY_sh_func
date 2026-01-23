@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSAFY Shell Tools 설치 포털</title>
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-sub: #64748b;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 650px;
+            width: 100%;
+            background: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        /* Header Area */
+        .header {
+            background: var(--primary-gradient);
+            padding: 40px 20px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2em;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            margin: 10px 0 0;
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+
+        /* Content Area */
+        .content {
+            padding: 40px;
+        }
+
+        .step-card {
+            margin-bottom: 30px;
+        }
+
+        .step-label {
+            display: inline-block;
+            background: #e0f2fe;
+            color: #0284c7;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 0.9em;
+            margin-bottom: 12px;
+        }
+
+        .instruction {
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* --- macOS Terminal Mockup --- */
+        .terminal-window {
+            background: #1e293b;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            margin-bottom: 15px;
+            cursor: pointer;
+            /* Clickable */
+            transition: transform 0.2s, box-shadow 0.2s;
+            position: relative;
+        }
+
+        .terminal-window:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.25);
+        }
+
+        /* Window Controls */
+        .terminal-header {
+            background: #334155;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .red {
+            background: #ef4444;
+        }
+
+        .yellow {
+            background: #f59e0b;
+        }
+
+        .green {
+            background: #22c55e;
+        }
+
+        .terminal-title {
+            color: #94a3b8;
+            font-size: 0.8em;
+            margin-left: 10px;
+            flex-grow: 1;
+            text-align: center;
+            margin-right: 50px;
+            /* Balance */
+        }
+
+        .copy-hint {
+            color: #4ade80;
+            font-size: 0.8em;
+            font-weight: bold;
+            opacity: 0.8;
+        }
+
+        .terminal-body {
+            padding: 20px;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            color: #f8fafc;
+            line-height: 1.5;
+            font-size: 0.9em;
+            position: relative;
+        }
+
+        .prompt {
+            color: #f59e0b;
+            font-weight: bold;
+        }
+
+        .cmd-text {
+            color: #f8fafc;
+            word-break: break-all;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: #94a3b8;
+            animation: blink 1s infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes blink {
+
+            0%,
+            50% {
+                opacity: 1;
+            }
+
+            51%,
+            100% {
+                opacity: 0;
+            }
+        }
+
+        /* --- Bookmarklet Button --- */
+        .bookmark-area {
+            background: #f0fdf4;
+            border: 2px dashed #86efac;
+            border-radius: 16px;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .bookmark-btn {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            font-weight: 700;
+            padding: 14px 28px;
+            border-radius: 50px;
+            text-decoration: none;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            cursor: grab;
+            transition: transform 0.2s;
+            font-size: 1.1em;
+        }
+
+        .bookmark-btn:active {
+            cursor: grabbing;
+            transform: scale(0.95);
+        }
+
+        .bookmark-btn:hover {
+            background: #059669;
+        }
+
+        .drag-hint {
+            margin-top: 15px;
+            color: #15803d;
+            font-size: 0.9em;
+        }
+
+        .shortcut {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-weight: bold;
+            font-family: monospace;
+        }
+
+        /* --- Toast Notification --- */
+        .toast {
+            position: fixed;
+            bottom: 40px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: #1e293b;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 50px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* --- Drag Animation Guide --- */
+        .drag-guide-container {
+            position: relative;
+            display: inline-block;
+        }
+
+        .hand-cursor {
+            position: absolute;
+            bottom: -20px;
+            right: -20px;
+            font-size: 2rem;
+            pointer-events: none;
+            z-index: 10;
+            animation: drag-demo 3s infinite ease-in-out;
+            filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
+            opacity: 0;
+        }
+
+        .btn-back {
+            display: inline-block;
+            margin-top: 60px;
+            padding: 12px 30px;
+            background: #e2e8f0;
+            color: #475569;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-back:hover {
+            background: #cbd5e1;
+            color: #1e293b;
+            transform: translateY(-2px);
+        }
+
+        @keyframes drag-demo {
+            0% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0;
+            }
+
+            15% {
+                transform: translate(-30px, -20px) scale(1);
+                opacity: 1;
+            }
+
+            /* Approach */
+            25% {
+                transform: translate(-30px, -20px) scale(0.9);
+            }
+
+            /* Grab */
+            60% {
+                transform: translate(-30px, -150px) scale(0.9);
+                opacity: 1;
+            }
+
+            /* Drag Up */
+            80% {
+                transform: translate(-30px, -150px) scale(1);
+                opacity: 0;
+            }
+
+            /* Drop */
+            100% {
+                transform: translate(0, 0) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* --- Browser Window Mockup --- */
+        .browser-window {
+            background: #ffffff;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+            margin-top: 30px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .browser-toolbar {
+            background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .browser-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .browser-dots .dot {
+            width: 10px;
+            height: 10px;
+        }
+
+        .browser-nav {
+            display: flex;
+            gap: 4px;
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+
+        .browser-nav span {
+            padding: 2px 6px;
+            cursor: default;
+        }
+
+        .browser-address {
+            flex: 1;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 20px;
+            padding: 6px 14px;
+            font-size: 0.85em;
+            color: #64748b;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .browser-address .lock {
+            color: #22c55e;
+        }
+
+        .browser-bookmark-bar {
+            background: #f8fafc;
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.8em;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .bookmark-item {
+            background: #e2e8f0;
+            padding: 4px 10px;
+            border-radius: 4px;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .bookmark-item.highlight {
+            background: #10b981;
+            color: white;
+            animation: pulse-highlight 1.5s infinite;
+        }
+
+        .browser-content {
+            background: #f1f5f9;
+            padding: 30px;
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.9em;
+        }
+
+        .drop-zone-label {
+            position: absolute;
+            top: 85px;
+            right: 20px;
+            background: #fef3c7;
+            color: #92400e;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.75em;
+            font-weight: bold;
+            animation: bounce-arrow 1s infinite;
+        }
+
+        @keyframes pulse-highlight {
+
+            0%,
+            100% {
+                box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
+            }
+
+            50% {
+                box-shadow: 0 0 0 6px rgba(16, 185, 129, 0);
+            }
+        }
+
+        @keyframes bounce-arrow {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-4px);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>SSAFY Shell Tools</h1>
+            <p>설치 & 설정 마법사</p>
+        </div>
+
+        <div class="content">
+            <!-- Step 1 -->
+            <div class="step-card">
+                <span class="step-label">Step 1</span>
+                <div class="instruction">
+                    👇 터미널 창을 클릭하여 명령어를 복사하세요
+                </div>
+
+                <div class="terminal-window" onclick="copyCommand()">
+                    <div class="terminal-header">
+                        <div class="dot red"></div>
+                        <div class="dot yellow"></div>
+                        <div class="dot green"></div>
+                        <div class="terminal-title">bash — 80x24</div>
+                        <div class="copy-hint">Click to Copy 📋</div>
+                    </div>
+                    <div class="terminal-body" id="terminal-content">
+                        <span class="prompt">$</span> <span class="cmd-text">bash <(curl -fsSL
+                                https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)</span><span
+                                    class="cursor"></span>
+                    </div>
+                </div>
+
+                <div style="text-align: center; color: var(--text-sub); font-size: 0.9em; margin-top: 10px;">
+                    복사 후 Git Bash 터미널에 <b>붙여넣기(Ctrl+V)</b> 하세요.
+                </div>
+            </div>
+
+            <hr style="border: 0; height: 1px; background: #e2e8f0; margin: 40px 0;">
+
+            <!-- Step 2 -->
+            <div class="step-card">
+                <span class="step-label">Step 2</span>
+                <div class="instruction">
+                    👇 아래 버튼을 북마크바로 <b>드래그</b> 하세요
+                </div>
+
+                <div class="bookmark-area">
+                    <div class="drag-guide-container">
+                        <a class="bookmark-btn"
+                            href='javascript:(function(){var t="";var r=/(eyJ[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+)/;function s(o){for(var i=0;i<o.length;i++){var k=o.key(i);var v=o.getItem(k);if(!v)continue;if(v.startsWith("Bearer ")){return v;}var m=v.match(r);if(m){return"Bearer "+m[1];}}return"";}t=s(localStorage)||s(sessionStorage);if(!t){alert("❌ 인증 토큰을 찾을 수 없습니다.\n\n로그인 상태를 확인하세요.");return;}try{var e=btoa(t);var res=window.location.href+"|"+e;navigator.clipboard.writeText(res).then(function(){alert("✅ 복사 완료!\n\ngitup을 인자 없이 실행하고 붙여넣으세요.");},function(){prompt("Ctrl+C로 복사:",res);});}catch(x){alert("오류: "+x.message);}})();'
+                            onclick="return false;">
+                            SSAFY 실습 가이드
+                        </a>
+                        <div class="hand-cursor">👆</div>
+                    </div>
+                    <div class="drag-hint">
+                        ⬆️ 이 버튼을 잡고 브라우저 상단 주소창 아래로 끌어다 놓으세요.<br>
+                        (북마크바가 안 보인다면? <span class="shortcut">Ctrl</span> + <span class="shortcut">Shift</span> + <span
+                            class="shortcut">B</span>)
+                    </div>
+
+                    <!-- Browser Mockup for Visual Guide -->
+                    <div class="browser-window" style="position: relative;">
+                        <div class="browser-toolbar">
+                            <div class="browser-dots">
+                                <div class="dot red"></div>
+                                <div class="dot yellow"></div>
+                                <div class="dot green"></div>
+                            </div>
+                            <div class="browser-nav">
+                                <span>←</span>
+                                <span>→</span>
+                                <span>↻</span>
+                            </div>
+                            <div class="browser-address">
+                                <span class="lock">🔒</span>
+                                <span>https://project.ssafy.com/practiceroom/...</span>
+                            </div>
+                            <span>☆</span>
+                        </div>
+                        <div class="browser-bookmark-bar">
+                            <span style="color: #94a3b8;">📚</span>
+                            <div class="bookmark-item">📁 다른 북마크</div>
+                            <div class="bookmark-item highlight">🔗 SSAFY 실습 가이드</div>
+                            <span class="drop-zone-label">← 여기에 드롭!</span>
+                        </div>
+                        <div class="browser-content">
+                            💡 위 "SSAFY 실습 가이드" 버튼이 북마크바에 추가된 모습입니다<br>
+                            SSAFY 실습실 페이지에서 클릭하면 토큰이 자동 복사됩니다
+                        </div>
+                    </div>
+                </div>
+                <center>
+                    <div
+                        style="margin-top: 40px; display: flex; flex-direction: row; gap: 10px; justify-content: space-between;">
+                        <a href="guide.html" class="btn-back" style="flex: 1; text-align: center;">📖 <b>Git & 설정</b>
+                            가이드 보기</a>
+                        <a href="alias.html" class="btn-back" style="flex: 1; text-align: center;">💻 <b>IDE & 문제풀이</b>
+                            가이드 보기</a>
+                    </div>
+                </center>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast">
+        <span>✅</span> 명령어가 복사되었습니다!
+    </div>
+
+    <script>
+        function copyCommand() {
+            const cmd = "bash <(curl -fsSL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)\n";
+
+            navigator.clipboard.writeText(cmd).then(() => {
+                showToast();
+                flashTerminal();
+            }).catch(err => {
+                alert('복사 실패: ' + err);
+            });
+        }
+
+        function showToast() {
+            const toast = document.getElementById('toast');
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2500);
+        }
+
+        function flashTerminal() {
+            // Visual feedback on the terminal window
+            const term = document.querySelector('.terminal-window');
+            term.style.backgroundColor = '#334155';
+            setTimeout(() => {
+                term.style.backgroundColor = '#1e293b';
+            }, 150);
+        }
+    </script>
+
+</body>
+
+</html>

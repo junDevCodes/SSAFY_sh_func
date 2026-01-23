@@ -14,6 +14,29 @@ IDE_POOL = {
     "5": ("Sublime Text", "subl")
 }
 
+def sanitize_config_value(value, allow_empty=False):
+    """설정 파일에 안전하게 저장할 수 있는 값으로 검증
+    
+    Returns:
+        (str, None): 검증된 값
+        (None, str): 오류 메시지
+    """
+    if not value or not value.strip():
+        if allow_empty:
+            return "", None
+        return None, "빈 값은 사용할 수 없습니다"
+    
+    value = value.strip()
+    
+    # 금지 문자 검사
+    forbidden_chars = ['"', "'", '$', '`', '\\', '\n', '\r', ';', '|', '&']
+    for char in forbidden_chars:
+        if char in value:
+            char_display = repr(char).strip("'")
+            return None, f"특수문자 '{char_display}'는 사용할 수 없습니다"
+    
+    return value, None
+
 def load_config():
     config = {}
     if os.path.exists(CONFIG_FILE):
@@ -40,7 +63,7 @@ def save_config(config):
         f'# Git 설정',
         f'GIT_DEFAULT_BRANCH="{config.get("GIT_DEFAULT_BRANCH", "main")}"',
         f'GIT_COMMIT_PREFIX="{config.get("GIT_COMMIT_PREFIX", "solve")}"',
-        f'GIT_AUTO_PUSH={config.get("GIT_AUTO_PUSH", "true")}',
+        f'GIT_AUTO_PUSH="{config.get("GIT_AUTO_PUSH", "true")}"',
         '',
         f'# SSAFY 설정',
         f'SSAFY_BASE_URL="{config.get("SSAFY_BASE_URL", "https://lab.ssafy.com")}"',
@@ -68,7 +91,7 @@ def main_menu(config):
     while True:
         clear_screen()
         print("==========================================")
-        print(" 🛠  SSAFY Algo Tools 설정 마법사 (V7.4.5)")
+        print(" 🛠  SSAFY Algo Tools 설정 마법사 (V7.5.2)")
         print("==========================================")
         
         ide_code = config.get("IDE_EDITOR", "code")
@@ -83,6 +106,10 @@ def main_menu(config):
         print(f" 2. 💻 IDE 변경           [{ide_name}]")
         print(f" 3. 🔑 SSAFY 토큰 설정     [{token_status}]")
         print(f" 4. 👤 SSAFY ID 설정       [{config.get('SSAFY_USER_ID', '미설정')}]")
+        print(f" 5. 🔀 Git 설정")
+        print(f"     - 커밋 접두사: {config.get('GIT_COMMIT_PREFIX', 'solve')}")
+        print(f"     - 기본 브랜치: {config.get('GIT_DEFAULT_BRANCH', 'main')}")
+        print(f"     - 자동 푸시: {config.get('GIT_AUTO_PUSH', 'true')}")
         print("------------------------------------------")
         print(" 0. 💾 저장 및 종료")
         print(" q. ❌ 취소 (저장 안 함)")
@@ -128,6 +155,42 @@ def main_menu(config):
         elif choice == "4":
              new_id = input(f"SSAFY ID 입력 (현재: {config.get('SSAFY_USER_ID', '')}): ").strip()
              if new_id: config["SSAFY_USER_ID"] = new_id
+        
+        elif choice == "5":
+            print("\n[🔀 Git 설정]")
+            print(f"  1. 커밋 접두사 (GIT_COMMIT_PREFIX) [{config.get('GIT_COMMIT_PREFIX', 'solve')}]")
+            print(f"  2. 기본 브랜치 (GIT_DEFAULT_BRANCH) [{config.get('GIT_DEFAULT_BRANCH', 'main')}]")
+            print(f"  3. 자동 푸시 (GIT_AUTO_PUSH) [{config.get('GIT_AUTO_PUSH', 'true')}]")
+            print("  0. 돌아가기")
+            
+            git_choice = input("👉 선택: ").strip()
+            
+            if git_choice == "1":
+                new_prefix = input(f"새 커밋 접두사 (현재: {config.get('GIT_COMMIT_PREFIX', 'solve')}): ").strip()
+                validated, error = sanitize_config_value(new_prefix)
+                if error:
+                    print(f"⚠️ {error}")
+                    input("엔터키를 눌러 계속...")
+                elif validated:
+                    config["GIT_COMMIT_PREFIX"] = validated
+                    print(f"✅ 커밋 접두사가 '{validated}'로 변경되었습니다.")
+                    input("엔터키를 눌러 계속...")
+            elif git_choice == "2":
+                new_branch = input(f"새 기본 브랜치 (현재: {config.get('GIT_DEFAULT_BRANCH', 'main')}): ").strip()
+                validated, error = sanitize_config_value(new_branch)
+                if error:
+                    print(f"⚠️ {error}")
+                    input("엔터키를 눌러 계속...")
+                elif validated:
+                    config["GIT_DEFAULT_BRANCH"] = validated
+                    print(f"✅ 기본 브랜치가 '{validated}'로 변경되었습니다.")
+                    input("엔터키를 눌러 계속...")
+            elif git_choice == "3":
+                current_val = str(config.get('GIT_AUTO_PUSH', 'true')).lower()
+                new_val = 'false' if current_val == 'true' else 'true'
+                config["GIT_AUTO_PUSH"] = new_val
+                print(f"✅ 자동 푸시가 '{new_val}'로 변경되었습니다.")
+                input("엔터키를 눌러 계속...")
              
         elif choice == "0":
             save_config(config)
