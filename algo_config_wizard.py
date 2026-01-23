@@ -48,41 +48,75 @@ def load_config():
                     config[key.strip()] = val
     return config
 
+import os  # 상단 import 확인
+import time
+
+# [V7.6] Cross-platform File Lock
+class FileLock:
+    def __init__(self, file_path):
+        self.lock_file = file_path + ".lock"
+        
+    def acquire(self, timeout=3):
+        start = time.time()
+        while time.time() - start < timeout:
+            try:
+                # O_CREAT | O_EXCL ensures atomic creation
+                fd = os.open(self.lock_file, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+                os.close(fd)
+                return True
+            except OSError:
+                time.sleep(0.1)
+        return False
+
+    def release(self):
+        try:
+            os.remove(self.lock_file)
+        except OSError:
+            pass
+
 def save_config(config):
-    # 기존 파일 내용을 읽어서 주석은 유지하고 값만 교체하는 것이 베스트이나,
-    # 여기서는 간단하게 새로 쓴다 (순서 유지 노력).
-    # 단, 사용자가 기존에 주석을 많이 달아놨다면 보존하는 게 좋음.
-    # 일단 'sed'가 아니므로 전체 재작성 방식 사용.
-    
-    content = []
-    # 기본 템플릿
-    lines = [
-        f'# 알고리즘 문제 풀이 디렉토리 설정',
-        f'ALGO_BASE_DIR="{config.get("ALGO_BASE_DIR", "")}"',
-        '',
-        f'# Git 설정',
-        f'GIT_DEFAULT_BRANCH="{config.get("GIT_DEFAULT_BRANCH", "main")}"',
-        f'GIT_COMMIT_PREFIX="{config.get("GIT_COMMIT_PREFIX", "solve")}"',
-        f'GIT_AUTO_PUSH="{config.get("GIT_AUTO_PUSH", "true")}"',
-        '',
-        f'# SSAFY 설정',
-        f'SSAFY_BASE_URL="{config.get("SSAFY_BASE_URL", "https://lab.ssafy.com")}"',
-        f'SSAFY_USER_ID="{config.get("SSAFY_USER_ID", "")}"',
-        f'SSAFY_AUTH_TOKEN="{config.get("SSAFY_AUTH_TOKEN", "")}"',
-        '',
-        f'# IDE 설정',
-        f'IDE_EDITOR="{config.get("IDE_EDITOR", "code")}"',
-        ''
-    ]
-    
-    with open(CONFIG_FILE, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
-    
-    # 권한 설정 (600)
+    # Lock 획득 시도
+    lock = FileLock(CONFIG_FILE)
+    if not lock.acquire():
+        print("⚠️  설정 파일이 다른 프로세스에서 사용 중입니다. 잠시 후 다시 시도하세요.")
+        return
+
     try:
-        os.chmod(CONFIG_FILE, 0o600)
-    except:
-        pass
+        # 기존 파일 내용을 읽어서 주석은 유지하고 값만 교체하는 것이 베스트이나,
+        # 여기서는 간단하게 새로 쓴다 (순서 유지 노력).
+        # 단, 사용자가 기존에 주석을 많이 달아놨다면 보존하는 게 좋음.
+        # 일단 'sed'가 아니므로 전체 재작성 방식 사용.
+        
+        lines = [
+            f'# 알고리즘 문제 풀이 디렉토리 설정',
+            f'ALGO_BASE_DIR="{config.get("ALGO_BASE_DIR", "")}"',
+            '',
+            f'# Git 설정',
+            f'GIT_DEFAULT_BRANCH="{config.get("GIT_DEFAULT_BRANCH", "main")}"',
+            f'GIT_COMMIT_PREFIX="{config.get("GIT_COMMIT_PREFIX", "solve")}"',
+            f'GIT_AUTO_PUSH="{config.get("GIT_AUTO_PUSH", "true")}"',
+            '',
+            f'# SSAFY 설정',
+            f'SSAFY_BASE_URL="{config.get("SSAFY_BASE_URL", "https://lab.ssafy.com")}"',
+            f'SSAFY_USER_ID="{config.get("SSAFY_USER_ID", "")}"',
+            f'SSAFY_AUTH_TOKEN="{config.get("SSAFY_AUTH_TOKEN", "")}"',
+            '',
+            f'# IDE 설정',
+            f'IDE_EDITOR="{config.get("IDE_EDITOR", "code")}"',
+            ''
+        ]
+        
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            f.write("\n".join(lines))
+        
+        # 권한 설정 (600)
+        try:
+            os.chmod(CONFIG_FILE, 0o600)
+        except:
+            pass
+            
+    finally:
+        lock.release()
 
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
@@ -100,7 +134,7 @@ def main_menu(config):
         for k, v in IDE_POOL.items():
             if v[1] == ide_code: ide_name = v[0]
             
-        token_status = "설정됨 (암호화됨)" if config.get("SSAFY_AUTH_TOKEN") else "미설정"
+        token_status = "설정됨 (인코딩됨)" if config.get("SSAFY_AUTH_TOKEN") else "미설정"
         
         print(f" 1. 📁 작업 디렉토리 변경  [{config.get('ALGO_BASE_DIR', '미설정')}]")
         print(f" 2. 💻 IDE 변경           [{ide_name}]")

@@ -1,0 +1,24 @@
+{
+  "ok": true,
+  "exit_code": 0,
+  "runner": "powershell",
+  "command": [
+    "C:\\WINDOWS\\System32\\WindowsPowerShell\\v1.0\\powershell.EXE",
+    "-NoProfile",
+    "-ExecutionPolicy",
+    "Bypass",
+    "-File",
+    "C:\\Users\\SSAFY\\Desktop\\SSAFY_sh_func\\tests\\run_tests.ps1"
+  ],
+  "started_at": 1769153562.8958867,
+  "ended_at": 1769153582.593827,
+  "passed": [
+    "cpp only creates cpp",
+    "py default creates py",
+    "cpp exists without lang keeps cpp only",
+    "cpp with msg flag creates cpp",
+    "commit when file changed",
+    "explicit py creates py when cpp exists"
+  ],
+  "failed": []
+}
