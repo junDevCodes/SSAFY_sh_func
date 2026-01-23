@@ -14,6 +14,29 @@ IDE_POOL = {
     "5": ("Sublime Text", "subl")
 }
 
+def sanitize_config_value(value, allow_empty=False):
+    """설정 파일에 안전하게 저장할 수 있는 값으로 검증
+    
+    Returns:
+        (str, None): 검증된 값
+        (None, str): 오류 메시지
+    """
+    if not value or not value.strip():
+        if allow_empty:
+            return "", None
+        return None, "빈 값은 사용할 수 없습니다"
+    
+    value = value.strip()
+    
+    # 금지 문자 검사
+    forbidden_chars = ['"', "'", '$', '`', '\\', '\n', '\r', ';', '|', '&']
+    for char in forbidden_chars:
+        if char in value:
+            char_display = repr(char).strip("'")
+            return None, f"특수문자 '{char_display}'는 사용할 수 없습니다"
+    
+    return value, None
+
 def load_config():
     config = {}
     if os.path.exists(CONFIG_FILE):
@@ -144,15 +167,23 @@ def main_menu(config):
             
             if git_choice == "1":
                 new_prefix = input(f"새 커밋 접두사 (현재: {config.get('GIT_COMMIT_PREFIX', 'solve')}): ").strip()
-                if new_prefix:
-                    config["GIT_COMMIT_PREFIX"] = new_prefix
-                    print(f"✅ 커밋 접두사가 '{new_prefix}'로 변경되었습니다.")
+                validated, error = sanitize_config_value(new_prefix)
+                if error:
+                    print(f"⚠️ {error}")
+                    input("엔터키를 눌러 계속...")
+                elif validated:
+                    config["GIT_COMMIT_PREFIX"] = validated
+                    print(f"✅ 커밋 접두사가 '{validated}'로 변경되었습니다.")
                     input("엔터키를 눌러 계속...")
             elif git_choice == "2":
                 new_branch = input(f"새 기본 브랜치 (현재: {config.get('GIT_DEFAULT_BRANCH', 'main')}): ").strip()
-                if new_branch:
-                    config["GIT_DEFAULT_BRANCH"] = new_branch
-                    print(f"✅ 기본 브랜치가 '{new_branch}'로 변경되었습니다.")
+                validated, error = sanitize_config_value(new_branch)
+                if error:
+                    print(f"⚠️ {error}")
+                    input("엔터키를 눌러 계속...")
+                elif validated:
+                    config["GIT_DEFAULT_BRANCH"] = validated
+                    print(f"✅ 기본 브랜치가 '{validated}'로 변경되었습니다.")
                     input("엔터키를 눌러 계속...")
             elif git_choice == "3":
                 current_val = str(config.get('GIT_AUTO_PUSH', 'true')).lower()

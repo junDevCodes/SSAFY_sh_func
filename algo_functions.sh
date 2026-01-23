@@ -1023,12 +1023,8 @@ _gitdown_all() {
     echo "📊 결과: ✅ ${success_count} 성공 | ❌ ${fail_count} 실패 | ⏭️ ${skip_count} 스킵"
     
     # 미완료 폴더 확인 (동적 Playlist)
+    # 이 함수 내부에서 모든 문제 완료 시 제출 링크도 출력됨
     _check_unsolved_folders "$ssafy_root" "${folders[@]}"
-    
-    # 제출 링크 일괄 출력 (Phase 3)
-    if [ ${#pushed_folders[@]} -gt 0 ]; then
-        _show_submission_links "$ssafy_root" "${pushed_folders[@]}"
-    fi
 }
 
 # =============================================================================
