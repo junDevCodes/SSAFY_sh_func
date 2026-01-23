@@ -11,26 +11,35 @@
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V7.4"
+ALGO_FUNCTIONS_VERSION="V7.4.1"
 
 # 업데이트 명령어
 algo-update() {
     local script_dir
     script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
     
+    echo "📍 설치 경로: $script_dir"
     echo "🔄 최신 버전으로 업데이트 중..."
+    
+    if [ ! -d "$script_dir/.git" ]; then
+        echo "❌ Git 저장소가 아닙니다. 수동으로 다시 설치해주세요."
+        return 1
+    fi
+    
     (
         cd "$script_dir" || exit 1
-        git pull origin main
+        # 로컬 변경사항 과감히 버리고 강제 동기화 (사용자 수정 방지)
+        git fetch --all
+        git reset --hard origin/main
     )
     
     if [ $? -eq 0 ]; then
         echo ""
-        echo "✅ 업데이트 완료!"
+        echo "✅ 업데이트 완료! (V7.4.1+)"
         read -r -p "🎉 Enter를 누르면 변경사항을 적용합니다..." _
         exec bash
     else
-        echo "❌ 업데이트 실패. 직접 'cd $script_dir && git pull'을 시도해보세요."
+        echo "❌ 업데이트 실패. 네트워크 상태를 확인하거나 재설치해주세요."
     fi
 }
 
