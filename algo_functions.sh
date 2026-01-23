@@ -1023,8 +1023,15 @@ _gitdown_all() {
     echo "📊 결과: ✅ ${success_count} 성공 | ❌ ${fail_count} 실패 | ⏭️ ${skip_count} 스킵"
     
     # 미완료 폴더 확인 (동적 Playlist)
-    # 이 함수 내부에서 모든 문제 완료 시 제출 링크도 출력됨
+    # 완료 시 _check_unsolved_folders 내부에서 전체 링크 출력됨
     _check_unsolved_folders "$ssafy_root" "${folders[@]}"
+    local playlist_complete=$?
+    
+    # 미완료 문제가 남아있을 때만 방금 푸시한 폴더의 제출 링크 출력
+    # (Playlist 완료 시에는 위에서 이미 전체 링크 출력됨)
+    if [ "$playlist_complete" -ne 0 ] && [ ${#pushed_folders[@]} -gt 0 ]; then
+        _show_submission_links "$ssafy_root" "${pushed_folders[@]}"
+    fi
 }
 
 # =============================================================================
@@ -1106,7 +1113,9 @@ _check_unsolved_folders() {
         echo "🎉 모든 문제를 완료했습니다! 고생하셨습니다!"
         # [V7.5.2] Playlist 완료 시 전체 제출 링크 출력
         _show_submission_links "$ssafy_root" "${all_folders[@]}"
+        return 0  # 완료됨
     fi
+    return 1  # 미완료 문제 있음
 }
 
 # =============================================================================
