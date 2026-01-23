@@ -2,6 +2,13 @@
 
 ---
 
+## V7.4.1 (2026-01-23) - Feedback & UX Improvements 📣
+
+### ✨ 개선 사항 (Improvements)
+- **실습실 오픈 과정 가시화**: `gitup` 스마트 배치 모드 실행 시, 백그라운드에서 수행되는 과정(로그인, 생성 등)을 화면에 실시간으로 표시
+- **보안 입력 피드백 추가**: Secure Input 모드에서 붙여넣기 시 "입력 수신 완료(글자수)" 메시지 표시로 입력 여부 확인 가능
+- **진행 상황 초기화**: `gitup` 직후 `.ssafy_progress` 파일을 `init` 상태로 초기화하여 바로 목록 확인 가능
+
 ## V7.4 (2026-01-23) - Security & Stability Update 🔐
 
 ### ✨ 주요 변경 사항 (Major Changes)

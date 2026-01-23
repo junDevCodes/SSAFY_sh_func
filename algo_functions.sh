@@ -1683,8 +1683,9 @@ gitup() {
     if [ $# -eq 0 ]; then
         echo "🔐 [Secure Mode] Smart Link(URL|Token) 또는 URL을 붙여넣으세요."
         echo "   (입력 내용은 화면에 표시되지 않습니다)"
-        read -s -r -p "👉 Paste Here: " prompt_input
+        read -s -r -p "👉 Paste Here (Ctrl+V + Enter): " prompt_input
         echo "" # 줄바꿈
+        echo "✅ 입력 수신 완료! (${#prompt_input}자)"
         
         if [ -z "$prompt_input" ]; then
             echo "❌ 입력이 취소되었습니다."
@@ -1773,7 +1774,7 @@ gitup() {
         
         # 파이썬 스크립트 실행 및 결과 파싱
         # 출력형식: URL|CourseID|PracticeID|PA_ID
-        python "$script_dir/ssafy_batch_create.py" "$input" 20 --pipe 2>/dev/null | while IFS='|' read -r url course_id pr_id pa_id; do
+        python "$script_dir/ssafy_batch_create.py" "$input" 20 --pipe | while IFS='|' read -r url course_id pr_id pa_id; do
             # Windows 호환: \r 제거 (필수)
             url=$(echo "$url" | tr -d '\r')
             course_id=$(echo "$course_id" | tr -d '\r')
