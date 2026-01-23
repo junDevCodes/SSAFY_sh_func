@@ -11,7 +11,7 @@
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V7.4.5"
+ALGO_FUNCTIONS_VERSION="V7.5.2"
 
 # 업데이트 명령어
 algo-update() {
