@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSAFY Shell Tools - 기능 가이드</title>
+    <style>
+        :root {
+            --primary-gradient: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            --bg-color: #f8fafc;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            /* Dark Navy for body text */
+            --text-sub: #64748b;
+            --blue-500: #3b82f6;
+        }
+
+        body {
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            padding: 40px 20px;
+            display: flex;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.8);
+        }
+
+        .header {
+            background: var(--primary-gradient);
+            padding: 40px 20px;
+            text-align: center;
+            color: white;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 2em;
+            font-weight: 800;
+        }
+
+        .header p {
+            opacity: 0.9;
+            margin-top: 10px;
+            color: white;
+        }
+
+        .header code {
+            background: rgba(255, 255, 255, 0.25);
+            padding: 2px 8px;
+            border-radius: 4px;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 0.95em;
+        }
+
+        .content {
+            padding: 40px;
+            line-height: 1.6;
+        }
+
+        h2 {
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 10px;
+            margin-top: 50px;
+            font-size: 1.6em;
+            color: #1e293b;
+            font-weight: 800;
+        }
+
+        h2:first-of-type {
+            margin-top: 0;
+        }
+
+        h3 {
+            color: var(--blue-500);
+            margin-top: 40px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        h4 {
+            margin-top: 25px;
+            margin-bottom: 10px;
+            color: #334155;
+            font-size: 1.1em;
+            font-weight: 700;
+        }
+
+        p,
+        li {
+            color: #1e293b;
+            margin-bottom: 15px;
+        }
+
+        /* Fixed: High contrast text */
+        ul,
+        ol {
+            margin-bottom: 20px;
+            padding-left: 20px;
+        }
+
+        /* Terminal Styles */
+        .terminal-window {
+            background: #1e293b;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            margin: 25px 0;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 0.9em;
+            line-height: 1.5;
+            color: #f8fafc;
+        }
+
+        .terminal-header {
+            background: #334155;
+            padding: 10px 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .red {
+            background: #ef4444;
+        }
+
+        .yellow {
+            background: #f59e0b;
+        }
+
+        .green {
+            background: #22c55e;
+        }
+
+        .terminal-title {
+            color: #94a3b8;
+            font-size: 0.8em;
+            margin-left: 10px;
+            flex-grow: 1;
+            text-align: center;
+            margin-right: 50px;
+        }
+
+        .terminal-body {
+            padding: 20px;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        /* Terminal Colors */
+        .t-prompt {
+            color: #22c55e;
+            font-weight: bold;
+        }
+
+        .t-path {
+            color: #eab308;
+            font-weight: bold;
+        }
+
+        .t-cmd {
+            color: #f8fafc;
+            font-weight: bold;
+        }
+
+        .t-dim {
+            color: #94a3b8;
+        }
+
+        .t-success {
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        .t-info {
+            color: #60a5fa;
+            font-weight: bold;
+        }
+
+        .t-warn {
+            color: #fbbf24;
+            font-weight: bold;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: #94a3b8;
+            animation: blink 1s infinite;
+            vertical-align: bottom;
+        }
+
+        @keyframes blink {
+
+            0%,
+            50% {
+                opacity: 1;
+            }
+
+            51%,
+            100% {
+                opacity: 0;
+            }
+        }
+
+        .btn-back {
+            display: inline-block;
+            margin-top: 60px;
+            padding: 12px 30px;
+            background: #e2e8f0;
+            color: #475569;
+            text-decoration: none;
+            border-radius: 50px;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .btn-back:hover {
+            background: #cbd5e1;
+            color: #1e293b;
+            transform: translateY(-2px);
+        }
+
+        .info-box {
+            background: #f0f9ff;
+            border-left: 4px solid #3b82f6;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        .warn-box {
+            background: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            padding: 15px 20px;
+            margin: 20px 0;
+            border-radius: 0 8px 8px 0;
+        }
+
+        code {
+            background: #f1f5f9;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Menlo', monospace;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h1>🛠 Git & Config 가이드</h1>
+            <p>SSAFY 실습실 전용: 실습 관리(<code>gitup</code>)와 제출(<code>gitdown</code>), 설정(<code>algo-config</code>)</p>
+        </div>
+
+        <div class="content">
+            <h2>🚀 1. 실습 시작 (gitup)</h2>
+
+            <h3>🔹 gitup</h3>
+            <p>인증 토큰이나 실습실 URL을 붙여넣어 실습 환경을 <b>자동으로 생성하고 엽니다.</b></p>
+
+            <div class="terminal-window">
+                <div class="terminal-header">
+                    <div class="dot red"></div>
+                    <div class="dot yellow"></div>
+                    <div class="dot green"></div>
+                    <div class="terminal-title">gitup</div>
+                </div>
+                <div class="terminal-body"><span class="t-prompt">SSAFY@PC</span> <span class="t-dim">MINGW64</span>
+                    <span class="t-path">~/Desktop/lab/</span>
+                    <span class="t-prompt">$</span> <span class="t-cmd">gitup</span>
+                    🔐 [Secure Mode] Smart Link(URL|Token) 또는 URL을 붙여넣으세요.
+                    👉 Paste Here (Ctrl+V + Enter): <span class="cursor"></span>
+                </div>
+            </div>
+
+            <h4>📌 Smart Batch (일괄 생성) - gitup 실행 시 자동 적용</h4>
+            <p>SSAFY 실습실 URL을 붙여넣으면 여러 개의 저장소를 <b>자동으로 감지하여 모두 처리</b>합니다.</p>
+            <div class="terminal-window">
+                <div class="terminal-body"><span class="t-info">🚀 SSAFY 실습실 일괄 생성 및 클론 모드 (Smart Batch)</span>
+                    ⏳ 실습실 생성 및 URL 분석 중...
+                    ------------------------------------------------------------
+                    👉 PR_001 확인... <span class="t-success">✅ https://lab.ssafy.com/user/sample_ws_01</span>
+                    👉 PR_002 확인... <span class="t-success">✅ https://lab.ssafy.com/user/sample_ws_02</span>
+                    👉 PR_003 확인... <span class="t-success">✅ https://lab.ssafy.com/user/sample_hw_02</span>
+                    ------------------------------------------------------------
+                    📦 총 3개의 저장소를 처리합니다.
+                    <span class="t-success">✅ 일괄 작업 완료!</span>
+                </div>
+            </div>
+
+
+            <h2>📤 2. 제출 및 업로드 (gitdown)</h2>
+
+            <h3>🔹 gitdown (기본 제출)</h3>
+            <p>현재 폴더의 작업을 커밋하고 푸시합니다. 메시지는 설정된 <b>커밋 접두사(Prefix)</b>에 따라 자동 생성됩니다.</p>
+            <div class="terminal-window">
+                <div class="terminal-body"><span class="t-prompt">$</span> <span class="t-cmd">gitdown</span>
+                    [main a1b2c3d] solve: sample_ws_01
+                    <span class="t-success">🚀 Pushed to origin/main successfully.</span>
+                </div>
+            </div>
+
+            <h4>📌 커밋 메시지 직접 작성하기 (-m)</h4>
+            <div class="terminal-window">
+                <div class="terminal-body"><span class="t-prompt">$</span> <span class="t-cmd">gitdown -m "feat: 알고리즘 1번
+                        문제 풀이 완료"</span>
+                    [main b2c3d4e] feat: 알고리즘 1번 문제 풀이 완료
+                    ...</div>
+            </div>
+
+            <h3>🔹 gitdown -a (일괄 제출)</h3>
+            <p>현재 위치의 모든 하위 폴더를 검사하여 변경사항이 있는 것들을 <b>한 번에 제출</b>합니다.</p>
+            <div class="terminal-window">
+                <div class="terminal-body"><span class="t-prompt">$</span> <span class="t-cmd">gitdown -a</span>
+                    <span class="t-info">📦 [일괄 커밋/푸시 모드]</span>
+                    ------------------------------------------------------------
+                    [1/3] sample_ws_01... <span class="t-success">✅ 커밋 & 푸시 완료</span>
+                    [2/3] sample_ws_02... <span class="t-success">✅ 커밋 & 푸시 완료</span>
+                    [3/3] sample_hw_02... <span class="t-dim">⏭️ 변경사항 없음 (스킵)</span>
+                    ------------------------------------------------------------
+                    <span class="t-success">✅ 일괄 작업 완료! (2/3 제출됨)</span>
+                </div>
+            </div>
+
+            <h3>🔹 자동 이동 기능</h3>
+            <p><code>gitdown</code> 후 푸시가 성공하면 <b>자동으로 다음 문제 폴더로 이동</b>합니다.</p>
+            <div class="terminal-window">
+                <div class="terminal-body"><span class="t-prompt">$</span> <span class="t-cmd">gitdown</span>
+                    [main a1b2c3d] solve: sample_ws_01
+                    <span class="t-success">🚀 Pushed to origin/main successfully.</span>
+
+                    <span class="t-info">➡️ 다음 문제로 자동 이동: sample_ws_02</span>
+                    <span class="t-prompt">$</span> pwd
+                    ~/Desktop/lab/sample_ws_02
+                </div>
+            </div>
+
+            <h3>🔹 제출 링크 자동 생성</h3>
+            <p>일괄 제출(<code>-a</code>) 후에는 SSAFY 실습실 <b>제출 페이지 링크</b>가 자동으로 표시됩니다.</p>
+            <div class="terminal-window">
+                <div class="terminal-body"><span class="t-success">✅ 일괄 작업 완료!</span>
+
+                    📋 제출 링크 목록:
+                    1. sample_ws_01: https://project.ssafy.com/practiceroom/course/.../practice/.../detail
+                    2. sample_ws_02: https://project.ssafy.com/practiceroom/course/.../practice/.../detail
+
+                    👉 번호 입력 (0=전체 열기, Enter=건너뛰기): <span class="cursor"></span>
+                </div>
+            </div>
+
+
+            <h2>⚙️ 3. 설정 관리 (algo-config)</h2>
+
+            <h3>🔹 명령어 안내</h3>
+            <ul>
+                <li><code>algo-config show</code> : 현재 적용된 설정을 확인합니다.</li>
+                <li><code>algo-config edit</code> : <b>Python 설정 마법사</b>가 실행되어 대화형으로 설정을 변경합니다.</li>
+                <li><code>algo-config reset</code> : 설정을 초기화합니다.</li>
+            </ul>
+
+            <div class="warn-box">
+                ⚠️ <b>주의:</b> <code>algo-config reset</code>을 실행하면 저장된 토큰 등 모든 설정이 삭제됩니다.
+            </div>
+
+            <h3>🔹 algo-config edit (설정 마법사)</h3>
+            <p><code>algo-config edit</code> 실행 시 아래와 같은 <b>Python TUI 메뉴</b>가 표시됩니다:</p>
+            <div class="terminal-window">
+                <div class="terminal-body"><span class="t-prompt">$</span> <span class="t-cmd">algo-config edit</span>
+
+                    <span class="t-info">===== SSAFY Shell Tools 설정 마법사 =====</span>
+                    현재 설정:
+                    📁 작업 디렉토리: /home/user/algorithm
+                    💻 IDE: code (VS Code)
+                    🔑 토큰: ●●●●●●●●●●●●
+                    👤 ID: ssafy_user
+
+                    메뉴:
+                    1. 📁 작업 디렉토리 변경
+                    2. 💻 IDE 변경 (code/pycharm/idea)
+                    3. 🔑 SSAFY 토큰 설정
+                    4. 👤 SSAFY ID 설정
+                    0. 💾 저장 및 종료
+                    q. ❌ 취소
+
+                    선택: <span class="cursor"></span>
+                </div>
+            </div>
+
+            <h3>🔹 커밋 접두사(Prefix) 변경 방법</h3>
+            <p>기본값인 <code>solve:</code>를 다른 단어(예: <code>fix:</code>, <code>docs:</code>)로 바꾸고 싶다면:</p>
+            <ol>
+                <li><code>~/.algo_config</code> 파일을 직접 편집하세요.</li>
+                <li>설정 파일에서 <b>GIT_COMMIT_PREFIX</b> 항목을 찾아 수정하세요.</li>
+            </ol>
+            <div class="terminal-window">
+                <div class="terminal-body"><span class="t-prompt">$</span> <span class="t-cmd">nano
+                        ~/.algo_config</span>
+                    # 변경 전
+                    GIT_COMMIT_PREFIX="solve"
+
+                    # 변경 후
+                    GIT_COMMIT_PREFIX="docs"</div>
+            </div>
+
+
+            <h2>🔄 4. 도구 업데이트 (algo-update)</h2>
+
+            <h3>🔹 algo-update</h3>
+            <p>SSAFY Shell Tools를 <b>최신 버전으로 업데이트</b>합니다.</p>
+            <div class="terminal-window">
+                <div class="terminal-body"><span class="t-prompt">$</span> <span class="t-cmd">algo-update</span>
+                    <span class="t-info">🔄 업데이트 확인 중...</span>
+                    Fetching origin...
+                    <span class="t-success">✅ 최신 버전으로 업데이트 완료! (V7.4.5)</span>
+                    🔃 셸을 재시작합니다...
+                </div>
+            </div>
+
+            <div class="info-box">
+                💡 <b>자동 업데이트:</b> 셸 시작 시 24시간마다 백그라운드에서 업데이트를 자동 확인합니다.
+            </div>
+
+
+            <h2>🩺 5. 시스템 진단 (algo-doctor)</h2>
+
+            <h3>🔹 algo-doctor</h3>
+            <p>설치 상태와 설정을 <b>자동으로 진단</b>하여 문제를 파악합니다.</p>
+            <div class="terminal-window">
+                <div class="terminal-body"><span class="t-prompt">$</span> <span class="t-cmd">algo-doctor</span>
+                    <span class="t-info">🩺 SSAFY Shell Tools 진단 (V7.4.5)</span>
+                    ============================================
+
+                    [1/4] 필수 도구 확인
+                    git <span class="t-success">✅ 설치됨</span>
+                    curl <span class="t-success">✅ 설치됨</span>
+                    python <span class="t-success">✅ 설치됨</span>
+
+                    [2/4] 보안 점검
+                    설정 파일 권한 <span class="t-success">✅ 600 (안전)</span>
+                    토큰 암호화 <span class="t-success">✅ Base64 암호화됨</span>
+
+                    [3/4] IDE 점검
+                    IDE_EDITOR <span class="t-success">✅ code (실행 가능)</span>
+
+                    [4/4] 서버 연결
+                    SSAFY 토큰 <span class="t-success">✅ 유효함</span>
+
+                    ============================================
+                    <span class="t-success">🎉 모든 항목이 정상입니다!</span>
+                </div>
+            </div>
+
+
+            <center>
+                <a href="index.html" class="btn-back">⬅️ 설치 포털로 돌아가기</a>
+            </center>
+        </div>
+    </div>
+
+</body>
+
+</html>
