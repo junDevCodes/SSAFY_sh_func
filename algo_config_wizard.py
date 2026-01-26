@@ -96,10 +96,9 @@ def save_config(config):
             f'GIT_COMMIT_PREFIX="{config.get("GIT_COMMIT_PREFIX", "solve")}"',
             f'GIT_AUTO_PUSH="{config.get("GIT_AUTO_PUSH", "true")}"',
             '',
-            f'# SSAFY 설정',
             f'SSAFY_BASE_URL="{config.get("SSAFY_BASE_URL", "https://lab.ssafy.com")}"',
             f'SSAFY_USER_ID="{config.get("SSAFY_USER_ID", "")}"',
-            f'SSAFY_AUTH_TOKEN="{config.get("SSAFY_AUTH_TOKEN", "")}"',
+            # [Security V7.7] 토큰은 파일에 저장하지 않음 (세션 전용)
             '',
             f'# IDE 설정',
             f'IDE_EDITOR="{config.get("IDE_EDITOR", "code")}"',
@@ -134,11 +133,9 @@ def main_menu(config):
         for k, v in IDE_POOL.items():
             if v[1] == ide_code: ide_name = v[0]
             
-        token_status = "설정됨 (인코딩됨)" if config.get("SSAFY_AUTH_TOKEN") else "미설정"
-        
-        print(f" 1. 📁 작업 디렉토리 변경  [{config.get('ALGO_BASE_DIR', '미설정')}]")
         print(f" 2. 💻 IDE 변경           [{ide_name}]")
-        print(f" 3. 🔑 SSAFY 토큰 설정     [{token_status}]")
+        print(f" 3. 🔑 SSAFY 토큰 설정     [세션 전용 - 터미널에서 자동 입력]")
+        print(f" 4. 👤 SSAFY ID 설정       [{config.get('SSAFY_USER_ID', '미설정')}]")
         print(f" 4. 👤 SSAFY ID 설정       [{config.get('SSAFY_USER_ID', '미설정')}]")
         print(f" 5. 🔀 Git 설정")
         print(f"     - 커밋 접두사: {config.get('GIT_COMMIT_PREFIX', 'solve')}")
@@ -167,24 +164,15 @@ def main_menu(config):
                 input("⚠️ 잘못된 번호입니다. 엔터키를 누르세요.")
                 
         elif choice == "3":
-            print("\n[SSAFY 토큰 설정]")
-            print("발급받은 Bearer 토큰을 붙여넣으세요.")
-            print("(입력 시 문자가 보이지 않습니다)")
-            new_token = getpass.getpass("👉 Token: ").strip()
-            
-            if new_token:
-                # 암호화 (Base64)
-                if not new_token.startswith("Bearer "):
-                    # 사용자가 Bearer 없이 넣었을 수도 있으니 처리해주면 친절하지만
-                    # 보통 Bearer 포함해서 복사하라고 안내함.
-                    # 여기서는 있는 그대로 받아서 처리.
-                    # 단, Base64 인코딩 진행
-                    pass
-                    
-                encoded = base64.b64encode(new_token.encode('utf-8')).decode('utf-8')
-                config["SSAFY_AUTH_TOKEN"] = encoded
-                print("✅ 토큰이 암호화되어 설정되었습니다.")
-                input("엔터키를 눌러 계속...")
+            print("\n[🔐 SSAFY 토큰 안내]")
+            print("")
+            print("  V7.7부터 토큰은 보안상 파일에 저장되지 않습니다.")
+            print("")
+            print("  • 토큰은 터미널 세션에서만 유지됩니다.")
+            print("  • gitup 실행 시 자동으로 입력을 요청합니다.")
+            print("  • 터미널 종료 시 토큰은 자동 삭제됩니다.")
+            print("")
+            input("엔터키를 눌러 계속...")
                 
         elif choice == "4":
              new_id = input(f"SSAFY ID 입력 (현재: {config.get('SSAFY_USER_ID', '')}): ").strip()

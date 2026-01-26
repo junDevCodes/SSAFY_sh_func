@@ -58,31 +58,7 @@ def api_request(url, method="GET", data=None, headers=None):
 # ==================================================================================
 # [사용자 설정 영역]
 # ==================================================================================
-def update_config_file(token):
-    config_path = os.path.expanduser('~/.algo_config')
-    try:
-        lines = []
-        if os.path.exists(config_path):
-            with open(config_path, 'r', encoding='utf-8') as f:
-                lines = f.readlines()
-        
-        new_lines = []
-        updated = False
-        for line in lines:
-            if line.strip().startswith('SSAFY_AUTH_TOKEN='):
-                new_lines.append(f'SSAFY_AUTH_TOKEN="{token}"\n')
-                updated = True
-            else:
-                new_lines.append(line)
-        
-        if not updated:
-            new_lines.append(f'SSAFY_AUTH_TOKEN="{token}"\n')
-            
-        with open(config_path, 'w', encoding='utf-8') as f:
-            f.writelines(new_lines)
-        print("✅ Token saved to ~/.algo_config")
-    except Exception as e:
-        print(f"⚠️ Failed to save token to config: {e}", file=sys.stderr)
+# [Security V7.7] 토큰은 파일에 저장하지 않음 (세션 전용)
 
 
 def get_auth_token():
@@ -133,10 +109,10 @@ if not AUTH_TOKEN or AUTH_TOKEN == "Bearer your_token_here" or is_token_expired(
     print("   Create a bookmark with this URL to copy token easily:", file=sys.stderr)
     print("   javascript:(function(){var t=localStorage.getItem('accessToken');if(!t)alert('Login first!');else prompt('Ctrl+C to copy:','Bearer '+t);})();\n", file=sys.stderr)
     print("   Enter Token (Bearer ...): ", end='', file=sys.stderr, flush=True)
-    print("   Enter Token (Bearer ...): ", end='', file=sys.stderr, flush=True)
     AUTH_TOKEN = getpass.getpass("").strip()
+    # [Security V7.7] 파일에 저장하지 않고 세션에서만 사용
     if AUTH_TOKEN:
-        update_config_file(AUTH_TOKEN)
+        print("✅ Token loaded for this session only.", file=sys.stderr)
 
 if not AUTH_TOKEN:
     sys.exit(1)

@@ -11,7 +11,7 @@
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V7.6.0"
+ALGO_FUNCTIONS_VERSION="V7.7.0"
 
 # 업데이트 명령어 (V7.6 네임스페이스)
 ssafy_algo_update() {
@@ -159,15 +159,100 @@ _ensure_ssafy_config() {
             fi
         fi
     fi
+}
 
-    if [ -z "${SSAFY_AUTH_TOKEN:-}" ] || [[ "$SSAFY_AUTH_TOKEN" == "Bearer your_token_here" ]]; then
+# [Security V7.7] JWT 토큰 만료 체크
+# Returns 0 (true) if expired, 1 (false) if valid
+_is_token_expired() {
+    local token="$1"
+    
+    # Bearer 접두사 제거
+    local jwt="${token#Bearer }"
+    
+    # JWT 포맷 확인 (header.payload.signature)
+    if [[ ! "$jwt" == *"."*"."* ]]; then
+        return 0  # 잘못된 형식 = 만료로 처리
+    fi
+    
+    # Payload 추출 (두 번째 파트)
+    local payload=$(echo "$jwt" | cut -d'.' -f2)
+    
+    # Base64 URL-safe 디코딩을 위한 패딩 추가
+    local padding=$((4 - ${#payload} % 4))
+    if [ $padding -lt 4 ]; then
+        payload="${payload}$(printf '=%.0s' $(seq 1 $padding))"
+    fi
+    
+    # Base64 디코딩 및 exp 추출
+    local exp=""
+    if command -v python >/dev/null 2>&1; then
+        exp=$(echo "$payload" | python -c "
+import sys, base64, json
+try:
+    payload = sys.stdin.read().strip()
+    # URL-safe base64 decoding
+    payload = payload.replace('-', '+').replace('_', '/')
+    decoded = base64.b64decode(payload)
+    data = json.loads(decoded)
+    print(data.get('exp', 0))
+except:
+    print(0)
+" 2>/dev/null)
+    elif command -v python3 >/dev/null 2>&1; then
+        exp=$(echo "$payload" | python3 -c "
+import sys, base64, json
+try:
+    payload = sys.stdin.read().strip()
+    payload = payload.replace('-', '+').replace('_', '/')
+    decoded = base64.b64decode(payload)
+    data = json.loads(decoded)
+    print(data.get('exp', 0))
+except:
+    print(0)
+" 2>/dev/null)
+    else
+        return 0  # Python 없으면 만료로 처리
+    fi
+    
+    # 현재 시간과 비교
+    local now=$(date +%s)
+    if [ -z "$exp" ] || [ "$exp" = "0" ]; then
+        return 0  # exp 없으면 만료로 처리
+    fi
+    
+    if [ "$now" -ge "$exp" ]; then
+        return 0  # 만료됨
+    else
+        return 1  # 유효함
+    fi
+}
+
+# [Security V7.7] 세션 전용 토큰 관리
+# 토큰이 환경변수에 없으면 사용자에게 입력 요청
+_ensure_token() {
+    if [ -z "${SSAFY_AUTH_TOKEN:-}" ]; then
         if _is_interactive; then
-            local input=""
-            # 자동으로 묻지 않음 (실행 시점에 물어보도록 스킵하거나, init 때는 빈값 허용)
-            # 여기서는 파일에 값이 없으면 초기화만
-            :
+            echo ""
+            echo "🔐 SSAFY 토큰이 필요합니다."
+            echo "   (토큰은 이 터미널 세션에서만 유지됩니다)"
+            echo "   (터미널 종료 시 자동으로 삭제됩니다)"
+            echo ""
+            read -r -s -p "🔑 Token (Bearer ...): " token_input
+            echo ""
+            
+            if [ -n "$token_input" ]; then
+                export SSAFY_AUTH_TOKEN="$token_input"
+                echo "✅ 토큰이 세션에 저장되었습니다."
+                return 0
+            else
+                echo "❌ 토큰이 입력되지 않았습니다."
+                return 1
+            fi
+        else
+            return 1
         fi
     fi
+    return 0
 }
 
 _find_ssafy_session_root() {
@@ -223,10 +308,8 @@ GIT_AUTO_PUSH=true
 # IDE 설정 (지원: code, pycharm, idea)
 IDE_EDITOR="$ide_selection"
 
-# SSAFY 설정 (처음 실행 시 입력받아 저장합니다)
-SSAFY_BASE_URL=""
-SSAFY_USER_ID=""
-SSAFY_AUTH_TOKEN="Bearer your_token_here"
+# [Security V7.7] 토큰은 파일에 저장하지 않음 (세션 전용)
+# SSAFY_AUTH_TOKEN 라인 제거됨
 EOF
         echo "✅ 설정 파일 생성: $ALGO_CONFIG_FILE"
         echo "💡 'algo-config' 명령어로 설정을 변경할 수 있습니다"
@@ -237,32 +320,40 @@ EOF
     # [Security V7.0] 파일 권한 600 강제 (타인 접근 제한)
     chmod 600 "$ALGO_CONFIG_FILE" 2>/dev/null || true
 
-    # [Security V7.0] 토큰 인코딩 관리 (Base64 - 노출 방지 목적)
-    # 1. 평문(Bearer ...)이면 -> Base64로 인코딩하여 파일에 저장 (마이그레이션)
-    # 2. 인코딩된 값이면 -> 디코딩하여 메모리($SSAFY_AUTH_TOKEN)에 로드
-    if [ -n "${SSAFY_AUTH_TOKEN:-}" ] && [[ "${SSAFY_AUTH_TOKEN:-}" != "Bearer your_token_here" ]]; then
-        if [[ "$SSAFY_AUTH_TOKEN" == "Bearer "* ]]; then
-            # 마이그레이션: 평문 -> Base64
-            if command -v base64 >/dev/null 2>&1; then
-                local encoded_token=$(echo -n "$SSAFY_AUTH_TOKEN" | base64 | tr -d '\n')
-                # sed로 파일 업데이트 (임시파일 방식 - 호환성 개선)
-                sed "s|^SSAFY_AUTH_TOKEN=.*|SSAFY_AUTH_TOKEN=\"$encoded_token\"|" "$ALGO_CONFIG_FILE" > "$ALGO_CONFIG_FILE.tmp" && \
-                mv "$ALGO_CONFIG_FILE.tmp" "$ALGO_CONFIG_FILE"
-                
-                # 메모리 업데이트
-                SSAFY_AUTH_TOKEN="$encoded_token"
-                echo "🔒 토큰이 파일에 인코딩되어 저장되었습니다. (노출 방지)"
-            fi
+    # [Security V7.7] 레거시 토큰 마이그레이션 (파일에 토큰이 있으면 환경변수로 로드 후 파일에서 제거)
+    local file_token=""
+    if [ -f "$ALGO_CONFIG_FILE" ]; then
+        file_token=$(grep "^SSAFY_AUTH_TOKEN=" "$ALGO_CONFIG_FILE" 2>/dev/null | cut -d= -f2 | tr -d '"' || echo "")
+    fi
+    
+    if [ -n "$file_token" ] && [[ "$file_token" != "Bearer your_token_here" ]]; then
+        local token_to_check=""
+        
+        # 토큰 형식 확인 및 디코딩
+        if [[ "$file_token" == "Bearer "* ]]; then
+            token_to_check="$file_token"
         else
-            # 디코딩: Base64 -> 평문
-            if command -v base64 >/dev/null 2>&1; then
-                # base64 -d가 실패할 경우 대비
-                local decoded_token=$(echo "$SSAFY_AUTH_TOKEN" | base64 -d 2>/dev/null || echo "")
-                if [[ "$decoded_token" == "Bearer "* ]]; then
-                    SSAFY_AUTH_TOKEN="$decoded_token"
-                fi
+            # Base64 디코딩 시도
+            local decoded=$(echo "$file_token" | base64 -d 2>/dev/null || echo "")
+            if [[ "$decoded" == "Bearer "* ]]; then
+                token_to_check="$decoded"
             fi
         fi
+        
+        # 만료 체크 후 로드
+        if [ -n "$token_to_check" ]; then
+            if _is_token_expired "$token_to_check"; then
+                echo "⚠️  [V7.7] 기존 저장된 토큰이 만료되어 삭제되었습니다."
+                echo "   (다음 gitup 실행 시 새 토큰을 입력하세요)"
+            else
+                export SSAFY_AUTH_TOKEN="$token_to_check"
+                echo "🔒 [V7.7] 토큰이 파일에서 제거되었습니다. (세션 전용으로 전환)"
+            fi
+        fi
+        
+        # 파일에서 토큰 라인 제거 (만료 여부와 관계없이)
+        sed '/^SSAFY_AUTH_TOKEN=/d' "$ALGO_CONFIG_FILE" > "$ALGO_CONFIG_FILE.tmp" && \
+        mv "$ALGO_CONFIG_FILE.tmp" "$ALGO_CONFIG_FILE"
     fi
     
     # 마이그레이션: IDE_EDITOR가 없는 경우 (V6 -> V6.1)
@@ -2370,17 +2461,34 @@ ssafy_algo_doctor() {
              echo "   ℹ️  Windows/Git Bash 환경 (권한 체크 생략)"
         fi
         
-        # 토큰 암호화 여부 체크
-        # grep으로 파일 내용 직접 확인
-        local file_token=$(grep "SSAFY_AUTH_TOKEN" "$ALGO_CONFIG_FILE" | cut -d= -f2 | tr -d '"')
-        if [[ "$file_token" == "Bearer "* ]]; then
-            echo "   ⚠️  토큰 저장 상태: 평문 (보안 취약)"
-            echo "      -> 'source ~/.bashrc'를 다시 실행하면 암호화됩니다."
-            ((issues++))
-        elif [ -n "$file_token" ]; then
-            echo "   ✅ 토큰 저장 상태: 암호화됨 (Base64)"
+        # [Security V7.7] 토큰 세션 상태 체크 (만료 여부 포함)
+        if [ -n "${SSAFY_AUTH_TOKEN:-}" ]; then
+            if _is_token_expired "$SSAFY_AUTH_TOKEN"; then
+                echo "   ⚠️  토큰 상태: 만료됨 (재입력 필요)"
+                echo "      (gitup 실행 시 새 토큰을 입력하세요)"
+                ((issues++))
+            else
+                # 남은 시간 계산
+                local jwt="${SSAFY_AUTH_TOKEN#Bearer }"
+                local payload=$(echo "$jwt" | cut -d'.' -f2)
+                local exp_time=$(echo "$payload" | python -c "
+import sys, base64, json
+try:
+    p = sys.stdin.read().strip().replace('-','+').replace('_','/')
+    p += '=' * (4 - len(p) % 4) if len(p) % 4 else ''
+    print(json.loads(base64.b64decode(p)).get('exp',0))
+except: print(0)
+" 2>/dev/null || echo "0")
+                local now=$(date +%s)
+                local remaining=$((exp_time - now))
+                local hours=$((remaining / 3600))
+                local mins=$(((remaining % 3600) / 60))
+                
+                echo "   ✅ 토큰 상태: 유효 (세션 전용)"
+                echo "      (남은 시간: ${hours}시간 ${mins}분)"
+            fi
         else
-            echo "   ℹ️  토큰 미설정"
+            echo "   ℹ️  토큰 미설정 (gitup 실행 시 입력 요청)"
         fi
     else
         echo "   ❌ 설정 파일 없음 (\ (~/algo_config))"
