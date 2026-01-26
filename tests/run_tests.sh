@@ -12,6 +12,8 @@ else
   mkdir -p "$TEST_ROOT"
 fi
 cleanup() {
+  # [Windows Fix] 현재 디렉토리가 삭제 대상 내부에 있으면 삭제 실패함
+  cd "$ROOT_DIR" || true
   rm -rf "$TEST_ROOT"
 }
 trap cleanup EXIT
