@@ -15,6 +15,15 @@ ssafy_algo_doctor() {
     echo "=================================================="
     echo ""
     
+    # [Kill Switch Check]
+    if ! _check_service_status; then
+        echo "⚠️  서비스 상태 확인 중 문제가 발생했습니다 (또는 점검 중)."
+        # Doctor는 진단 도구이므로 여기서 종료하지 않고 계속 진행할 수도 있지만,
+        # outage라면 중단하는게 맞을 수도 있음. 
+        # _check_service_status 내에서 이미 메시지를 출력하므로 여기서는 줄바꿈만.
+        echo ""
+    fi
+    
     local issues=0
     
     # [1] 필수 도구 점검
