@@ -11,24 +11,35 @@
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V7.7.3"
+ALGO_FUNCTIONS_VERSION="V7.8.0"
 
 # Python 탐지 (algo_functions.sh 전역)
-# Windows/Git Bash 환경에서 python, python3, py 등을 동적으로 감지
-# Windows Store Shim (python.exe가 존재하지만 실행 불가) 방지 로직 포함
+# V7.8: install.sh에서 설정한 SSAFY_PYTHON 환경변수를 최우선 사용
 _detect_python() {
+    # 1. SSAFY_PYTHON (설치 시점 확정값)
+    if [ -n "$SSAFY_PYTHON" ]; then
+        echo "$SSAFY_PYTHON"
+        return
+    fi
+
+    # 2. Fallback (수동 설치 또는 환경변수 유실 시)
     if command -v python3 >/dev/null 2>&1; then
         echo "python3"
         return
     fi
     
     if command -v python >/dev/null 2>&1; then
-        # 실제 실행 가능한지 테스트 (Shim 방지)
         if python -c "exit(0)" >/dev/null 2>&1; then
             echo "python"
             return
         fi
     fi
+
+    if command -v py >/dev/null 2>&1; then
+        echo "py"
+        return
+    fi
+
     echo ""
 }
 PYTHON_CMD=$(_detect_python)
@@ -1918,6 +1929,14 @@ ssafy_gitup() {
 
     # 0. SSAFY 실습실 생성 URL 감지 (https://project.ssafy.com/...)
     if [[ "$input" == https://project.ssafy.com/* ]]; then
+        # [Python Check] 파이썬 유무 확인
+        if [ -z "$PYTHON_CMD" ]; then
+            echo "❌ Python을 찾을 수 없습니다."
+            echo "   시스템에 Python이 설치되어 있지 않거나, Windows Store 별칭(Shim)만 존재합니다."
+            echo "   Python을 설치하거나 'py' 런처를 활성화해주세요."
+            return 1
+        fi
+
         echo "🚀 SSAFY 실습실 일괄 생성 및 클론 모드 (Smart Batch)"
         echo "⏳ 실습실 생성 및 URL 분석 중..."
         
