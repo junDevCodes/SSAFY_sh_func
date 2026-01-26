@@ -41,14 +41,32 @@ _check_service_status() {
     # Default: raw github url
     local status_url="${ALGO_STATUS_URL:-https://raw.githubusercontent.com/jylee-ssafy/SSAFY_sh_func/main/status.json}"
     
-    # 임시 테스트용 (로컬 파일) - 배포 시 제거 또는 주석 처리
-    # status_url="file://$(pwd)/status.json" 
+    # [DEBUG]
+    # echo "DEBUG: checking status from $status_url" >&2
 
     # 1. Fetch JSON (timeout 2s)
     local json=""
-    if command -v curl >/dev/null 2>&1; then
-        json=$(curl -s --max-time 2 "$status_url" || echo "")
+    
+    # URL이 file:// 로 시작하면 cat 사용 (curl 호환성 문제 방지)
+    if [[ "$status_url" == file://* ]]; then
+        local file_path="${status_url#file://}"
+        # Git Bash 등에서 /c/Users... 경로 문제 해결을 위해 단순화
+        if [ -f "$file_path" ]; then
+            json=$(cat "$file_path")
+        else
+            # 윈도우 경로 이슈일 수 있으니 curl 시도
+             if command -v curl >/dev/null 2>&1; then
+                json=$(curl -s --max-time 2 "$status_url" || echo "")
+            fi
+        fi
+    else
+        if command -v curl >/dev/null 2>&1; then
+            json=$(curl -s --max-time 2 "$status_url" || echo "")
+        fi
     fi
+    
+    # [DEBUG]
+    # echo "DEBUG: json content: $json" >&2
     
     if [ -z "$json" ]; then
         # 네트워크 오류 등 -> Fail Open (정상 진행)
@@ -64,13 +82,13 @@ _check_service_status() {
     if type _ssafy_python_lookup >/dev/null 2>&1; then
          local py_cmd=$(_ssafy_python_lookup)
          if [ -n "$py_cmd" ]; then
-             read -r status message min_version <<< $(echo "$json" | "$py_cmd" -c "
+             IFS='|' read -r status message min_version <<< $(echo "$json" | "$py_cmd" -c "
 import sys, json
 try:
     d = json.load(sys.stdin)
-    print(d.get('status', 'active'), d.get('message', ''), d.get('min_version', 'V1.0.0'))
+    print(d.get('status', 'active'), d.get('message', ''), d.get('min_version', 'V1.0.0'), sep='|')
 except:
-    print('active  V1.0.0')
+    print('active||V1.0.0')
 " 2>/dev/null)
          fi
     else

@@ -3,6 +3,10 @@
 # Configuration Management & Initialization
 # =============================================================================
 
+
+# 설정 파일 경로 정의 (Global)
+ALGO_CONFIG_FILE="$HOME/.ssafy_algo_config"
+
 init_algo_config() {
     if [ ! -f "$ALGO_CONFIG_FILE" ]; then
         echo "⚙️  설정 파일이 없어 새로 생성합니다: $ALGO_CONFIG_FILE"
