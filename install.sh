@@ -87,8 +87,15 @@ add_source_line() {
         fi
         
         echo "# SSAFY Shell Functions" >> "$rc_file"
+        
+        # [V7.8] Python Binding (영구적 Path 고정)
+        if [ -n "$detected_python" ]; then
+             echo "export SSAFY_PYTHON=\"$detected_python\"" >> "$rc_file"
+             echo "alias python=\"\$SSAFY_PYTHON\"" >> "$rc_file"
+        fi
+        
         echo "$source_line" >> "$rc_file"
-        echo "   ✅ $rc_file 에 설정 추가 완료"
+        echo "   ✅ $rc_file 에 설정 추가 완료 (Python: ${detected_python:-Unknown})"
     fi
 }
 

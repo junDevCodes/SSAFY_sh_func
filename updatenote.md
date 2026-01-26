@@ -13,6 +13,13 @@
   - 한 번 찾은 경로는 세션 동안 캐싱되어 성능 저하가 없습니다.
 - **설치 스크립트 복구**: `install.sh`가 더 이상 사용자의 `~/.bashrc`에 환경변수나 별칭을 강제 주입하지 않습니다. (Clean Install)
 
+## V7.8.0 (2026-01-26) - Permanent Python Path Binding 🔗
+
+### ✨ 근본적인 해결 (Fundamental Solution)
+- **설치 시점 Python 고정**: 더 이상 매번 실행할 때마다 Python을 찾아 헤매지 않습니다.
+  - `install.sh` 실행 시 시스템에서 가장 적합한 Python(`python3`, `py`, `python`)을 찾아, 사용자의 쉘 프로필(`~/.bashrc`)에 **영구적으로 등록**합니다.
+  - 등록된 별칭(`alias python=...`)을 통해, 터미널에서 `python` 입력 시 무조건 올바른 인터프리터가 실행되도록 보장합니다.
+  - **효과**: Windows Store Shim(가짜 파이썬) 문제 원천 차단 및 실행 속도 소폭 향상
 
 
 ### 🐛 실행 오류 최종 수정 (Final Fix)
