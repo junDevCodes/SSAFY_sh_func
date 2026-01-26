@@ -96,17 +96,29 @@ echo "🔧 셸 설정 파일 업데이트 중..."
 add_source_line "$HOME/.bashrc"
 
 # Bash Profile (Windows Git Bash 등 Login Shell 호환)
-# .bash_profile이 없으면 생성하고, .bashrc를 로드하도록 설정 (Standard Practice)
-if [ ! -f "$HOME/.bash_profile" ] && [ ! -f "$HOME/.profile" ]; then
-    if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
-        echo "   ✨ Windows Git Bash 환경 감지: .bash_profile 생성"
-        echo "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi" > "$HOME/.bash_profile"
-        add_source_line "$HOME/.bash_profile"
+# .bash_profile이 없으면 생성하고, .bashrc를 로드하도록 설정
+# 이미 있으면 .bashrc를 로드하는지 확인하고 없으면 추가
+ensure_bashrc_sourced() {
+    local profile="$1"
+    if [ ! -f "$profile" ]; then
+        if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+            echo "   ✨ Windows Git Bash 환경 감지: $profile 생성"
+            echo "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi" > "$profile"
+        fi
+    else
+        # .bashrc 로딩 구문이 있는지 확인 (단순 grep)
+        if ! grep -q ".bashrc" "$profile"; then
+            echo "" >> "$profile"
+            echo "# Load .bashrc if it exists" >> "$profile"
+            echo "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi" >> "$profile"
+            echo "   ✅ $profile 에 .bashrc 로딩 설정 추가"
+        fi
     fi
-elif [ -f "$HOME/.bash_profile" ]; then
-    add_source_line "$HOME/.bash_profile"
-elif [ -f "$HOME/.profile" ]; then
-    add_source_line "$HOME/.profile"
+}
+
+ensure_bashrc_sourced "$HOME/.bash_profile"
+if [ ! -f "$HOME/.bash_profile" ]; then
+    ensure_bashrc_sourced "$HOME/.profile"
 fi
 
 # Zsh (있으면)
