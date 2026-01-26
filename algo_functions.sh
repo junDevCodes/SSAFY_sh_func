@@ -10,39 +10,58 @@
 # =============================================================================
 
 # 설정 파일 경로
+# 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V7.8.0"
+ALGO_FUNCTIONS_VERSION="V8.0.0"
 
-# Python 탐지 (algo_functions.sh 전역)
-# V7.8: install.sh에서 설정한 SSAFY_PYTHON 환경변수를 최우선 사용
-_detect_python() {
-    # 1. SSAFY_PYTHON (설치 시점 확정값)
-    if [ -n "$SSAFY_PYTHON" ]; then
-        echo "$SSAFY_PYTHON"
-        return
+# [V8.0 Architecture] Lazy Python Resolution (지연된 런타임 확정)
+# 쉘 시작 시점에는 탐색하지 않고, 실제 명령이 실행될 때 탐색하여 캐싱함
+_SSAFY_PYTHON_CACHE=""
+
+_ssafy_python_lookup() {
+    # 1. 이미 캐시된 값이 있으면 바로 반환
+    if [ -n "$_SSAFY_PYTHON_CACHE" ]; then
+        echo "$_SSAFY_PYTHON_CACHE"
+        return 0
     fi
 
-    # 2. Fallback (수동 설치 또는 환경변수 유실 시)
-    if command -v python3 >/dev/null 2>&1; then
-        echo "python3"
-        return
+    # 2. 우선순위대로 탐색
+    local candidates=("python3" "python" "py")
+    local found=""
+
+    for cmd in "${candidates[@]}"; do
+        if command -v "$cmd" >/dev/null 2>&1; then
+            # Windows Store Shim 방지 (실행 검증)
+            if "$cmd" -c "exit(0)" >/dev/null 2>&1; then
+                found="$cmd"
+                break
+            fi
+        fi
+    done
+
+    # 3. 결과 캐싱 및 반환
+    if [ -n "$found" ]; then
+        export _SSAFY_PYTHON_CACHE="$found"
+        echo "$found"
+        return 0
+    else
+        return 1
+    fi
+}
+
+_require_python() {
+    local cmd
+    cmd=$(_ssafy_python_lookup)
+    
+    if [ -z "$cmd" ]; then
+        echo "❌ Python을 찾을 수 없습니다." >&2
+        echo "   (Checked: python3, python, py)" >&2
+        echo "   기능을 사용하려면 Python을 설치해주세요." >&2
+        return 1
     fi
     
-    if command -v python >/dev/null 2>&1; then
-        if python -c "exit(0)" >/dev/null 2>&1; then
-            echo "python"
-            return
-        fi
-    fi
-
-    if command -v py >/dev/null 2>&1; then
-        echo "py"
-        return
-    fi
-
-    echo ""
+    echo "$cmd"
 }
-PYTHON_CMD=$(_detect_python)
 
 
 # 업데이트 명령어 (V7.6 네임스페이스)
@@ -217,9 +236,11 @@ _is_token_expired() {
     
     # Base64 디코딩 및 exp 추출
     local exp=""
-    local exp=""
-    if [ -n "$PYTHON_CMD" ]; then
-        exp=$(echo "$payload" | "$PYTHON_CMD" -c "
+    local py_cmd
+    py_cmd=$(_ssafy_python_lookup) # 여기서는 조용히 실패 허용 (or return 0)
+
+    if [ -n "$py_cmd" ]; then
+        exp=$(echo "$payload" | "$py_cmd" -c "
 import sys, base64, json
 try:
     payload = sys.stdin.read().strip()
@@ -499,7 +520,8 @@ ssafy_algo_config() {
             script_dir="$HOME/Desktop/SSAFY_sh_func"
         fi
         
-        "$PYTHON_CMD" "$script_dir/algo_config_wizard.py"
+        local py_cmd=$(_require_python) || return 1
+        "$py_cmd" "$script_dir/algo_config_wizard.py"
         
         # [UX] 자동 적용 (엔터 없이 바로 적용)
         echo "🔄 변경된 설정을 적용 중입니다..."
@@ -969,8 +991,9 @@ _handle_git_commit() {
     
     cd "$git_root" || return
     
+    local py_cmd=$(_require_python) || return 1
     local relative_path=$(realpath --relative-to="$git_root" "$target_path" 2>/dev/null || \
-        "$PYTHON_CMD" -c "import os.path; print(os.path.relpath('$target_path', '$git_root'))")
+        "$py_cmd" -c "import os.path; print(os.path.relpath('$target_path', '$git_root'))")
     
     echo "✅ Git 저장소: $git_root"
     echo "📁 대상: $relative_path"
@@ -1929,14 +1952,9 @@ ssafy_gitup() {
 
     # 0. SSAFY 실습실 생성 URL 감지 (https://project.ssafy.com/...)
     if [[ "$input" == https://project.ssafy.com/* ]]; then
-        # [Python Check] 파이썬 유무 확인
-        if [ -z "$PYTHON_CMD" ]; then
-            echo "❌ Python을 찾을 수 없습니다."
-            echo "   시스템에 Python이 설치되어 있지 않거나, Windows Store 별칭(Shim)만 존재합니다."
-            echo "   Python을 설치하거나 'py' 런처를 활성화해주세요."
-            return 1
-        fi
-
+        # [Python Check] Lazy Loading
+        local py_cmd=$(_require_python) || return 1
+        
         echo "🚀 SSAFY 실습실 일괄 생성 및 클론 모드 (Smart Batch)"
         echo "⏳ 실습실 생성 및 URL 분석 중..."
         
@@ -1953,7 +1971,7 @@ ssafy_gitup() {
         # 파이썬 스크립트 실행 및 결과 파싱
         # 출력형식: URL|CourseID|PracticeID|PA_ID
         # [V7.6 Security] 토큰을 파이프로 전달 (환경변수 노출 최소화)
-        echo "$SSAFY_AUTH_TOKEN" | "$PYTHON_CMD" "$script_dir/ssafy_batch_create.py" "$input" 20 --pipe | while IFS='|' read -r url course_id pr_id pa_id; do
+        echo "$SSAFY_AUTH_TOKEN" | "$py_cmd" "$script_dir/ssafy_batch_create.py" "$input" 20 --pipe | while IFS='|' read -r url course_id pr_id pa_id; do
             # Windows 호환: \r 제거 (필수)
             url=$(echo "$url" | tr -d '\r')
             course_id=$(echo "$course_id" | tr -d '\r')
@@ -2366,7 +2384,8 @@ ssafy_batch() {
         return 1
     fi
     # [V7.6 Security] 토큰을 파이프로 전달 (환경변수 노출 최소화)
-    echo "$SSAFY_AUTH_TOKEN" | "$PYTHON_CMD" "$script_dir/ssafy_batch_create.py" "$1" "$2"
+    local py_cmd=$(_require_python) || return 1
+    echo "$SSAFY_AUTH_TOKEN" | "$py_cmd" "$script_dir/ssafy_batch_create.py" "$1" "$2"
 }
 
 # =============================================================================
@@ -2464,11 +2483,14 @@ ssafy_algo_doctor() {
         fi
     done
     
-    # Python check (detected by global check)
-    if [ -n "$PYTHON_CMD" ]; then
-        echo "   ✅ python: 설치됨 ($PYTHON_CMD -> $(command -v "$PYTHON_CMD"))"
+    # Python check (Lazy Check)
+    local py_cmd=$(_ssafy_python_lookup)
+    if [ -n "$py_cmd" ]; then
+        # 전체 경로 확인
+        local full_path=$(command -v "$py_cmd")
+        echo "   ✅ python: 설치됨 ($py_cmd -> $full_path)"
     else
-        echo "   ❌ python: 설치되지 않음! (python3 또는 python 필요)"
+        echo "   ❌ python: 설치되지 않음! (기능 제한됨)"
          ((issues++))
     fi
     
@@ -2498,7 +2520,7 @@ ssafy_algo_doctor() {
                 # 남은 시간 계산
                 local jwt="${SSAFY_AUTH_TOKEN#Bearer }"
                 local payload=$(echo "$jwt" | cut -d'.' -f2)
-                local exp_time=$(echo "$payload" | "$PYTHON_CMD" -c "
+                local exp_time=$(echo "$payload" | "$py_cmd" -c "
 import sys, base64, json
 try:
     p = sys.stdin.read().strip().replace('-','+').replace('_','/')

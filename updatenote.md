@@ -4,6 +4,15 @@
 
 
 
+## V8.0.0 (2026-01-26) - Lazy Runtime Resolution Architecture 🏗️
+
+### 🔄 아키텍처 변경 (Major Architectural Change)
+- **지연된 런타임 확정 (Lazy Runtime Resolution)**: V7.8의 "설치 시점 고정" 방식이 환경 변화에 취약하다는 피드백을 수용하여, **필요한 순간에 최적의 도구를 찾는 방식**으로 설계를 완전히 변경했습니다.
+  - 쉘 시작 시점(`source`)에는 아무런 탐색도 하지 않습니다. (부하 0)
+  - `gitup` 등 실제 Python이 필요한 명령을 실행할 때 시스템을 탐색하여 `python3` -> `python`(Shim 제외) -> `py` 순으로 유효한 인터프리터를 찾습니다.
+  - 한 번 찾은 경로는 세션 동안 캐싱되어 성능 저하가 없습니다.
+- **설치 스크립트 복구**: `install.sh`가 더 이상 사용자의 `~/.bashrc`에 환경변수나 별칭을 강제 주입하지 않습니다. (Clean Install)
+
 ## V7.8.0 (2026-01-26) - Permanent Python Path Binding 🔗
 
 ### ✨ 근본적인 해결 (Fundamental Solution)
