@@ -11,14 +11,6 @@ echo ""
 echo "🚀 SSAFY Shell Functions 설치를 시작합니다..."
 echo ""
 
-# 0. 사전 점검 (Python)
-if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
-    echo "⚠️  [Warning] Python이 감지되지 않았습니다."
-    echo "   SSAFY Shell Functions의 일부 기능(gitup, algo-config)에는 Python이 필요합니다."
-    echo "   설치 후 사용하시기 바랍니다."
-    echo ""
-fi
-
 # 1. 기존 설치 확인
 if [ -d "$INSTALL_DIR" ]; then
     echo "⚠️  기존 설치가 감지되었습니다: $INSTALL_DIR"
@@ -73,19 +65,27 @@ add_source_line() {
     local rc_file="$1"
     local source_line="source \"$INSTALL_DIR/algo_functions.sh\""
     
-    if [ -f "$rc_file" ]; then
-        # 기존 다른 경로 정리
-        cleanup_old_install "$rc_file"
-        
-        # 이미 추가되어 있는지 확인
-        if grep -q "ssafy-tools/algo_functions.sh" "$rc_file"; then
-            echo "   ⏭️  $rc_file 에 이미 설정되어 있습니다."
-        else
+    # 파일이 없으면 생성
+    if [ ! -f "$rc_file" ]; then
+        touch "$rc_file"
+        echo "   ✨ 새 설정 파일 생성: $rc_file"
+    fi
+
+    # 기존 다른 경로 정리
+    cleanup_old_install "$rc_file"
+    
+    # 이미 추가되어 있는지 확인
+    if grep -q "ssafy-tools/algo_functions.sh" "$rc_file"; then
+        echo "   ⏭️  $rc_file 에 이미 설정되어 있습니다."
+    else
+        # 파일이 비어있지 않으면 개행 추가
+        if [ -s "$rc_file" ]; then
             echo "" >> "$rc_file"
-            echo "# SSAFY Shell Functions" >> "$rc_file"
-            echo "$source_line" >> "$rc_file"
-            echo "   ✅ $rc_file 에 설정 추가 완료"
         fi
+        
+        echo "# SSAFY Shell Functions" >> "$rc_file"
+        echo "$source_line" >> "$rc_file"
+        echo "   ✅ $rc_file 에 설정 추가 완료"
     fi
 }
 
@@ -96,7 +96,14 @@ echo "🔧 셸 설정 파일 업데이트 중..."
 add_source_line "$HOME/.bashrc"
 
 # Bash Profile (Windows Git Bash 등 Login Shell 호환)
-if [ -f "$HOME/.bash_profile" ]; then
+# .bash_profile이 없으면 생성하고, .bashrc를 로드하도록 설정 (Standard Practice)
+if [ ! -f "$HOME/.bash_profile" ] && [ ! -f "$HOME/.profile" ]; then
+    if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
+        echo "   ✨ Windows Git Bash 환경 감지: .bash_profile 생성"
+        echo "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi" > "$HOME/.bash_profile"
+        add_source_line "$HOME/.bash_profile"
+    fi
+elif [ -f "$HOME/.bash_profile" ]; then
     add_source_line "$HOME/.bash_profile"
 elif [ -f "$HOME/.profile" ]; then
     add_source_line "$HOME/.profile"
