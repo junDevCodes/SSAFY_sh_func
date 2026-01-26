@@ -152,7 +152,7 @@ IDE_PRIORITY="code pycharm idea subl"
 # SSAFY 설정
 SSAFY_BASE_URL="https://lab.ssafy.com"
 SSAFY_USER_ID=""
-SSAFY_AUTH_TOKEN=""
+# [Security V7.7] 토큰은 파일에 저장하지 않음 (세션 전용)
 EOF
     
     # SSAFY GitLab 사용자명 입력
