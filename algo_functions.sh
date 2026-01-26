@@ -11,7 +11,20 @@
 
 # 설정 파일 경로
 ALGO_CONFIG_FILE="$HOME/.algo_config"
-ALGO_FUNCTIONS_VERSION="V7.7.0"
+ALGO_FUNCTIONS_VERSION="V7.7.1"
+
+# Python 탐지 (algo_functions.sh 전역)
+# Windows/Git Bash 환경에서 python, python3, py 등을 동적으로 감지
+_detect_python() {
+    if command -v python3 >/dev/null 2>&1; then
+        echo "python3"
+    elif command -v python >/dev/null 2>&1; then
+        echo "python"
+    else
+        echo ""
+    fi
+}
+PYTHON_CMD=$(_detect_python)
 
 # 업데이트 명령어 (V7.6 네임스페이스)
 ssafy_algo_update() {
@@ -185,24 +198,12 @@ _is_token_expired() {
     
     # Base64 디코딩 및 exp 추출
     local exp=""
-    if command -v python >/dev/null 2>&1; then
-        exp=$(echo "$payload" | python -c "
+    if [ -n "$PYTHON_CMD" ]; then
+        exp=$(echo "$payload" | "$PYTHON_CMD" -c "
 import sys, base64, json
 try:
     payload = sys.stdin.read().strip()
     # URL-safe base64 decoding
-    payload = payload.replace('-', '+').replace('_', '/')
-    decoded = base64.b64decode(payload)
-    data = json.loads(decoded)
-    print(data.get('exp', 0))
-except:
-    print(0)
-" 2>/dev/null)
-    elif command -v python3 >/dev/null 2>&1; then
-        exp=$(echo "$payload" | python3 -c "
-import sys, base64, json
-try:
-    payload = sys.stdin.read().strip()
     payload = payload.replace('-', '+').replace('_', '/')
     decoded = base64.b64decode(payload)
     data = json.loads(decoded)
@@ -478,7 +479,7 @@ ssafy_algo_config() {
             script_dir="$HOME/Desktop/SSAFY_sh_func"
         fi
         
-        python "$script_dir/algo_config_wizard.py"
+        "$PYTHON_CMD" "$script_dir/algo_config_wizard.py"
         
         # [UX] 자동 적용 (엔터 없이 바로 적용)
         echo "🔄 변경된 설정을 적용 중입니다..."
@@ -949,7 +950,7 @@ _handle_git_commit() {
     cd "$git_root" || return
     
     local relative_path=$(realpath --relative-to="$git_root" "$target_path" 2>/dev/null || \
-        python3 -c "import os.path; print(os.path.relpath('$target_path', '$git_root'))")
+        "$PYTHON_CMD" -c "import os.path; print(os.path.relpath('$target_path', '$git_root'))")
     
     echo "✅ Git 저장소: $git_root"
     echo "📁 대상: $relative_path"
@@ -1924,7 +1925,7 @@ ssafy_gitup() {
         # 파이썬 스크립트 실행 및 결과 파싱
         # 출력형식: URL|CourseID|PracticeID|PA_ID
         # [V7.6 Security] 토큰을 파이프로 전달 (환경변수 노출 최소화)
-        echo "$SSAFY_AUTH_TOKEN" | python "$script_dir/ssafy_batch_create.py" "$input" 20 --pipe | while IFS='|' read -r url course_id pr_id pa_id; do
+        echo "$SSAFY_AUTH_TOKEN" | "$PYTHON_CMD" "$script_dir/ssafy_batch_create.py" "$input" 20 --pipe | while IFS='|' read -r url course_id pr_id pa_id; do
             # Windows 호환: \r 제거 (필수)
             url=$(echo "$url" | tr -d '\r')
             course_id=$(echo "$course_id" | tr -d '\r')
@@ -2337,7 +2338,7 @@ ssafy_batch() {
         return 1
     fi
     # [V7.6 Security] 토큰을 파이프로 전달 (환경변수 노출 최소화)
-    echo "$SSAFY_AUTH_TOKEN" | python "$script_dir/ssafy_batch_create.py" "$1" "$2"
+    echo "$SSAFY_AUTH_TOKEN" | "$PYTHON_CMD" "$script_dir/ssafy_batch_create.py" "$1" "$2"
 }
 
 # =============================================================================
@@ -2436,11 +2437,9 @@ ssafy_algo_doctor() {
         fi
     done
     
-    # Python check (allow python or python3)
-    if command -v python3 >/dev/null 2>&1; then
-        echo "   ✅ python3: 설치됨 ($(command -v python3))"
-    elif command -v python >/dev/null 2>&1; then
-        echo "   ✅ python: 설치됨 ($(command -v python))"
+    # Python check (detected by global check)
+    if [ -n "$PYTHON_CMD" ]; then
+        echo "   ✅ python: 설치됨 ($PYTHON_CMD -> $(command -v "$PYTHON_CMD"))"
     else
         echo "   ❌ python: 설치되지 않음! (python3 또는 python 필요)"
         ((issues++))
@@ -2472,7 +2471,7 @@ ssafy_algo_doctor() {
                 # 남은 시간 계산
                 local jwt="${SSAFY_AUTH_TOKEN#Bearer }"
                 local payload=$(echo "$jwt" | cut -d'.' -f2)
-                local exp_time=$(echo "$payload" | python -c "
+                local exp_time=$(echo "$payload" | "$PYTHON_CMD" -c "
 import sys, base64, json
 try:
     p = sys.stdin.read().strip().replace('-','+').replace('_','/')

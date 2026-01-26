@@ -11,6 +11,14 @@ echo ""
 echo "🚀 SSAFY Shell Functions 설치를 시작합니다..."
 echo ""
 
+# 0. 사전 점검 (Python)
+if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
+    echo "⚠️  [Warning] Python이 감지되지 않았습니다."
+    echo "   SSAFY Shell Functions의 일부 기능(gitup, algo-config)에는 Python이 필요합니다."
+    echo "   설치 후 사용하시기 바랍니다."
+    echo ""
+fi
+
 # 1. 기존 설치 확인
 if [ -d "$INSTALL_DIR" ]; then
     echo "⚠️  기존 설치가 감지되었습니다: $INSTALL_DIR"
@@ -86,6 +94,13 @@ echo "🔧 셸 설정 파일 업데이트 중..."
 
 # Bash
 add_source_line "$HOME/.bashrc"
+
+# Bash Profile (Windows Git Bash 등 Login Shell 호환)
+if [ -f "$HOME/.bash_profile" ]; then
+    add_source_line "$HOME/.bash_profile"
+elif [ -f "$HOME/.profile" ]; then
+    add_source_line "$HOME/.profile"
+fi
 
 # Zsh (있으면)
 if [ -f "$HOME/.zshrc" ]; then
