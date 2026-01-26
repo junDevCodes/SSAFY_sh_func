@@ -59,11 +59,45 @@ cleanup_old_install() {
         
         mv "$tmp_file" "$rc_file"
     fi
+    fi
+}
+
+# 3.5 Python 탐색 (V7.8: 설치 시점에 확정)
+find_python() {
+    # 1. python3 (표준)
+    if command -v python3 >/dev/null 2>&1; then
+        echo "python3"
+        return
+    fi
+    
+    # 2. python (Shim 체크)
+    if command -v python >/dev/null 2>&1; then
+        if python -c "exit(0)" >/dev/null 2>&1; then
+            echo "python"
+            return
+        fi
+    fi
+
+    # 3. py (Windows Python Launcher)
+    if command -v py >/dev/null 2>&1; then
+        echo "py"
+        return
+    fi
+    
+    echo ""
 }
 
 add_source_line() {
     local rc_file="$1"
+    local rc_file="$1"
     local source_line="source \"$INSTALL_DIR/algo_functions.sh\""
+    local detected_python=$(find_python)
+
+    # 파이썬 감지 실패 시 경고
+    if [ -z "$detected_python" ]; then
+        echo "⚠️  Python을 찾을 수 없습니다. 설치 후 Python을 설치해주세요."
+    fi
+
     
     # 파일이 없으면 생성
     if [ ! -f "$rc_file" ]; then
@@ -84,8 +118,15 @@ add_source_line() {
         fi
         
         echo "# SSAFY Shell Functions" >> "$rc_file"
+        
+        # [V7.8] Python Binding (영구적 Path 고정)
+        if [ -n "$detected_python" ]; then
+             echo "export SSAFY_PYTHON=\"$detected_python\"" >> "$rc_file"
+             echo "alias python=\"\$SSAFY_PYTHON\"" >> "$rc_file"
+        fi
+        
         echo "$source_line" >> "$rc_file"
-        echo "   ✅ $rc_file 에 설정 추가 완료"
+        echo "   ✅ $rc_file 에 설정 추가 완료 (Python: ${detected_python:-Unknown})"
     fi
 }
 

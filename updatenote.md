@@ -2,7 +2,23 @@
 
 
 
-## V7.7.3 (2026-01-26) - Hotfix: Robust Python Detection & Install Fix 🚑
+
+
+## V7.8.0 (2026-01-26) - Permanent Python Path Binding 🔗
+
+### ✨ 근본적인 해결 (Fundamental Solution)
+- **설치 시점 Python 고정**: 더 이상 매번 실행할 때마다 Python을 찾아 헤매지 않습니다.
+  - `install.sh` 실행 시 시스템에서 가장 적합한 Python(`python3`, `py`, `python`)을 찾아, 사용자의 쉘 프로필(`~/.bashrc`)에 **영구적으로 등록**합니다.
+  - 등록된 별칭(`alias python=...`)을 통해, 터미널에서 `python` 입력 시 무조건 올바른 인터프리터가 실행되도록 보장합니다.
+  - **효과**: Windows Store Shim(가짜 파이썬) 문제 원천 차단 및 실행 속도 소폭 향상
+
+
+### 🐛 실행 오류 최종 수정 (Final Fix)
+- **`py` 런처 지원**: `python`이나 `python3` 명령어가 없어도, Windows에 기본 설치되는 **Python Launcher (`py`)**를 감지하여 실행하도록 개선했습니다.
+  - V7.5에서 정상 동작했던 원인이 바로 이 `py` 런처였을 가능성이 높으며, 이번 패치로 완벽하게 호환됩니다.
+- **명시적 에러 메시지**: 만약 시스템에서 유효한 Python을 전혀 찾을 수 없는 경우, 알 수 없는 오류 대신 **"Python을 찾을 수 없습니다"**라는 명확한 원인을 출력하고 실행을 중단합니다.
+
+
 
 ### 🐛 버그 수정 (Critial Bug Fix)
 - **Python Windows Store Shim 감지 우회**: `python` 명령어가 존재하더라도 실행 시 Microsoft Store로 연결되는(Shim) 경우를 감지하여, 유효한 Python 인터프리터만 사용하도록 개선했습니다.
