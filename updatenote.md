@@ -2,6 +2,21 @@
 
 ---
 
+## V7.7.0 (2026-01-25) - Security Hardening 🔐
+
+### 🔐 보안 강화 (Breaking Change)
+- **토큰 세션화**: `~/.algo_config`에 토큰을 더 이상 저장하지 않습니다.
+  - 토큰은 환경변수(`$SSAFY_AUTH_TOKEN`)로만 유지
+  - **터미널 종료 시 자동 삭제** (파일 유출 위험 제거)
+
+### ✨ 변경 사항
+- `_ensure_token()`: 세션에 토큰 없을 때 입력 요청하는 새 함수
+- `ssafy_batch_create.py`: 파일 저장 함수 제거
+- `algo_config_wizard.py`: 토큰 메뉴 → 세션 전용 안내로 변경
+- `algo-doctor`: "세션 전용" 상태 표시
+
+---
+
 ## V7.5.2 (2026-01-23) - Documentation & Config Enhancement 📖
 
 ### ✨ 새로운 기능
