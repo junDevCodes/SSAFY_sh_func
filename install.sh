@@ -59,11 +59,14 @@ cleanup_old_install() {
         
         mv "$tmp_file" "$rc_file"
     fi
-}
+
 
 add_source_line() {
     local rc_file="$1"
+
     local source_line="source \"$INSTALL_DIR/algo_functions.sh\""
+
+
     
     # 파일이 없으면 생성
     if [ ! -f "$rc_file" ]; then
