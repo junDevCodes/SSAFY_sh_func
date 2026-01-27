@@ -8,7 +8,7 @@ _find_ssafy_session_root() {
     local dir="$start_dir"
 
     while true; do
-        if [ -f "$dir/.ssafy_session_root" ]; then
+        if [ -f "$dir/.ssafy_session_root" ] || [ -f "$dir/.ssafy_playlist" ] || [ -f "$dir/.ssafy_session_meta" ]; then
             echo "$dir"
             return 0
         fi
@@ -273,7 +273,7 @@ _open_repo_file() {
     if [ -n "$ide_cmd" ]; then
         echo "💻 IDE ($ide_cmd)에서 '$repo_dir'를 엽니다..."
         if [[ "$ide_cmd" == "code" ]]; then
-            "$ide_cmd" .
+            "$ide_cmd" -r .
         else
             "$ide_cmd" "$repo_dir"
         fi
