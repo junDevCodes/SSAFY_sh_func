@@ -249,7 +249,10 @@ def find_round_start(course_id, start_pr_num):
     limit = 15
     found_start = start_pr_num
     
+    print("   🔎 Backtracing: ", end="", file=sys.stderr, flush=True)
+
     for i in range(1, limit + 1):
+        print(".", end="", file=sys.stderr, flush=True)
         prev_num = start_pr_num - i
         prev_id = f"PR{str(prev_num).zfill(8)}"
         
@@ -265,6 +268,7 @@ def find_round_start(course_id, start_pr_num):
             # rnd is None (정보 없음/삭제됨) -> 건너뛰고 계속 검색 (Skip logic)
             continue
             
+    print(" Done", file=sys.stderr)
     return found_start, target_round
 
 def batch_create(start_url, count, is_pipe=False):
