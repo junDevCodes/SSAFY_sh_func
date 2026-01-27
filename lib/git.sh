@@ -1073,22 +1073,46 @@ ssafy_batch() {
     fi
     
     if [ -n "$py_cmd" ]; then
-         # [Fix V8.1] Capture output and clone
+         # [Fix V8.1] Capture output and clone, generate session files
          local first_repo=""
+         
+         # Session files
+         local playlist_file=".ssafy_playlist"
+         local progress_file=".ssafy_progress"
+         local meta_file=".ssafy_session_meta"
+         
+         # Reset session files
+         rm -f "$playlist_file" "$progress_file" "$meta_file"
          
          while IFS='|' read -r url course_id pr_id pa_id; do
              # Remove CR for Windows compatibility
              url=$(echo "$url" | tr -d '\r')
+             course_id=$(echo "$course_id" | tr -d '\r')
              
              if [ -n "$url" ]; then
                  echo "⬇️  Cloning: $url"
                  git clone "$url"
                  
+                 local folder_name=$(basename "$url" .git)
+                 
+                 # 1. Update Playlist
+                 echo "$folder_name" >> "$playlist_file"
+                 
+                 # 2. Create Meta if needed (First item)
+                 if [ ! -f "$meta_file" ]; then
+                     # [Security] course_id is not sensitive, but consistent with meta
+                     echo "course_id=$course_id" > "$meta_file"
+                     echo "created_at=$(date +%s)" >> "$meta_file"
+                 fi
+                 
                  if [ -z "$first_repo" ]; then
-                     first_repo=$(basename "$url" .git)
+                     first_repo="$folder_name"
                  fi
              fi
          done < <(echo "$SSAFY_AUTH_TOKEN" | "$py_cmd" "$script_dir/ssafy_batch_create.py" "$1" "$2" --pipe)
+         
+         # 3. Init Progress
+         echo "init" > "$progress_file"
          
          if [ -n "$first_repo" ]; then
              echo "📂 Opening first repository: $first_repo"
