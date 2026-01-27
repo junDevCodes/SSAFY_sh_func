@@ -149,6 +149,11 @@ _show_submission_links() {
     shift
     local folders=("$@")
     
+    # Phase 3 Task 3-1: 변수 초기화
+    local i=1
+    local has_link=false
+    local -a urls=()
+    
     local meta_file="$ssafy_root/.ssafy_session_meta"
     if [ ! -f "$meta_file" ]; then
         return 0
@@ -242,64 +247,70 @@ _show_submission_links() {
 
 _open_repo_file() {
     local repo_dir="$1"
-
     
-    if [ ! -d "$repo_dir" ]; then
+    # 절대 경로로 변환 (Phase 0 Task 0-2)
+    local abs_repo_dir
+    abs_repo_dir="$(cd "$repo_dir" 2>/dev/null && pwd)" || {
         echo "??  디렉터리를 찾을 수 없습니다: $repo_dir"
+        return 1
+    }
+    
+    if [ ! -d "$abs_repo_dir" ]; then
+        echo "??  디렉터리를 찾을 수 없습니다: $abs_repo_dir"
         return 1
     fi
 
-    cd "$repo_dir" || return 1
+    cd "$abs_repo_dir" || return 1
     
-    # 1. Open Folder in IDE (Always)
-    # IDE 자동 탐색 및 설정 (V7.3 Logic)
-    local ide_cmd
-    if [ -n "$IDE_EDITOR" ]; then
-        ide_cmd="$IDE_EDITOR"
-    else
-        if [ -f "$ALGO_CONFIG_FILE" ]; then
-            source "$ALGO_CONFIG_FILE" 
-        fi
-        
-        local ide_priority_list="${IDE_PRIORITY:-code pycharm idea subl}"
-        for ide in $ide_priority_list; do
-            if command -v "$ide" >/dev/null 2>&1; then
-                ide_cmd="$ide"
-                break
-            fi
-        done
-    fi
-
-    if [ -n "$ide_cmd" ]; then
-        echo "💻 IDE ($ide_cmd)에서 '$repo_dir'를 엽니다..."
-        if [[ "$ide_cmd" == "code" ]]; then
-            "$ide_cmd" -r .
-        else
-            "$ide_cmd" "$repo_dir"
-        fi
-    else
-        # Fallback if no IDE found
-        echo "❌ IDE를 찾을 수 없습니다. (폴더 이동만 수행)"
-    fi
-
-    # 2. List or Auto-open File
-    # Find files (excluding hidden/git)
+    # Phase 5 Task 5-2: 파일 탐색을 한 번만 수행
     local files=()
     while IFS= read -r file; do
         if [ -n "$file" ]; then
             files+=("${file#./}")
         fi
     done < <(find . -maxdepth 3 -not -path '*/.*' -type f 2>/dev/null | head -n 6)
-    
     local count=${#files[@]}
+    
+    # 1. Open Folder in IDE (Always)
+    # IDE 자동 탐색 - get_active_ide() 사용 (Phase 2 Task 2-1)
+    local ide_cmd
+    ide_cmd=$(get_active_ide)
+    
+    if [ -z "$ide_cmd" ]; then
+        echo "⚠️ 사용 가능한 IDE를 찾을 수 없습니다. (폴더 이동만 수행)"
+    else
+        echo "💻 IDE ($ide_cmd)에서 '$abs_repo_dir'를 엽니다..."
+        
+        # IDE 열기 로직 개선 (Phase 2 Task 2-4)
+        if [[ "$ide_cmd" == "code" || "$ide_cmd" == "cursor" ]]; then
+            # VS Code 계열: -r 옵션으로 재사용
+            if [ $count -eq 1 ]; then
+                # 파일이 1개면 폴더와 파일 동시에 열기
+                "$ide_cmd" -r "$abs_repo_dir" "${files[0]}"
+            else
+                "$ide_cmd" -r "$abs_repo_dir"
+            fi
+        else
+            # PyCharm, IntelliJ 등: 백그라운드 실행
+            "$ide_cmd" "$abs_repo_dir" &
+        fi
+    fi
+
+    # 2. List or Auto-open File (이미 탐색된 files 배열 재사용)
     
     if [ $count -eq 1 ]; then
          local target_file="${files[0]}"
          echo "📂 Single file detected. Opening: $target_file"
-         if [ -n "$ide_cmd" ]; then
-             "$ide_cmd" "$target_file"
-         else
-             _open_in_editor "$target_file"
+         # VS Code 계열은 이미 위에서 열었으므로, 다른 IDE만 처리
+         if [ -n "$ide_cmd" ] && [[ "$ide_cmd" != "code" && "$ide_cmd" != "cursor" ]]; then
+             # 이미 폴더는 열었으므로 파일만 열기
+             _open_in_editor "$ide_cmd" "$target_file"
+         elif [ -z "$ide_cmd" ]; then
+             # IDE가 없으면 fallback
+             local fallback_editor=$(get_active_ide)
+             if [ -n "$fallback_editor" ]; then
+                 _open_in_editor "$fallback_editor" "$target_file"
+             fi
          fi
     elif [ $count -gt 0 ]; then
          echo "📂 Repository Files (Top 5):"
@@ -538,11 +549,14 @@ _gitdown_all() {
 ssafy_gitdown() {
     init_algo_config
     
+    # Phase 3 Task 3-6: 플래그 파싱 정리
     for arg in "$@"; do
-        if [ "$arg" = "--all" ] || [ "$arg" = "-a" ] || [ "$arg" = "-all" ]; then
-            _gitdown_all
-            return $?
-        fi
+        case "$arg" in
+            --all|-a)
+                _gitdown_all
+                return $?
+                ;;
+        esac
     done
     
     echo "🔍 현재 Git 상태:"
@@ -996,25 +1010,20 @@ ssafy_batch() {
         export SSAFY_AUTH_TOKEN
     fi
     
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    # Phase 1 Task 1-3: ALGO_ROOT_DIR 사용
+    local script_dir="${ALGO_ROOT_DIR:-$HOME/.ssafy-tools}"
     
-    # [Modularity Fix] algo_functions.sh가 아닌 lib/git.sh여도 상위의 ssafy_batch_create.py를 찾아야 함
-    # 하지만 현재 구조에서는 lib/ 외부에 있을 수 있음.
-    # algo_functions.sh가 로드된 위치를 기준?
-    # 일단 현재 디렉토리 기준 상위(..) 체크
+    # Python 스크립트 파일 존재 확인
     if [ ! -f "$script_dir/ssafy_batch_create.py" ]; then
-        # lib/ 안에 있는 경우 상위 체크
-        if [ -f "$script_dir/../ssafy_batch_create.py" ]; then
-            script_dir="$script_dir/.."
+        # 폴백: 다른 경로 시도
+        if [ -f "$HOME/.ssafy-tools/ssafy_batch_create.py" ]; then
+            script_dir="$HOME/.ssafy-tools"
         elif [ -f "$HOME/Desktop/SSAFY_sh_func/ssafy_batch_create.py" ]; then
-             script_dir="$HOME/Desktop/SSAFY_sh_func"
+            script_dir="$HOME/Desktop/SSAFY_sh_func"
+        else
+            echo "❌ 실행 오류: 'ssafy_batch_create.py' 파일을 찾을 수 없습니다."
+            return 1
         fi
-    fi
-
-    if [ ! -f "$script_dir/ssafy_batch_create.py" ]; then
-        echo "❌ 실행 오류: 'ssafy_batch_create.py' 파일을 찾을 수 없습니다."
-        return 1
     fi
     
     local py_cmd
