@@ -195,11 +195,20 @@ ssafy_al() {
         fi
     fi
     
-    # 파일 열기
+    # 파일 열기 (Phase 3 Task 3-5: 폴더도 함께 열기)
     if [ "$skip_open" = false ]; then
         local editor=$(get_active_ide)
+        local dir="$(dirname "$file")"
         echo "🎉 $editor에서 파일을 여는 중..."
-        _open_in_editor "$editor" "$file"
+        
+        # Phase 5 Task 5-3: IDE별 열기 로직 통일
+        if [[ "$editor" == "code" || "$editor" == "cursor" ]]; then
+            # VS Code 계열: 폴더와 파일 동시 열기
+            "$editor" -r "$dir" "$file"
+        else
+            # PyCharm, IntelliJ 등: 파일만 열기 (프로젝트 컨텍스트 자동 포함)
+            "$editor" "$file" &
+        fi
     else
         echo "⏭️  파일 열기 건너뛰기"
     fi
