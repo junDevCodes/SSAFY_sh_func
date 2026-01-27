@@ -4,6 +4,26 @@
 
 
 
+## V8.1.0 (2026-01-26) - Modular Architecture & Kill Switch 🛡️
+
+### 🏗️ 모듈화 리팩토링 (Modular Refactoring)
+- **Codebase Modularization**: 거대한 `algo_functions.sh` 단일 파일을 `lib/` 디렉토리 하위의 기능별 모듈(`config.sh`, `utils.sh`, `auth.sh`, `git.sh`, `ide.sh`, `doctor.sh` 등)로 분리했습니다.
+  - 유지보수성과 확장성이 대폭 향상되었습니다.
+  - 사용자는 기존과 동일하게 `source algo_functions.sh`만 하면 내부적으로 필요한 모듈을 로드합니다.
+
+### 🚦 킬 스위치 (Kill Switch) 도입
+- **원격 제어 시스템**: 치명적인 버그나 보안 이슈 발생 시, 원격의 `status.json`을 통해 도구 사용을 제한하거나 경고 메시지를 보낼 수 있습니다.
+  - **Active**: 정상 작동
+  - **Maintenance**: 경고 메시지 출력 후 정상 작동
+  - **Outage**: 사용 차단 (긴급 점검)
+- **Fail-Open 정책**: 네트워크 문제 등으로 상태 확인 실패 시, 사용자 경험을 위해 **정상(Active)** 상태로 간주하여 실행을 차단하지 않습니다.
+
+### 🔐 보안 및 안정성 강화
+- **Session-Only Token**: V7.7의 보안 정책을 더욱 강화하여, 토큰 처리 로직을 완전히 세션 메모리 기반으로 재검증했습니다.
+- **Fail-Safe**: `curl` 타임아웃, JSON 파싱 오류 등에 대한 방어 로직을 추가하여 네트워크 불안정 상황에서도 스크립트가 멈추지 않습니다.
+
+---
+
 ## V8.0.0 (2026-01-26) - Lazy Runtime Resolution Architecture 🏗️
 
 ### 🔄 아키텍처 변경 (Major Architectural Change)
