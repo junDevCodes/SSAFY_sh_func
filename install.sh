@@ -183,22 +183,17 @@ if [ "$RUN_SETUP" = true ]; then
     
     # 설정 파일 생성
     CONFIG_FILE="$HOME/.algo_config"
+    # Phase 3 Task 3-7: lib/config.sh 템플릿과 동일하게 수정
     cat > "$CONFIG_FILE" << 'EOF'
-# 알고리즘 문제 풀이 디렉토리 설정
-ALGO_BASE_DIR="$HOME/Desktop/Algorithm-Practics"
-
-# Git 설정
+# SSAFY Algo Functions Config
+ALGO_BASE_DIR="$HOME/algos"
 GIT_DEFAULT_BRANCH="main"
 GIT_COMMIT_PREFIX="solve"
 GIT_AUTO_PUSH=true
-
-# IDE 우선순위 (공백으로 구분)
-IDE_PRIORITY="code pycharm idea subl"
-
-# SSAFY 설정
+IDE_EDITOR=""
 SSAFY_BASE_URL="https://lab.ssafy.com"
 SSAFY_USER_ID=""
-# [Security V7.7] 토큰은 파일에 저장하지 않음 (세션 전용)
+# 토큰은 보안상 파일에 저장하지 않음 (세션 전용)
 EOF
     
     # SSAFY GitLab 사용자명 입력
