@@ -403,8 +403,13 @@ def batch_create(start_url, count, is_pipe=False):
         pr_id = item['pr']
         if is_pipe:
             # Metadata 전달을 위해 파이프(|) 구분자 사용
-            # URL|CourseID|PracticeID|PA_ID
-            print(f"{url}|{course_id}|{pr_id}|{item['pa']}")
+            # URL|CourseID|PR|PA|Subject
+            # [Fix V8.1] Subject 정보 추가 (for meta/progress)
+            subj = item.get('meta', {}).get('subject', 'Unknown')
+            # Handle potential None
+            if not subj: subj = 'Unknown'
+            
+            print(f"{url}|{course_id}|{pr_id}|{item['pa']}|{subj}")
             sys.stdout.flush()
         else:
             print(f" - {url}")
