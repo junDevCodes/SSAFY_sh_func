@@ -7,6 +7,20 @@ _is_interactive() {
     [ -t 0 ] && [ -t 1 ]
 }
 
+# Phase 4 Task 4-2: sed 공통 함수 추출 (macOS/Linux 호환성)
+_sed_inplace() {
+    local pattern="$1"
+    local file="$2"
+    
+    if sed --version >/dev/null 2>&1; then
+        # GNU sed (Linux)
+        sed -i "$pattern" "$file"
+    else
+        # BSD sed (macOS)
+        sed -i '' "$pattern" "$file"
+    fi
+}
+
 _ensure_ssafy_config() {
     # Ensure config loaded
     if type init_algo_config >/dev/null 2>&1; then init_algo_config; fi
@@ -38,30 +52,59 @@ _ensure_ssafy_config() {
 # Kill Switch implementation (V8.1)
 # =============================================================================
 _check_service_status() {
-    # Default: raw github url
-    local status_url="${ALGO_STATUS_URL:-https://raw.githubusercontent.com/jylee-ssafy/SSAFY_sh_func/main/status.json}"
-    
-    # [DEBUG]
-    # echo "DEBUG: checking status from $status_url" >&2
-
-    # 1. Fetch JSON (timeout 2s)
+    # Phase 4 Task 4-4: 캐싱 추가 (24시간)
+    # Phase 5 Task 5-1: 변수 스코프 수정
     local json=""
+    local cache_file="/tmp/algo_status_cache"
+    local cache_max_age=86400  # 24시간
     
-    # URL이 file:// 로 시작하면 cat 사용 (curl 호환성 문제 방지)
-    if [[ "$status_url" == file://* ]]; then
-        local file_path="${status_url#file://}"
-        # Git Bash 등에서 /c/Users... 경로 문제 해결을 위해 단순화
-        if [ -f "$file_path" ]; then
-            json=$(cat "$file_path")
+    # 캐시 확인
+    if [ -f "$cache_file" ]; then
+        local cache_time
+        if stat --version >/dev/null 2>&1; then
+            # GNU stat (Linux)
+            cache_time=$(stat -c %Y "$cache_file" 2>/dev/null)
         else
-            # 윈도우 경로 이슈일 수 있으니 curl 시도
-             if command -v curl >/dev/null 2>&1; then
+            # BSD stat (macOS)
+            cache_time=$(stat -f %m "$cache_file" 2>/dev/null)
+        fi
+        local current_time=$(date +%s)
+        if [ -n "$cache_time" ] && [ $((current_time - cache_time)) -lt $cache_max_age ]; then
+            # 캐시에서 읽기
+            local cached_json=$(cat "$cache_file" 2>/dev/null)
+            if [ -n "$cached_json" ]; then
+                # 캐시된 JSON 파싱 (아래 로직 재사용)
+                json="$cached_json"
+            fi
+            # else: json은 이미 ""로 초기화됨
+        fi
+        # else: json은 이미 ""로 초기화됨
+    fi
+    
+    # 네트워크 요청 (캐시가 없거나 만료된 경우)
+    if [ -z "$json" ]; then
+        # Default: raw github url
+        local status_url="${ALGO_STATUS_URL:-https://raw.githubusercontent.com/jylee-ssafy/SSAFY_sh_func/main/status.json}"
+        
+        # URL이 file:// 로 시작하면 cat 사용 (curl 호환성 문제 방지)
+        if [[ "$status_url" == file://* ]]; then
+            local file_path="${status_url#file://}"
+            if [ -f "$file_path" ]; then
+                json=$(cat "$file_path")
+            else
+                if command -v curl >/dev/null 2>&1; then
+                    json=$(curl -s --max-time 2 "$status_url" || echo "")
+                fi
+            fi
+        else
+            if command -v curl >/dev/null 2>&1; then
                 json=$(curl -s --max-time 2 "$status_url" || echo "")
             fi
         fi
-    else
-        if command -v curl >/dev/null 2>&1; then
-            json=$(curl -s --max-time 2 "$status_url" || echo "")
+        
+        # 캐시에 저장 (백그라운드)
+        if [ -n "$json" ]; then
+            echo "$json" > "$cache_file" 2>/dev/null &
         fi
     fi
     
