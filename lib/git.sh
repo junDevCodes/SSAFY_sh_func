@@ -1084,11 +1084,10 @@ ssafy_batch() {
          # Reset session files
          rm -f "$playlist_file" "$progress_file" "$meta_file"
          
-         while IFS='|' read -r url course_id pr_id pa_id subject; do
+         while IFS='|' read -r url course_id pr_id pa_id; do
              # Remove CR for Windows compatibility
              url=$(echo "$url" | tr -d '\r')
              course_id=$(echo "$course_id" | tr -d '\r')
-             subject=$(echo "$subject" | tr -d '\r')
              
              if [ -n "$url" ]; then
                  echo "⬇️  Cloning: $url"
@@ -1104,7 +1103,6 @@ ssafy_batch() {
                      local enc_course_id=$(echo -n "$course_id" | base64)
                      local created_at=$(date +"%Y%m%d%H%M%S")
                      {
-                         echo "subject=$subject"
                          echo "course_id=$enc_course_id"
                          echo "created_at=$created_at"
                      } > "$meta_file"
@@ -1118,10 +1116,7 @@ ssafy_batch() {
                      echo "$enc_pa"
                  } >> "$meta_file"
                  
-                 # 3. Update Progress (Header & Item)
-                 if [ ! -f "$progress_file" ]; then
-                     echo "subject=$subject" > "$progress_file"
-                 fi
+                 # 3. Update Progress (List Init)
                  echo "${folder_name}=init" >> "$progress_file"
                  
                  if [ -z "$first_repo" ]; then
