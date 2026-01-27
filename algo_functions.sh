@@ -16,6 +16,8 @@ ALGO_FUNCTIONS_VERSION="V8.1.0"
 
 # 스크립트 위치 감지 (Module Loading용)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Phase 1 Task 1-2: ALGO_ROOT_DIR 전역 변수 도입
+export ALGO_ROOT_DIR="$SCRIPT_DIR"
 
 # Load Modules
 if [ -f "$SCRIPT_DIR/lib/config.sh" ]; then
@@ -48,38 +50,23 @@ alias algo-config='ssafy_algo_config'
 # al - 알고리즘 문제 환경 설정 (V7.6 네임스페이스)
 # =============================================================================
 
-# 파일 생성 내부 함수
-
 # =============================================================================
-# Helper: _find_ssafy_session_root
-# 현재 위치에서 상위로 이동하며 세션 루트(.ssafy_session_meta 또는 .ssafy_playlist가 있는 곳)를 찾음
+# 모듈 구조 안내 (V8.1 Modular Architecture)
 # =============================================================================
-
-# 커밋 메시지 확인/수정
-
-# Git 커밋 처리 내부 함수
-
-# 에디터에서 파일 열기 내부 함수
-
+# 다음 함수들은 각 모듈로 분리되어 있습니다:
+#   - lib/config.sh    : 설정 관리 (init_algo_config, ssafy_algo_config)
+#   - lib/utils.sh     : 공통 유틸리티 (_is_interactive, _check_service_status)
+#   - lib/auth.sh      : 인증/토큰 관리 (_ensure_token, _is_token_expired)
+#   - lib/git.sh       : Git 작업 (ssafy_gitup, ssafy_gitdown, _open_repo_file)
+#   - lib/ide.sh       : IDE 탐색/열기 (get_ide, get_active_ide, _open_in_editor)
+#   - lib/templates.sh : 알고리즘 템플릿 생성 (ssafy_al, _create_algo_file)
+#   - lib/doctor.sh    : 시스템 진단 (ssafy_algo_doctor)
+#   - lib/update.sh    : 자동 업데이트 (ssafy_algo_update, _check_update)
 # =============================================================================
-# _gitdown_all - 전체 실습실 일괄 Push
-# _sync_playlist_status - Git 로그 기반 완료 여부 동기화 (Auto-Sync)
-# =============================================================================
-
-# =============================================================================
-# _show_submission_links - 제출 링크 출력
-# =============================================================================
-
-# =============================================================================
-# gitup - Git 저장소 클론 및 시작
-# =============================================================================
-
-
-# ===================================================
-# get_ide - 설정된 IDE 반환
-# ===================================================
 
 init_algo_config
+# Phase 2 Task 2-3: _setup_ide_aliases 호출 추가
+_setup_ide_aliases
 _check_update
 
 echo "✅ 알고리즘 셸 함수 로드 완료! (${ALGO_FUNCTIONS_VERSION})"
