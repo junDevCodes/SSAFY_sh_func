@@ -100,7 +100,7 @@ except: print(0)
             echo "   ℹ️  토큰 미설정 (gitup 실행 시 입력 요청)"
         fi
     else
-        echo "   ❌ 설정 파일 없음 (\ (~/algo_config))"
+        echo "   ❌ 설정 파일 없음 (~/.algo_config)"
         ((issues++))
     fi
     
