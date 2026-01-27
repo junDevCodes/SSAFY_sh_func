@@ -61,6 +61,8 @@ cleanup_old_install() {
     fi
 
 
+}
+
 add_source_line() {
     local rc_file="$1"
 
