@@ -48,7 +48,6 @@ def load_config():
                     config[key.strip()] = val
     return config
 
-import os  # 상단 import 확인
 import time
 
 # [V7.6] Cross-platform File Lock
@@ -132,10 +131,11 @@ def main_menu(config):
         ide_name = ide_code
         for k, v in IDE_POOL.items():
             if v[1] == ide_code: ide_name = v[0]
-            
+        
+        # 메뉴 번호 수정 (Phase 0 Task 0-3)
+        print(f" 1. 📁 작업 경로 변경      [{config.get('ALGO_BASE_DIR', '미설정')}]")
         print(f" 2. 💻 IDE 변경           [{ide_name}]")
-        print(f" 3. 🔑 SSAFY 토큰 설정     [세션 전용 - 터미널에서 자동 입력]")
-        print(f" 4. 👤 SSAFY ID 설정       [{config.get('SSAFY_USER_ID', '미설정')}]")
+        print(f" 3. 🔑 SSAFY 토큰 설정     [세션 전용]")
         print(f" 4. 👤 SSAFY ID 설정       [{config.get('SSAFY_USER_ID', '미설정')}]")
         print(f" 5. 🔀 Git 설정")
         print(f"     - 커밋 접두사: {config.get('GIT_COMMIT_PREFIX', 'solve')}")

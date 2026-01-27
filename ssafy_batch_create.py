@@ -1,6 +1,5 @@
 import sys
 import os
-import os
 import re
 import getpass
 import time
