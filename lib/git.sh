@@ -967,7 +967,7 @@ ssafy_gitup() {
                     
                     if [ -n "$token" ]; then
                         if [ -f "$ALGO_CONFIG_FILE" ]; then
-                            _set_config_value "SSAFY_AUTH_TOKEN" "$token"
+
                             local decoded=$(echo "$token" | base64 -d 2>/dev/null || echo "")
                             if [[ "$decoded" == "Bearer "* ]]; then
                                 export SSAFY_AUTH_TOKEN="$decoded"
@@ -1027,8 +1027,17 @@ ssafy_batch() {
         return 1
     fi
     
+    
+    # [Fix V8.1] Prevent overwriting session token with empty value from config
+    local current_token="$SSAFY_AUTH_TOKEN"
+    
     if [ -f "$ALGO_CONFIG_FILE" ]; then
         source "$ALGO_CONFIG_FILE"
+    fi
+    
+    # Restore session token if it was set
+    if [ -n "$current_token" ]; then
+        export SSAFY_AUTH_TOKEN="$current_token"
     fi
     
     if [ -n "$SSAFY_AUTH_TOKEN" ] && [[ "$SSAFY_AUTH_TOKEN" != "Bearer your_token_here" ]]; then
