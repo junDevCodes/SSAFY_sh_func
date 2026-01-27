@@ -250,67 +250,74 @@ _open_repo_file() {
 
     local original_dir=$(pwd)
     cd "$repo_dir" || return 1
-                    continue
-                fi
-
-                echo ""
-                echo "============================================================"
-                echo " 🌳 [File Tree] 전체 파일 목록"
-                echo "============================================================"
-                local j=""
-                for j in "${!all_files[@]}"; do
-                    printf "  %2d. %s\n" "$((j + 1))" "${all_files[$j]}"
-                done
-                echo "------------------------------------------------------------"
-                echo "  b. 🔙 뒤로 가기"
-                echo "  q. ❌ 취소"
-                echo "============================================================"
-
-                local tchoice=""
-                read -r -p "👉 번호를 입력하세요: " tchoice
-
-                if [ "$tchoice" = "q" ] || [ "$tchoice" = "Q" ]; then
-                    return 1
-                fi
-                if [ "$tchoice" = "b" ] || [ "$tchoice" = "B" ]; then
-                    continue
-                fi
-                if [[ "$tchoice" =~ ^[0-9]+$ ]] && [ "$tchoice" -ge 1 ] && [ "$tchoice" -le "${#all_files[@]}" ]; then
-                    chosen="${all_files[$((tchoice - 1))]}"
-                    break
-                fi
-
-                echo "⚠️  잘못된 선택입니다."
-                continue
-            fi
-
-            if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "${#primary_files[@]}" ]; then
-                chosen="${primary_files[$((choice - 1))]}"
+    
+    # 1. Open Folder in IDE (Always)
+    # IDE 자동 탐색 및 설정 (V7.3 Logic)
+    local ide_cmd
+    if [ -n "$IDE_EDITOR" ]; then
+        ide_cmd="$IDE_EDITOR"
+    else
+        if [ -f "$ALGO_CONFIG_FILE" ]; then
+            source "$ALGO_CONFIG_FILE" 
+        fi
+        
+        local ide_priority_list="${IDE_PRIORITY:-code pycharm idea subl}"
+        for ide in $ide_priority_list; do
+            if command -v "$ide" >/dev/null 2>&1; then
+                ide_cmd="$ide"
                 break
             fi
-
-            echo "⚠️  잘못된 선택입니다."
         done
-    else
-        if [ "${#primary_files[@]}" -gt 0 ]; then
-            chosen="${primary_files[0]}"
+    fi
+
+    if [ -n "$ide_cmd" ]; then
+        echo "💻 IDE ($ide_cmd)에서 '$repo_dir'를 엽니다..."
+        if [[ "$ide_cmd" == "code" ]]; then
+            "$ide_cmd" .
         else
-            chosen="$(find . -maxdepth 2 -type f | head -n 1)"
-            chosen="${chosen#./}"
+            "$ide_cmd" "$repo_dir"
         fi
-    fi
-
-    if [ -n "$chosen" ] && [ -f "$chosen" ]; then
-        echo "📌 감지된 IDE: $editor"
-        echo "🎉 에디터에서 파일 열기: $chosen"
-        _open_in_editor "$editor" "$chosen"
     else
-        echo "⚠️  열 파일을 찾을 수 없습니다"
-        echo "📋 클론된 폴더 내용:"
-        ls -la
+        # Fallback if no IDE found
+        echo "❌ IDE를 찾을 수 없습니다. (폴더 이동만 수행)"
     fi
 
-    echo "✅ 프로젝트 준비 완료!"
+    # 2. List or Auto-open File
+    # Find files (excluding hidden/git)
+    local files=()
+    while IFS= read -r file; do
+        if [ -n "$file" ]; then
+            files+=("${file#./}")
+        fi
+    done < <(find . -maxdepth 3 -not -path '*/.*' -type f 2>/dev/null | head -n 6)
+    
+    local count=${#files[@]}
+    
+    if [ $count -eq 1 ]; then
+         local target_file="${files[0]}"
+         echo "📂 Single file detected. Opening: $target_file"
+         if [ -n "$ide_cmd" ]; then
+             "$ide_cmd" "$target_file"
+         else
+             _open_in_editor "$target_file"
+         fi
+    elif [ $count -gt 0 ]; then
+         echo "📂 Repository Files (Top 5):"
+         local idx=0
+         for f in "${files[@]}"; do
+             if [ $idx -lt 5 ]; then
+                 echo "   - $f"
+             fi
+             idx=$((idx+1))
+         done
+         if [ $count -gt 5 ]; then
+             echo "   ... (and more)"
+         fi
+    else
+         echo "📂 (Empty repository or no files found)"
+    fi
+    
+    cd "$original_dir"
 }
 
 _ssafy_next_repo() {
