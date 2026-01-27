@@ -1,7 +1,32 @@
 # 📋 업데이트 노트 (Release Notes)
 
+## V8.1.1 (2026-01-27) - Code Quality & Bug Fix 🔧
 
+### 🐛 버그 수정 (Critical Bug Fix)
+- **IDE 열기 로직 수정**: `_open_in_editor` 함수 호출 시 인자 누락으로 파일이 열리지 않던 문제 수정
+- **설정 파일 경로 통일**: `~/.algo_config`로 경로 일원화 (기존 `.ssafy_algo_config` 혼용 문제 해결)
+- **Python 메뉴 번호 중복**: `algo_config_wizard.py`의 4번 메뉴 중복 표시 문제 수정
+- **import 중복 제거**: `ssafy_batch_create.py`의 `import os` 중복 제거
 
+### ⚡ 성능 개선 (Performance)
+- **파일 탐색 최적화**: `_open_repo_file` 함수에서 중복 `find` 명령어 제거
+- **서비스 상태 캐싱**: `_check_service_status`에 24시간 캐싱 적용 (터미널 로딩 속도 개선)
+
+### 🏗️ 아키텍처 개선 (Architecture)
+- **ALGO_ROOT_DIR 전역 변수 도입**: 모든 모듈에서 일관된 경로 참조 가능
+- **sed 공통 함수 추출**: `_sed_inplace()` 함수로 macOS/Linux 호환성 확보
+- **IDE 변수 통일**: `IDE_EDITOR` 사용 권장, `IDE_PRIORITY` 하위 호환성 유지
+
+### 📝 코드 품질 (Code Quality)
+- **변수 스코프 수정**: `_check_service_status`의 `json` 변수 전역 오염 방지
+- **IDE 열기 로직 개선**: 비-VSCode IDE에서 중복 창 열림 문제 수정
+- **모듈 구조 문서화**: `algo_functions.sh`에 모듈별 역할 주석 추가
+
+### 📊 통계
+- 28개 이슈 중 27개 수정 완료 (96.4%)
+- 잔여 이슈: H-01 (배포용 단일 파일 빌드 - 미래 과제)
+
+---
 
 
 ## V8.1.0 (2026-01-26) - Modular Architecture & Kill Switch 🛡️
