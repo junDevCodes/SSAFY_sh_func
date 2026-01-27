@@ -1084,10 +1084,11 @@ ssafy_batch() {
          # Reset session files
          rm -f "$playlist_file" "$progress_file" "$meta_file"
          
-         while IFS='|' read -r url course_id pr_id pa_id; do
+         while IFS='|' read -r url course_id pr_id pa_id subject; do
              # Remove CR for Windows compatibility
              url=$(echo "$url" | tr -d '\r')
              course_id=$(echo "$course_id" | tr -d '\r')
+             subject=$(echo "$subject" | tr -d '\r')
              
              if [ -n "$url" ]; then
                  echo "⬇️  Cloning: $url"
@@ -1098,21 +1099,36 @@ ssafy_batch() {
                  # 1. Update Playlist
                  echo "$folder_name" >> "$playlist_file"
                  
-                 # 2. Create Meta if needed (First item)
+                 # 2. Update Meta (Header & Item)
                  if [ ! -f "$meta_file" ]; then
-                     # [Security] course_id is not sensitive, but consistent with meta
-                     echo "course_id=$course_id" > "$meta_file"
-                     echo "created_at=$(date +%s)" >> "$meta_file"
+                     local enc_course_id=$(echo -n "$course_id" | base64)
+                     local created_at=$(date +"%Y%m%d%H%M%S")
+                     {
+                         echo "subject=$subject"
+                         echo "course_id=$enc_course_id"
+                         echo "created_at=$created_at"
+                     } > "$meta_file"
                  fi
+                 
+                 local enc_pr=$(echo -n "$pr_id" | base64)
+                 local enc_pa=$(echo -n "$pa_id" | base64)
+                 {
+                     echo "$folder_name"
+                     echo "$enc_pr"
+                     echo "$enc_pa"
+                 } >> "$meta_file"
+                 
+                 # 3. Update Progress (Header & Item)
+                 if [ ! -f "$progress_file" ]; then
+                     echo "subject=$subject" > "$progress_file"
+                 fi
+                 echo "${folder_name}=init" >> "$progress_file"
                  
                  if [ -z "$first_repo" ]; then
                      first_repo="$folder_name"
                  fi
              fi
          done < <(echo "$SSAFY_AUTH_TOKEN" | "$py_cmd" "$script_dir/ssafy_batch_create.py" "$1" "$2" --pipe)
-         
-         # 3. Init Progress
-         echo "init" > "$progress_file"
          
          if [ -n "$first_repo" ]; then
              echo "📂 Opening first repository: $first_repo"
