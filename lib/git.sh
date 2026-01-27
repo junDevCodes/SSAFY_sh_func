@@ -243,12 +243,12 @@ _show_submission_links() {
 _open_repo_file() {
     local repo_dir="$1"
 
+    
     if [ ! -d "$repo_dir" ]; then
         echo "??  디렉터리를 찾을 수 없습니다: $repo_dir"
         return 1
     fi
 
-    local original_dir=$(pwd)
     cd "$repo_dir" || return 1
     
     # 1. Open Folder in IDE (Always)
@@ -316,8 +316,6 @@ _open_repo_file() {
     else
          echo "📂 (Empty repository or no files found)"
     fi
-    
-    cd "$original_dir"
 }
 
 _ssafy_next_repo() {
@@ -1081,6 +1079,8 @@ ssafy_batch() {
          
          if [ -n "$first_repo" ]; then
              echo "📂 Opening first repository: $first_repo"
+             # [Fix V8.1] Sync status immediately (chk done)
+             _sync_playlist_status "."
              _open_repo_file "$first_repo"
          fi
     else
