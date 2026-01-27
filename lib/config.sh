@@ -5,7 +5,8 @@
 
 
 # 설정 파일 경로 정의 (Global)
-ALGO_CONFIG_FILE="$HOME/.ssafy_algo_config"
+# Phase 1 Task 1-1: 경로 통일 (.algo_config)
+ALGO_CONFIG_FILE="$HOME/.algo_config"
 
 init_algo_config() {
     if [ ! -f "$ALGO_CONFIG_FILE" ]; then
@@ -19,7 +20,7 @@ GIT_AUTO_PUSH=true
 IDE_EDITOR=""
 SSAFY_BASE_URL="https://lab.ssafy.com"
 SSAFY_USER_ID=""
-SSAFY_AUTH_TOKEN=""
+# 토큰은 보안상 파일에 저장하지 않음 (세션 전용)
 EOF
     fi
 
@@ -52,12 +53,8 @@ _set_config_value() {
     
     # 기존 키가 있으면 변경
     if grep -q "^${key}=" "$ALGO_CONFIG_FILE"; then
-        # sed 분기 (macOS/BSD vs GNU)
-        if sed --version >/dev/null 2>&1; then
-            sed -i "s|^${key}=.*|${key}=\"${value}\"|" "$ALGO_CONFIG_FILE"
-        else
-            sed -i '' "s|^${key}=.*|${key}=\"${value}\"|" "$ALGO_CONFIG_FILE"
-        fi
+        # Phase 4 Task 4-2: sed 공통 함수 사용
+        _sed_inplace "s|^${key}=.*|${key}=\"${value}\"|" "$ALGO_CONFIG_FILE"
     else
         # 없으면 추가
         echo "${key}=\"${value}\"" >> "$ALGO_CONFIG_FILE"
@@ -73,33 +70,20 @@ ssafy_algo_config() {
     
     if [ "$1" = "edit" ]; then
         # V7.0: Python 마법사 사용
-        local script_dir
+        # Phase 1 Task 1-3: ALGO_ROOT_DIR 사용
+        # Phase 1 Task 1-4: readlink -f 호환성 수정 (macOS)
+        local script_dir="${ALGO_ROOT_DIR:-$HOME/.ssafy-tools}"
         
-        # [V7.6] 스크립트 위치 동적 탐지 (하드코딩 제거)
-        # BASH_SOURCE[0]를 이용하여 현재 파일의 위치를 찾음
-        if [ -n "${BASH_SOURCE[0]}" ]; then
-            script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-        else
-            # 폴백: 동적 탐지 실패 시 일반적인 경로 시도
-            script_dir="$HOME/Desktop/SSAFY_sh_func"
-            if [ ! -f "$script_dir/algo_config_wizard.py" ]; then
-                # 다른 후보 경로
-                if [ -f "$HOME/.ssafy-tools/algo_config_wizard.py" ]; then
-                    script_dir="$HOME/.ssafy-tools"
-                fi
-            fi
-        fi
-        
-        # Python 스크립트 실행
-        # lib/config.sh 위치 기준 상위 디렉토리(루트) 체크 필요
-        # script_dir가 lib/라면 상위로 이동
-        if [ -f "$script_dir/../algo_config_wizard.py" ]; then
-             script_dir=$(readlink -f "$script_dir/..")
-        fi
-
+        # Python 스크립트 파일 존재 확인
         if [ ! -f "$script_dir/algo_config_wizard.py" ]; then
+            # 폴백: 다른 경로 시도
             if [ -f "$HOME/Desktop/SSAFY_sh_func/algo_config_wizard.py" ]; then
                 script_dir="$HOME/Desktop/SSAFY_sh_func"
+            elif [ -f "$HOME/.ssafy-tools/algo_config_wizard.py" ]; then
+                script_dir="$HOME/.ssafy-tools"
+            else
+                echo "❌ algo_config_wizard.py를 찾을 수 없습니다."
+                return 1
             fi
         fi
         

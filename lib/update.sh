@@ -5,12 +5,8 @@
 
 # 업데이트 명령어 (V7.6 네임스페이스)
 ssafy_algo_update() {
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    # lib/update.sh 위치라면 상위(ssafy_sh_func root)로 이동
-    if [[ "$script_dir" == */lib ]]; then
-        script_dir="$(dirname "$script_dir")"
-    fi
+    # Phase 1 Task 1-3: ALGO_ROOT_DIR 사용
+    local script_dir="${ALGO_ROOT_DIR:-$HOME/.ssafy-tools}"
     
     echo "📍 설치 경로: $script_dir"
     echo "🔄 최신 버전으로 업데이트 중..."
@@ -45,12 +41,8 @@ ssafy_algo_update() {
 ALGO_UPDATE_CHECK_FILE="$HOME/.algo_update_last_check"
 
 _check_update() {
-    local script_dir
-    script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-     # lib/update.sh 위치라면 상위(ssafy_sh_func root)로 이동
-    if [[ "$script_dir" == */lib ]]; then
-        script_dir="$(dirname "$script_dir")"
-    fi
+    # Phase 1 Task 1-3: ALGO_ROOT_DIR 사용
+    local script_dir="${ALGO_ROOT_DIR:-$HOME/.ssafy-tools}"
     
     # .git 디렉토리가 없으면 패스
     if [ ! -d "$script_dir/.git" ]; then
