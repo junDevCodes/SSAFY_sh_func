@@ -141,7 +141,20 @@ check_ide() {
     
     echo ""
     echo "3️⃣ IDE 명령어 확인:"
-    for ide in $IDE_PRIORITY; do
+    # Phase 5 Task 5-4: IDE 리스트 로직 명확화
+    local ide_list
+    if [ -n "${IDE_EDITOR:-}" ]; then
+        # IDE_EDITOR가 설정되어 있으면 해당 IDE만 검사
+        ide_list="$IDE_EDITOR"
+    elif [ -n "${IDE_PRIORITY:-}" ]; then
+        # IDE_PRIORITY가 설정되어 있으면 전체 리스트 검사
+        ide_list="$IDE_PRIORITY"
+    else
+        # 기본값: 주요 IDE 전체 검사
+        ide_list="code pycharm idea subl cursor"
+    fi
+    
+    for ide in $ide_list; do
         local ide_cmd="$ide"
         case "$ide" in
             pycharm)
@@ -169,7 +182,8 @@ check_ide() {
     
     echo ""
     echo "4️⃣ 현재 설정:"
-    algo_config show | grep "IDE_PRIORITY" || echo "   설정 파일을 찾을 수 없습니다"
+    # Phase 2 Task 2-2: IDE_EDITOR와 IDE_PRIORITY 모두 검색
+    algo_config show | grep -E "IDE_EDITOR|IDE_PRIORITY" || echo "   설정 파일을 찾을 수 없습니다"
     
     echo ""
     echo "💡 IDE 우선순위를 변경하려면: algo-config edit"
