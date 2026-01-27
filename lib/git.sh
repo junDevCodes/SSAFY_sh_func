@@ -170,48 +170,50 @@ _show_submission_links() {
     echo ""
     echo "📋 제출 링크 목록:"
     
-    local i=1
-    local has_link=false
-    local urls=()
     
-    for folder in "${folders[@]}"; do
-        local pr_id_enc=$(grep "^${folder}_enc=" "$meta_file" 2>/dev/null | cut -d= -f2)
-        local pr_id=""
+    # [Fix V8.1] Parse Multi-line Meta Format
+    local lines=()
+    if [ -f "$meta_file" ]; then
+        while IFS= read -r line || [ -n "$line" ]; do
+            lines+=("$line")
+        done < "$meta_file"
+    fi
+    
+    local idx=0
+    local len=${#lines[@]}
+    
+    while [ $idx -lt $len ]; do
+        local line="${lines[$idx]}"
         
-        if [ -n "$pr_id_enc" ]; then
-             pr_id=$(echo "$pr_id_enc" | base64 -d 2>/dev/null)
-        else
-             pr_id=$(grep "^$folder=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        # Skip headers
+        if [[ "$line" == *"="* ]]; then
+            idx=$((idx + 1))
+            continue
         fi
         
-        if [ -z "$pr_id" ]; then
-            pr_id=$(grep "^practice_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
-        fi
-        
-        local pa_id_enc=$(grep "^${folder}_pa_enc=" "$meta_file" 2>/dev/null | cut -d= -f2)
-        local pa_id=""
-
-        if [ -n "$pa_id_enc" ]; then
-            pa_id=$(echo "$pa_id_enc" | base64 -d 2>/dev/null)
-        else
-            pa_id=$(grep "^${folder}_pa=" "$meta_file" 2>/dev/null | cut -d= -f2)
-        fi
-        
-        if [ -n "$pr_id" ]; then
-            local current_url=""
-            if [ -n "$pa_id" ]; then
-                 current_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/answer/${pa_id}"
-            else
-                 current_url="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/detail"
-            fi
-            echo "  $i. $folder: $current_url"
-            urls+=("$current_url")
-            has_link=true
-        else
-            echo "  $i. $folder: (링크 정보 없음)"
-            urls+=("")
-        fi
-        ((i++))
+        # Check if this line matches any of our target folders
+        for folder in "${folders[@]}"; do
+             if [ "$line" == "$folder" ]; then
+                 # Found folder, next 2 lines are PR and PA
+                 if [ $((idx + 2)) -lt $len ]; then
+                     local enc_pr="${lines[$((idx + 1))]}"
+                     local enc_pa="${lines[$((idx + 2))]}"
+                     
+                     local pr_id=$(echo "$enc_pr" | base64 -d 2>/dev/null)
+                     local pa_id=$(echo "$enc_pa" | base64 -d 2>/dev/null)
+                     
+                     if [ -n "$pr_id" ] && [ -n "$pa_id" ]; then
+                         local link="https://project.ssafy.com/ssafy/courses/${course_id}/practices/${pr_id}/answers/${pa_id}"
+                         echo "$i. $folder: $link"
+                         has_link=true
+                         urls+=("$link")
+                         i=$((i+1))
+                     fi
+                 fi
+                 break
+             fi
+        done
+        idx=$((idx + 1))
     done
     
     if [ "$has_link" = false ]; then return 0; fi
@@ -246,70 +248,8 @@ _open_repo_file() {
         return 1
     fi
 
+    local original_dir=$(pwd)
     cd "$repo_dir" || return 1
-
-    local editor
-    editor=$(get_active_ide)
-
-    local maxdepth=6
-    local -a primary_files=()
-
-    while IFS= read -r -d '' f; do
-        f="${f#./}"
-        primary_files+=("$f")
-    done < <(
-        find . -maxdepth "$maxdepth" \
-            \( -path './.git' -o -path './.git/*' -o -path './.vscode' -o -path './.vscode/*' -o -path './.idea' -o -path './.idea/*' -o -path './node_modules' -o -path './node_modules/*' -o -path './venv' -o -path './venv/*' -o -path './.venv' -o -path './.venv/*' -o -path './__pycache__' -o -path './__pycache__/*' \) -prune -o \
-            -type f \( -name '*.py' -o -name '*.ipynb' -o -name '*.cpp' -o -name '*.vue' -o -name '*.js' -o -name '*.html' -o -name '*.css' -o -name '*.java' \) -print0 2>/dev/null
-    )
-
-    local chosen=""
-
-    if _is_interactive; then
-        while true; do
-            echo ""
-            echo "============================================================"
-            echo " 📂 [Code Selector] 자주 사용하는 파일"
-            echo "============================================================"
-            if [ "${#primary_files[@]}" -gt 0 ]; then
-                local i=""
-                for i in "${!primary_files[@]}"; do
-                    printf "  %2d. %s\n" "$((i + 1))" "${primary_files[$i]}"
-                done
-            else
-                echo "  (추천 파일 없음)"
-            fi
-
-            echo "------------------------------------------------------------"
-            echo "  t. 🌳 전체 파일 트리 보기"
-            echo "  q. ❌ 취소"
-            echo "============================================================"
-
-            local choice=""
-            read -r -p "👉 원하시는 파일 번호 또는 메뉴를 입력하세요: " choice
-
-            if [ "$choice" = "q" ] || [ "$choice" = "Q" ]; then
-                return 1
-            fi
-
-            if [ "$choice" = "t" ] || [ "$choice" = "T" ]; then
-                local -a all_files=()
-                while IFS= read -r -d '' af; do
-                    af="${af#./}"
-                    case "$af" in
-                        .git/*|.git|.vscode/*|.idea/*|node_modules/*|venv/*|.venv/*|__pycache__/*) continue ;;
-                        *.iml|*.code-workspace|.DS_Store) continue ;;
-                        .gitignore|.gitattributes|.editorconfig|.env|.env.*) continue ;;
-                    esac
-                    all_files+=("$af")
-                done < <(
-                    find . -maxdepth "$maxdepth" \
-                        \( -path './.git' -o -path './.git/*' -o -path './node_modules' -o -path './node_modules/*' -o -path './venv' -o -path './venv/*' -o -path './.venv' -o -path './.venv/*' \) -prune -o \
-                        -type f -print0 2>/dev/null
-                )
-
-                if [ "${#all_files[@]}" -eq 0 ]; then
-                    echo "⚠️  열 수 있는 파일을 찾을 수 없습니다."
                     continue
                 fi
 
@@ -773,13 +713,20 @@ ssafy_gitdown() {
 
     if [ "$ssafy_mode" = true ]; then
         if [ "$push_ok" = true ]; then
-            if [ -n "$ssafy_root" ] && [ -f "$ssafy_root/.ssafy_progress" ]; then
-                 if ! grep -q "^${current_repo}=done" "$ssafy_root/.ssafy_progress" 2>/dev/null; then
+             if [ -n "$ssafy_root" ] && [ -f "$ssafy_root/.ssafy_progress" ]; then
+                 # [Fix V8.1] Update 'init' to 'done' or append 'done' if not exists
+                 if grep -q "^${current_repo}=init" "$ssafy_root/.ssafy_progress"; then
+                     if [[ "$OSTYPE" == "darwin"* ]]; then
+                         sed -i '' "s/^${current_repo}=init/${current_repo}=done/" "$ssafy_root/.ssafy_progress"
+                     else
+                         sed -i "s/^${current_repo}=init/${current_repo}=done/" "$ssafy_root/.ssafy_progress"
+                     fi
+                 elif ! grep -q "^${current_repo}=done" "$ssafy_root/.ssafy_progress"; then
                      echo "${current_repo}=done" >> "$ssafy_root/.ssafy_progress"
                  fi
             fi
 
-            _show_submission_links "$(pwd)" "$current_repo"
+            _show_submission_links "$ssafy_root" "$current_repo"
             
             local next_repo=$(_ssafy_next_repo "$current_repo")
             if [ -n "$next_repo" ] && [ ! -d "$next_repo" ]; then
