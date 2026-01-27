@@ -1073,7 +1073,27 @@ ssafy_batch() {
     fi
     
     if [ -n "$py_cmd" ]; then
-         echo "$SSAFY_AUTH_TOKEN" | "$py_cmd" "$script_dir/ssafy_batch_create.py" "$1" "$2"
+         # [Fix V8.1] Capture output and clone
+         local first_repo=""
+         
+         while IFS='|' read -r url course_id pr_id pa_id; do
+             # Remove CR for Windows compatibility
+             url=$(echo "$url" | tr -d '\r')
+             
+             if [ -n "$url" ]; then
+                 echo "⬇️  Cloning: $url"
+                 git clone "$url"
+                 
+                 if [ -z "$first_repo" ]; then
+                     first_repo=$(basename "$url" .git)
+                 fi
+             fi
+         done < <(echo "$SSAFY_AUTH_TOKEN" | "$py_cmd" "$script_dir/ssafy_batch_create.py" "$1" "$2" --pipe)
+         
+         if [ -n "$first_repo" ]; then
+             echo "📂 Opening first repository: $first_repo"
+             _open_repo_file "$first_repo"
+         fi
     else
          echo "❌ Python을 찾을 수 없습니다."
          return 1
