@@ -47,6 +47,15 @@ _set_config_value() {
     local key="$1"
     local value="$2"
     
+    # [보안] 토큰은 파일에 저장하지 않음 (세션 전용)
+    # - 문서(README) 정책과 실제 동작을 일치시키기 위한 가드
+    # - 토큰 값은 환경변수로만 유지하고 설정 파일에는 기록하지 않는다
+    if [ "$key" = "SSAFY_AUTH_TOKEN" ]; then
+        export SSAFY_AUTH_TOKEN="$value"
+        echo "🔐 토큰은 보안상 설정 파일에 저장하지 않습니다. (세션 전용)"
+        return 0
+    fi
+
     if [ ! -f "$ALGO_CONFIG_FILE" ]; then
         init_algo_config
     fi
@@ -134,7 +143,7 @@ ssafy_algo_config() {
         echo "  • 서버 URL  : ${SSAFY_BASE_URL:-https://lab.ssafy.com}"
         echo "  • 사용자 ID : ${SSAFY_USER_ID:-미설정}"
         if [ -n "${SSAFY_AUTH_TOKEN:-}" ]; then
-             echo "  • 인증 토큰 : 🔐 설정됨 (암호화)"
+             echo "  • 인증 토큰 : 🔐 설정됨 (세션 전용)"
         else
              echo "  • 인증 토큰 : ❌ 미설정"
         fi

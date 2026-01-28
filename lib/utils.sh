@@ -55,7 +55,9 @@ _check_service_status() {
     # Phase 4 Task 4-4: 캐싱 추가 (24시간)
     # Phase 5 Task 5-1: 변수 스코프 수정
     local json=""
-    local cache_file="/tmp/algo_status_cache"
+    # Phase 6: 캐시 지속성 개선 (/tmp → $HOME)
+    # /tmp는 재부팅 시 초기화될 수 있어, 사용자 홈에 숨김 파일로 저장
+    local cache_file="$HOME/.algo_status_cache"
     local cache_max_age=86400  # 24시간
     
     # 캐시 확인
