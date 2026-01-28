@@ -233,7 +233,9 @@ _show_submission_links() {
                      local pa_id=$(_ssafy_base64_decode "$enc_pa")
                      
                      if [ -n "$pr_id" ] && [ -n "$pa_id" ]; then
-                         local link="https://project.ssafy.com/ssafy/courses/${course_id}/practices/${pr_id}/answers/${pa_id}"
+                         # 제출 링크는 practicrooom 경로 사용 (SSAFY UI 기준)
+                         # 예: https://project.ssafy.com/practiceroom/course/CS00002398/practice/PR.../answer/PA...
+                         local link="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/answer/${pa_id}"
                          echo "$i. $folder: $link"
                          has_link=true
                          urls+=("$link")
