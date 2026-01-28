@@ -12,12 +12,28 @@
 # =============================================================================
 # [V8.1 Modular Architecture]
 # =============================================================================
-ALGO_FUNCTIONS_VERSION="V8.1.2"
-
 # 스크립트 위치 감지 (Module Loading용)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Phase 1 Task 1-2: ALGO_ROOT_DIR 전역 변수 도입
 export ALGO_ROOT_DIR="$SCRIPT_DIR"
+
+# =============================================================================
+# 버전 로드 (SSOT: VERSION 파일)
+# - VERSION 파일이 없거나 읽기 실패 시 기본값으로 폴백
+# - Windows(Git Bash) CRLF(\r) 제거 및 공백 제거 처리
+# =============================================================================
+ALGO_FUNCTIONS_VERSION_DEFAULT="V8.1.2"
+VERSION_FILE="$SCRIPT_DIR/VERSION"
+
+if [ -f "$VERSION_FILE" ]; then
+    read -r ALGO_FUNCTIONS_VERSION < "$VERSION_FILE" || true
+    ALGO_FUNCTIONS_VERSION="${ALGO_FUNCTIONS_VERSION//$'\r'/}"
+    ALGO_FUNCTIONS_VERSION="${ALGO_FUNCTIONS_VERSION//[[:space:]]/}"
+fi
+
+if [ -z "${ALGO_FUNCTIONS_VERSION:-}" ]; then
+    ALGO_FUNCTIONS_VERSION="$ALGO_FUNCTIONS_VERSION_DEFAULT"
+fi
 
 # Load Modules
 if [ -f "$SCRIPT_DIR/lib/config.sh" ]; then

@@ -27,10 +27,26 @@ fi
 # 2. Git Clone
 echo "📥 저장소 다운로드 중..."
 if command -v git > /dev/null 2>&1; then
-    git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"
+    # clone 실패 시 에러 메시지 출력 후 종료
+    if ! git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"; then
+        echo ""
+        echo "❌ 저장소 다운로드에 실패했습니다. (네트워크 연결을 확인해주세요)"
+        exit 1
+    fi
 else
-    echo "❌ Git이 설치되어 있지 않습니다. Git을 먼저 설치해주세요."
+    echo "❌ Git이 설치되어 있지 않습니다..."
     exit 1
+fi
+
+# 2-1. 버전 로드 (SSOT: VERSION 파일)
+# - 설치된 저장소의 VERSION 파일을 읽어서 출력에 사용
+# - 파일이 없거나 읽기 실패 시 Unknown으로 표시
+INSTALLED_VERSION="Unknown"
+VERSION_FILE="$INSTALL_DIR/VERSION"
+if [ -f "$VERSION_FILE" ]; then
+    read -r INSTALLED_VERSION < "$VERSION_FILE" || true
+    INSTALLED_VERSION="${INSTALLED_VERSION//$'\r'/}"
+    INSTALLED_VERSION="${INSTALLED_VERSION//[[:space:]]/}"
 fi
 
 # 3. 기존 설치 정리 (중복 방지)
@@ -159,7 +175,7 @@ fi
 # 4. 완료 메시지
 echo ""
 echo "============================================================"
-echo "✅ 설치가 완료되었습니다!"
+echo "✅ 설치가 완료되었습니다! (버전: ${INSTALLED_VERSION})"
 echo "============================================================"
 echo ""
 echo "👉 지금 바로 사용하려면 아래 명령어를 실행하세요:"
