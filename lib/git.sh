@@ -283,16 +283,95 @@ _open_repo_file() {
         
         # IDE 열기 로직 개선 (Phase 2 Task 2-4)
         if [[ "$ide_cmd" == "code" || "$ide_cmd" == "cursor" ]]; then
-            # VS Code/Cursor 계열:
-            # -r(재사용)은 현재 열려있는 창의 워크스페이스를 교체하는 동작이라
-            # 사용자 입장에서는 "기존 창이 닫히고 새 창이 열리는 것"처럼 보일 수 있음
-            # 따라서 -a(추가)로 기존 창에 폴더를 추가하고, 필요 시 파일을 goto로 엶
-            if [ $count -eq 1 ]; then
-                # 파일이 1개면 폴더와 파일 동시에 열기
-                local target_abs_file="$abs_repo_dir/${files[0]}"
-                "$ide_cmd" -a "$abs_repo_dir" -g "$target_abs_file"
+            # VS Code/Cursor 계열 파일 오픈 규칙
+            # 1) 문제 폴더 내 파일이 1개면 그 파일을 연다
+            # 2) 파일이 5개 이하면 파일 목록을 보여준다
+            # 3) 파일이 5개 초과면 skeleton/ 파일을 우선 포함하여 상위 5개를 보여준다
+            local -a all_files=()
+            while IFS= read -r af; do
+                [ -n "$af" ] && all_files+=("$af")
+            done < <(find "$abs_repo_dir" -maxdepth 3 -not -path '*/.*' -type f 2>/dev/null)
+
+            local total_files=${#all_files[@]}
+
+            if [ "$total_files" -eq 1 ]; then
+                # 단 1개면 해당 파일만 열기
+                "$ide_cmd" -g "${all_files[0]}"
+            elif [ "$total_files" -gt 0 ] && [ "$total_files" -le 5 ]; then
+                # 5개 이하면 목록만 출력
+                echo "📄 파일 목록 (${total_files}개):"
+                local i=1
+                local f=""
+                for f in "${all_files[@]}"; do
+                    echo "  - $i. ${f#$abs_repo_dir/}"
+                    i=$((i+1))
+                done
+                
+                # UX: 번호 입력 시 해당 파일 열기 (대화형 셸에서만)
+                if (type _is_interactive >/dev/null 2>&1 && _is_interactive) || ([ -t 0 ] && [ -t 1 ]); then
+                    echo ""
+                    echo "👉 번호 입력 시 파일 열기 | Enter → 건너뛰기"
+                    read -r choice
+                    if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$total_files" ]; then
+                        "$ide_cmd" -g "${all_files[$((choice-1))]}"
+                    fi
+                fi
+            elif [ "$total_files" -gt 5 ]; then
+                # 5개 초과면 skeleton 파일 우선 포함 + 상위 5개 목록 출력
+                local -a top_files=()
+
+                # 1) skeleton/ 내 파일을 우선 포함
+                if [ -d "$abs_repo_dir/skeleton" ]; then
+                    while IFS= read -r sf; do
+                        [ -n "$sf" ] && top_files+=("$sf")
+                    done < <(find "$abs_repo_dir/skeleton" -maxdepth 1 -not -path '*/.*' -type f 2>/dev/null | head -n 5)
+                fi
+
+                # 2) 루트 파일(최상위)에서 남은 슬롯 채우기
+                while IFS= read -r rf; do
+                    [ -n "$rf" ] || continue
+                    if [ "${#top_files[@]}" -ge 5 ]; then
+                        break
+                    fi
+
+                    local exists=false
+                    local tf=""
+                    for tf in "${top_files[@]}"; do
+                        if [ "$tf" = "$rf" ]; then
+                            exists=true
+                            break
+                        fi
+                    done
+
+                    if [ "$exists" = false ]; then
+                        top_files+=("$rf")
+                    fi
+                done < <(find "$abs_repo_dir" -maxdepth 1 -not -path '*/.*' -type f 2>/dev/null)
+
+                echo "📄 파일 목록 (상위 5개, skeleton 우선):"
+                local j=1
+                local ff=""
+                for ff in "${top_files[@]}"; do
+                    if [ "$j" -le 5 ]; then
+                        echo "  - $j. ${ff#$abs_repo_dir/}"
+                        j=$((j+1))
+                    fi
+                done
+                
+                # UX: 번호 입력 시 해당 파일 열기 (대화형 셸에서만)
+                local display_count=${#top_files[@]}
+                if [ "$display_count" -gt 5 ]; then display_count=5; fi
+                if [ "$display_count" -gt 0 ] && ((type _is_interactive >/dev/null 2>&1 && _is_interactive) || ([ -t 0 ] && [ -t 1 ])); then
+                    echo ""
+                    echo "👉 번호 입력 시 파일 열기 | Enter → 건너뛰기"
+                    read -r choice
+                    if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$display_count" ]; then
+                        "$ide_cmd" -g "${top_files[$((choice-1))]}"
+                    fi
+                fi
             else
-                "$ide_cmd" -a "$abs_repo_dir"
+                # 파일이 하나도 없으면 아무 것도 열지 않음 (워크스페이스 구조 오염 방지)
+                echo "📂 열 수 있는 파일이 없습니다. (폴더는 열지 않습니다)"
             fi
         else
             # PyCharm, IntelliJ 등: 백그라운드 실행
@@ -390,6 +469,66 @@ _ssafy_next_repo() {
     return 1
 }
 
+# =============================================================================
+# .ssafy_progress 관리 유틸리티
+# - 동일 key가 누적되지 않도록 "append"가 아닌 "update" 방식으로 관리
+# =============================================================================
+_ssafy_progress_compact() {
+    local progress_file="$1"
+    [ -f "$progress_file" ] || return 0
+
+    # 중복 key가 있을 경우 마지막 값만 유지하도록 정리
+    # (예: de_ws_1_1=init ... de_ws_1_1=done -> de_ws_1_1=done)
+    local tmp_file="${progress_file}.tmp.$$"
+    awk -F= '
+        NF >= 2 {
+            k = $1
+            v = $2
+            if (!(k in order)) { order[++n] = k }
+            val[k] = v
+        }
+        END {
+            for (i = 1; i <= n; i++) {
+                k = order[i]
+                if (k != "") { print k "=" val[k] }
+            }
+        }
+    ' "$progress_file" > "$tmp_file" 2>/dev/null || return 0
+
+    mv "$tmp_file" "$progress_file" 2>/dev/null || rm -f "$tmp_file" 2>/dev/null || true
+}
+
+_ssafy_progress_set() {
+    local ssafy_root="$1"
+    local repo_name="$2"
+    local state="$3" # init|done
+    local progress_file="$ssafy_root/.ssafy_progress"
+
+    [ -f "$progress_file" ] || : > "$progress_file"
+
+    # 이미 done이면 init로 되돌리지 않음
+    if [ "$state" = "init" ] && grep -q "^${repo_name}=done$" "$progress_file" 2>/dev/null; then
+        return 0
+    fi
+
+    if grep -q "^${repo_name}=" "$progress_file" 2>/dev/null; then
+        if type _sed_inplace >/dev/null 2>&1; then
+            _sed_inplace "s|^${repo_name}=.*|${repo_name}=${state}|" "$progress_file"
+        else
+            # macOS/Linux 호환 (utils.sh가 로드되지 않았을 때를 대비)
+            if sed --version >/dev/null 2>&1; then
+                sed -i "s|^${repo_name}=.*|${repo_name}=${state}|" "$progress_file"
+            else
+                sed -i '' "s|^${repo_name}=.*|${repo_name}=${state}|" "$progress_file"
+            fi
+        fi
+    else
+        echo "${repo_name}=${state}" >> "$progress_file"
+    fi
+
+    _ssafy_progress_compact "$progress_file"
+}
+
 _sync_playlist_status() {
     local ssafy_root="$1"
     local user_name=$(git config user.name)
@@ -410,7 +549,7 @@ _sync_playlist_status() {
             
             cd "$folder"
             if git log --author="$user_name" --oneline -n 20 2>/dev/null | grep -qE "[a-f0-9]+ ${prefix}:"; then
-                 echo "${folder}=done" >> "$progress_file"
+                 _ssafy_progress_set "$ssafy_root" "$folder" "done"
             fi
             cd ..
         fi
@@ -525,7 +664,7 @@ _gitdown_all() {
                 echo "  ✅ 푸시 완료"
                 ((success_count++))
                 pushed_folders+=("$folder")
-                echo "$folder=done" >> "$progress_file"
+                _ssafy_progress_set "$ssafy_root" "$folder" "done"
             else
                 echo "  ❌ 푸시 실패"
                 ((fail_count++))
@@ -737,16 +876,8 @@ ssafy_gitdown() {
     if [ "$ssafy_mode" = true ]; then
         if [ "$push_ok" = true ]; then
              if [ -n "$ssafy_root" ] && [ -f "$ssafy_root/.ssafy_progress" ]; then
-                 # [Fix V8.1] Update 'init' to 'done' or append 'done' if not exists
-                 if grep -q "^${current_repo}=init" "$ssafy_root/.ssafy_progress"; then
-                     if [[ "$OSTYPE" == "darwin"* ]]; then
-                         sed -i '' "s/^${current_repo}=init/${current_repo}=done/" "$ssafy_root/.ssafy_progress"
-                     else
-                         sed -i "s/^${current_repo}=init/${current_repo}=done/" "$ssafy_root/.ssafy_progress"
-                     fi
-                 elif ! grep -q "^${current_repo}=done" "$ssafy_root/.ssafy_progress"; then
-                     echo "${current_repo}=done" >> "$ssafy_root/.ssafy_progress"
-                 fi
+                 # Phase 6: append가 아닌 update 방식으로 진행 상태 갱신
+                 _ssafy_progress_set "$ssafy_root" "$current_repo" "done"
             fi
 
             _show_submission_links "$ssafy_root" "$current_repo"
@@ -908,8 +1039,12 @@ _gitup_ssafy() {
 ssafy_gitup() {
     init_algo_config
     # Phase 6: 세션 루트(전체 문제 디렉토리) 기준 파일 관리
-    # gitup을 어디에서 실행하든, 최초 실행 위치를 세션 루트로 기록
-    local session_root="$(pwd)"
+    # gitup을 어디에서 실행하든, 세션 루트를 감지해서 기록
+    local session_root=""
+    session_root=$(_find_ssafy_session_root "$(pwd)" 2>/dev/null || true)
+    if [ -z "$session_root" ]; then
+        session_root="$(pwd)"
+    fi
     export SSAFY_SESSION_ROOT="$session_root"
     local ssafy_mode=false
     local input=""
@@ -1094,7 +1229,7 @@ ssafy_batch() {
                  } >> "$meta_file"
                  
                  # 3. Update Progress (List Init)
-                 echo "${folder_name}=init" >> "$progress_file"
+                 _ssafy_progress_set "$ssafy_root" "$folder_name" "init"
                  
                  if [ -z "$first_repo" ]; then
                      first_repo="$folder_name"
