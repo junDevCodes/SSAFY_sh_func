@@ -6,6 +6,122 @@
 # =============================================================================
 # algo-doctor - 시스템 및 설정 진단 도구 (V7.0) (V7.6 네임스페이스)
 # =============================================================================
+#
+# 안내:
+# - 이 파일의 출력은 사용자가 그대로 복사해서 이슈 트래커에 붙여넣는 것을 전제로 합니다.
+# - 토큰/설정 내용 등 민감정보는 절대 출력하지 않습니다.
+
+_ssafy_doctor__first_line() {
+    # 표준 출력에서 첫 줄만 안전하게 가져옵니다.
+    # (head 의존 없이 bash built-in read 사용)
+    local line=""
+    IFS= read -r line || true
+    printf '%s' "$line"
+}
+
+_ssafy_doctor__safe_uname() {
+    # 호스트명(개인 식별 가능 정보)이 포함될 수 있는 uname -a 대신,
+    # 최소한의 OS/커널/아키텍처 정보만 출력합니다.
+    local kernel_name="unknown"
+    local kernel_release="unknown"
+    local machine="unknown"
+    kernel_name="$(uname -s 2>/dev/null || echo "unknown")"
+    kernel_release="$(uname -r 2>/dev/null || echo "unknown")"
+    machine="$(uname -m 2>/dev/null || echo "unknown")"
+    echo "${kernel_name} ${kernel_release} ${machine}"
+}
+
+_print_diagnostic_report() {
+    # 이슈 트래커에 바로 붙여넣기 좋은 Markdown 리포트 블록을 출력합니다.
+    # - 개인정보/민감정보(토큰, 설정파일 내용, 사용자명 등) 출력 금지
+    # - 경로는 최소 정보만 제공 (마지막 폴더만)
+    echo ""
+    echo "==================== 복사용 진단 리포트 (Markdown) ===================="
+    echo "아래 블록을 그대로 복사해서 GitHub Issue/DM에 붙여넣어주세요."
+    echo "(개인정보/토큰/설정 내용은 포함되지 않습니다)"
+    echo ""
+
+    local now_utc=""
+    now_utc="$(date -u +"%Y-%m-%dT%H:%M:%SZ" 2>/dev/null || date 2>/dev/null || echo "unknown")"
+
+    local ostype="${OSTYPE:-unknown}"
+    local shell_path="${SHELL:-unknown}"
+
+    local pwd_tail="(unknown)"
+    if [ -n "${PWD:-}" ]; then
+        pwd_tail="${PWD##*/}"
+    fi
+
+    local uname_compact=""
+    if command -v uname >/dev/null 2>&1; then
+        uname_compact="$(_ssafy_doctor__safe_uname)"
+    else
+        uname_compact="(uname 없음)"
+    fi
+
+    local git_line="(미설치)"
+    if command -v git >/dev/null 2>&1; then
+        git_line="$(git --version 2>/dev/null || echo "(확인 실패)")"
+    fi
+
+    local curl_line="(미설치)"
+    if command -v curl >/dev/null 2>&1; then
+        curl_line="$(curl --version 2>/dev/null | _ssafy_doctor__first_line)"
+        [ -z "$curl_line" ] && curl_line="(확인 실패)"
+    fi
+
+    local py_cmd=""
+    if type _ssafy_python_lookup >/dev/null 2>&1; then
+        py_cmd="$(_ssafy_python_lookup)"
+    fi
+
+    local python_line="(미설치)"
+    if [ -n "$py_cmd" ]; then
+        local py_ver=""
+        py_ver="$("$py_cmd" --version 2>&1 | _ssafy_doctor__first_line)"
+        # Windows(Git Bash) 환경에서 CRLF(\r) 섞이는 케이스 정리
+        py_ver="${py_ver//$'\r'/}"
+        if [ -n "$py_ver" ]; then
+            python_line="$py_cmd ($py_ver)"
+        else
+            python_line="$py_cmd"
+        fi
+    fi
+
+    local ide_editor_disp="${IDE_EDITOR:-"(미설정)"}"
+    local ide_priority_disp="${IDE_PRIORITY:-"(미설정)"}"
+
+    local config_exists="no"
+    if [ -n "${ALGO_CONFIG_FILE:-}" ] && [ -f "$ALGO_CONFIG_FILE" ]; then
+        config_exists="yes"
+    fi
+
+    local cache_exists="no"
+    if [ -n "${HOME:-}" ] && [ -f "$HOME/.algo_status_cache" ]; then
+        cache_exists="yes"
+    fi
+
+    # Markdown 코드블록: here-doc(백틱 커맨드 치환) 이슈를 피하기 위해 echo/printf로 구성합니다.
+    echo '```text'
+    echo '[SSAFY Algo Tools Doctor 리포트]'
+    printf -- '- 생성시각(UTC): %s\n' "$now_utc"
+    printf -- '- ALGO_FUNCTIONS_VERSION: %s\n' "${ALGO_FUNCTIONS_VERSION:-unknown}"
+    printf -- '- OSTYPE: %s\n' "$ostype"
+    printf -- '- uname(마스킹): %s\n' "$uname_compact"
+    printf -- '- SHELL: %s\n' "$shell_path"
+    printf -- '- PWD(마스킹): .../%s\n' "$pwd_tail"
+    printf -- '- Git: %s\n' "$git_line"
+    printf -- '- Curl: %s\n' "$curl_line"
+    printf -- '- Python: %s\n' "$python_line"
+    printf -- '- IDE_EDITOR: %s\n' "$ide_editor_disp"
+    printf -- '- IDE_PRIORITY: %s\n' "$ide_priority_disp"
+    printf -- '- 설정파일(~/.algo_config): 존재: %s\n' "$config_exists"
+    printf -- '- 상태캐시(~/.algo_status_cache): 존재: %s\n' "$cache_exists"
+    echo '```'
+
+    echo "======================================================================="
+}
+
 ssafy_algo_doctor() {
     # Ensure config/auth/ide are loaded
     if type init_algo_config >/dev/null 2>&1; then init_algo_config; fi
@@ -170,4 +286,7 @@ except: print(0)
         echo "⚠️  $issues 건의 문제점이 발견되었습니다."
     fi
     echo "=================================================="
+
+    # 사용자 제보 UX: 마지막에 복사용 Markdown 리포트 블록 출력
+    _print_diagnostic_report
 }
