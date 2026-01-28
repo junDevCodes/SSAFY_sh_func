@@ -144,6 +144,22 @@ _open_browser() {
     fi
 }
 
+_ssafy_base64_decode() {
+    local value="$1"
+
+    # 메타 파일이 CRLF(\r\n)일 수 있어, 디코딩 전 공백/CR 제거
+    value="${value//$'\r'/}"
+    value="${value//[[:space:]]/}"
+
+    # Windows(Git Bash)/Linux: base64 -d, macOS: base64 -D
+    local decoded=""
+    decoded=$(echo "$value" | base64 -d 2>/dev/null || echo "")
+    if [ -z "$decoded" ]; then
+        decoded=$(echo "$value" | base64 -D 2>/dev/null || echo "")
+    fi
+    echo "$decoded"
+}
+
 _show_submission_links() {
     local ssafy_root="$1"
     shift
@@ -163,9 +179,18 @@ _show_submission_links() {
     local course_id=""
 
     if [ -n "$course_id_enc" ]; then
-        course_id=$(echo "$course_id_enc" | base64 -d 2>/dev/null)
+        course_id=$(_ssafy_base64_decode "$course_id_enc")
     else
-        course_id=$(grep "^course_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        # 하위 호환:
+        # 기존에는 course_id= 에 base64 인코딩 값이 저장되던 케이스가 있어 디코딩을 우선 시도
+        local raw_course_id=$(grep "^course_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        local decoded_course_id=$(_ssafy_base64_decode "$raw_course_id")
+
+        if [[ "$decoded_course_id" =~ ^CS[0-9]+$ ]]; then
+            course_id="$decoded_course_id"
+        else
+            course_id="$raw_course_id"
+        fi
     fi
     
     if [ -z "$course_id" ]; then
@@ -204,8 +229,8 @@ _show_submission_links() {
                      local enc_pr="${lines[$((idx + 1))]}"
                      local enc_pa="${lines[$((idx + 2))]}"
                      
-                     local pr_id=$(echo "$enc_pr" | base64 -d 2>/dev/null)
-                     local pa_id=$(echo "$enc_pa" | base64 -d 2>/dev/null)
+                     local pr_id=$(_ssafy_base64_decode "$enc_pr")
+                     local pa_id=$(_ssafy_base64_decode "$enc_pa")
                      
                      if [ -n "$pr_id" ] && [ -n "$pa_id" ]; then
                          local link="https://project.ssafy.com/ssafy/courses/${course_id}/practices/${pr_id}/answers/${pa_id}"
@@ -1215,6 +1240,8 @@ ssafy_batch() {
                      local enc_course_id=$(echo -n "$course_id" | base64)
                      local created_at=$(date +"%Y%m%d%H%M%S")
                      {
+                         # course_id는 base64로 저장 (세션 메타데이터)
+                         # 하위 호환을 위해 course_id= 키를 유지
                          echo "course_id=$enc_course_id"
                          echo "created_at=$created_at"
                      } > "$meta_file"
