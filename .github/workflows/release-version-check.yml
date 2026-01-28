@@ -1,0 +1,19 @@
+name: Release Version Check
+
+on:
+  push:
+    tags:
+      - "V*"
+
+jobs:
+  verify_tag_matches_version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify tag matches VERSION
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./ci/check_tag_matches_version.sh
+          ./ci/check_tag_matches_version.sh "${GITHUB_REF_NAME}"
