@@ -1,5 +1,24 @@
 # 📋 업데이트 노트 (Release Notes)
 
+## V8.1.3 (2026-01-28) - Version SSOT & Release Guard 🔖
+
+### 🧾 버전 관리 일원화 (SSOT)
+- **루트 `VERSION` 파일 도입**: 버전 문자열을 한 곳에서 관리하도록 통합
+- **버전 로드 안정화**: Windows(Git Bash) 환경의 CRLF(`\r`) 및 공백 제거로 출력 깨짐 방지
+- **설치 완료 메시지에 버전 표시**: 설치된 저장소의 `VERSION`을 읽어 설치 결과에 표기
+
+### 🧯 설치 실패 UX 개선 (Install Fail UX)
+- `git clone` 실패 시 **명확한 실패 메시지**를 출력하고 정상적으로 종료하도록 개선
+
+### ✅ 릴리즈 안전장치 (CI)
+- `V*` 태그 푸시 시 **태그명과 `VERSION` 값 불일치**를 CI에서 감지하여 릴리즈를 차단
+
+### 🩺 진단 리포트 공유 UX (algo-doctor)
+- 이슈 트래커에 그대로 붙여넣기 좋은 **복사용 Markdown 진단 리포트 블록**을 출력
+- 토큰/설정 내용 등 **민감정보는 출력하지 않도록** 범위를 제한
+
+---
+
 ## V8.1.2 (2026-01-28) - Submission Link Fix & UX Improvements 🧩
 
 ### 🔗 제출 링크 안정화 (Submission Link)
