@@ -283,12 +283,16 @@ _open_repo_file() {
         
         # IDE 열기 로직 개선 (Phase 2 Task 2-4)
         if [[ "$ide_cmd" == "code" || "$ide_cmd" == "cursor" ]]; then
-            # VS Code 계열: -r 옵션으로 재사용
+            # VS Code/Cursor 계열:
+            # -r(재사용)은 현재 열려있는 창의 워크스페이스를 교체하는 동작이라
+            # 사용자 입장에서는 "기존 창이 닫히고 새 창이 열리는 것"처럼 보일 수 있음
+            # 따라서 -a(추가)로 기존 창에 폴더를 추가하고, 필요 시 파일을 goto로 엶
             if [ $count -eq 1 ]; then
                 # 파일이 1개면 폴더와 파일 동시에 열기
-                "$ide_cmd" -r "$abs_repo_dir" "${files[0]}"
+                local target_abs_file="$abs_repo_dir/${files[0]}"
+                "$ide_cmd" -a "$abs_repo_dir" -g "$target_abs_file"
             else
-                "$ide_cmd" -r "$abs_repo_dir"
+                "$ide_cmd" -a "$abs_repo_dir"
             fi
         else
             # PyCharm, IntelliJ 등: 백그라운드 실행
@@ -903,6 +907,10 @@ _gitup_ssafy() {
 
 ssafy_gitup() {
     init_algo_config
+    # Phase 6: 세션 루트(전체 문제 디렉토리) 기준 파일 관리
+    # gitup을 어디에서 실행하든, 최초 실행 위치를 세션 루트로 기록
+    local session_root="$(pwd)"
+    export SSAFY_SESSION_ROOT="$session_root"
     local ssafy_mode=false
     local input=""
 
@@ -1037,10 +1045,18 @@ ssafy_batch() {
          # [Fix V8.1] Capture output and clone, generate session files
          local first_repo=""
          
-         # Session files
-         local playlist_file=".ssafy_playlist"
-         local progress_file=".ssafy_progress"
-         local meta_file=".ssafy_session_meta"
+         # Session files (세션 루트에서 단일 파일로 관리)
+         local ssafy_root="${SSAFY_SESSION_ROOT:-$(pwd)}"
+         if [ -z "$ssafy_root" ] || [ ! -d "$ssafy_root" ]; then
+             ssafy_root="$(pwd)"
+         fi
+         
+         local original_dir="$(pwd)"
+         cd "$ssafy_root" || return 1
+         
+         local playlist_file="$ssafy_root/.ssafy_playlist"
+         local progress_file="$ssafy_root/.ssafy_progress"
+         local meta_file="$ssafy_root/.ssafy_session_meta"
          
          # Reset session files
          rm -f "$playlist_file" "$progress_file" "$meta_file"
@@ -1089,8 +1105,8 @@ ssafy_batch() {
          if [ -n "$first_repo" ]; then
              echo "📂 Opening first repository: $first_repo"
              # [Fix V8.1] Sync status immediately (chk done)
-             _sync_playlist_status "."
-             _open_repo_file "$first_repo"
+             _sync_playlist_status "$ssafy_root"
+             _open_repo_file "$ssafy_root/$first_repo"
          fi
     else
          echo "❌ Python을 찾을 수 없습니다."

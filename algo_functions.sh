@@ -12,7 +12,7 @@
 # =============================================================================
 # [V8.1 Modular Architecture]
 # =============================================================================
-ALGO_FUNCTIONS_VERSION="V8.1.0"
+ALGO_FUNCTIONS_VERSION="V8.1.1"
 
 # 스크립트 위치 감지 (Module Loading용)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
