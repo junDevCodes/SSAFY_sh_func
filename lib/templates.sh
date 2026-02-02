@@ -203,8 +203,8 @@ ssafy_al() {
         
         # Phase 5 Task 5-3: IDE별 열기 로직 통일
         if [[ "$editor" == "code" || "$editor" == "cursor" ]]; then
-            # VS Code 계열: 폴더와 파일 동시 열기
-            "$editor" -r "$dir" "$file"
+            # VS Code 계열: 현재 창에서 파일 열기 (Goto File)
+            "$editor" -g "$file"
         else
             # PyCharm, IntelliJ 등: 파일만 열기 (프로젝트 컨텍스트 자동 포함)
             "$editor" "$file" &
