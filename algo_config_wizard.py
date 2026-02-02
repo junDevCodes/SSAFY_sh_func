@@ -11,7 +11,8 @@ IDE_POOL = {
     "2": ("Cursor", "cursor"),
     "3": ("PyCharm", "pycharm"),
     "4": ("IntelliJ IDEA", "idea"),
-    "5": ("Sublime Text", "subl")
+    "5": ("Sublime Text", "subl"),
+    "6": ("Antigravity", "antigravity")
 }
 
 def sanitize_config_value(value, allow_empty=False):
@@ -119,11 +120,52 @@ def save_config(config):
 def clear_screen():
     os.system('cls' if os.name == 'nt' else 'clear')
 
+def get_version():
+    try:
+        version_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "VERSION")
+        if os.path.exists(version_file):
+            with open(version_file, "r", encoding="utf-8") as f:
+                return f.read().strip()
+    except:
+        pass
+    return "Unknown"
+
+def pick_folder_gui(initial_dir=None):
+    """Open a folder selection dialog using tkinter."""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        
+        # Create root window but hide it
+        root = tk.Tk()
+        root.withdraw()
+        
+        # Bring dialog to front
+        root.attributes('-topmost', True)
+        
+        selected_path = filedialog.askdirectory(
+            initialdir=initial_dir,
+            title="SSAFY 작업 경로 선택 (취소하면 직접 입력)"
+        )
+        
+        root.destroy()
+        
+        # tkinter returns empty string on cancel
+        if not selected_path:
+            return None
+            
+        # Convert to absolute path with forward slashes
+        return os.path.abspath(selected_path).replace("\\", "/")
+    except Exception as e:
+        # print(f"GUI Error: {e}") 
+        return None
+
 def main_menu(config):
+    version = get_version()
     while True:
         clear_screen()
         print("==========================================")
-        print(" 🛠  SSAFY Algo Tools 설정 마법사 (V7.5.2)")
+        print(f" 🛠  SSAFY Algo Tools 설정 마법사 ({version})")
         print("==========================================")
         
         ide_code = config.get("IDE_EDITOR", "code")
@@ -149,8 +191,26 @@ def main_menu(config):
         choice = input("👉 선택: ").strip()
         
         if choice == "1":
-            new_dir = input(f"새 경로 입력 (현재: {config.get('ALGO_BASE_DIR', '')}): ").strip()
-            if new_dir: config["ALGO_BASE_DIR"] = new_dir
+            current_dir = config.get('ALGO_BASE_DIR', '')
+            print("\n📁 폴더 선택 창을 띄웁니다... (작업표시줄을 확인하세요)")
+            
+            gui_path = pick_folder_gui(current_dir)
+            if gui_path:
+                validated, error = sanitize_config_value(gui_path)
+                if error:
+                    print(f"⚠️ {error}")
+                else:
+                    config["ALGO_BASE_DIR"] = validated
+                    print(f"✅ 경로가 변경되었습니다: {validated}")
+                input("엔터키를 눌러 계속...")
+            else:
+                print("⚠️ GUI 선택이 취소되었거나 실패했습니다.")
+                new_dir = input(f"새 경로 직접 입력 (현재: {current_dir}): ").strip()
+                if new_dir: 
+                    validated, error = sanitize_config_value(new_dir)
+                    if not error:
+                        config["ALGO_BASE_DIR"] = validated
+                input("엔터키를 눌러 계속...")
             
         elif choice == "2":
             print("\n[IDE 선택]")

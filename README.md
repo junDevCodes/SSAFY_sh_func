@@ -1,4 +1,4 @@
-# 알고리즘/실습 자동화 Shell 함수 (V8.1.3)
+# 알고리즘/실습 자동화 Shell 함수 (V8.1.4)
 
 이 저장소는 Bash 함수들을 제공하여 알고리즘 풀이와 SSAFY 실습 과제 제출을 자동화합니다.
 별도의 복잡한 설치 없이 스크립트 파일만 복사하여 즉시 사용할 수 있습니다.
@@ -96,7 +96,7 @@ algo-update
 
 - **명령어:**
   - `algo-config show`: 현재 설정값 확인 (**Clean UI**)
-  - `algo-config edit`: **설정 마법사(GUI)** 실행
+  - `algo-config edit`: **설정 마법사(GUI)** 실행 (폴더 선택 창 지원)
   - `algo-config reset`: 설정을 초기 상태로 되돌리기
   - `algo-doctor`: **(New)** 시스템 및 설정 상태 정밀 진단
 

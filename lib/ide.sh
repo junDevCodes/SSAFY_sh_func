@@ -151,7 +151,7 @@ check_ide() {
         ide_list="$IDE_PRIORITY"
     else
         # 기본값: 주요 IDE 전체 검사
-        ide_list="code pycharm idea subl cursor"
+        ide_list="code pycharm idea subl cursor antigravity"
     fi
     
     for ide in $ide_list; do
@@ -218,6 +218,7 @@ _setup_ide_aliases() {
         idea)    target_exe="idea64.exe" ;;
         subl)    target_exe="subl.exe" ;;
         cursor)  target_exe="Cursor.exe" ;;
+        antigravity) target_exe="Antigravity.exe" ;;
         *)       return 0 ;; # 모르는 IDE는 탐색 안 함
     esac
     

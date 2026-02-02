@@ -22,7 +22,7 @@ export ALGO_ROOT_DIR="$SCRIPT_DIR"
 # - VERSION 파일이 없거나 읽기 실패 시 기본값으로 폴백
 # - Windows(Git Bash) CRLF(\r) 제거 및 공백 제거 처리
 # =============================================================================
-ALGO_FUNCTIONS_VERSION_DEFAULT="V8.1.3"
+ALGO_FUNCTIONS_VERSION_DEFAULT="V8.1.4"
 VERSION_FILE="$SCRIPT_DIR/VERSION"
 
 if [ -f "$VERSION_FILE" ]; then
