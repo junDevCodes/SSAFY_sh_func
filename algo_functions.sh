@@ -41,6 +41,8 @@ if [ -f "$SCRIPT_DIR/lib/config.sh" ]; then
     source "$SCRIPT_DIR/lib/utils.sh"
     source "$SCRIPT_DIR/lib/python_env.sh"
     source "$SCRIPT_DIR/lib/auth.sh"
+    source "$SCRIPT_DIR/lib/ui.sh"
+    source "$SCRIPT_DIR/lib/input.sh"
     source "$SCRIPT_DIR/lib/git.sh"
     source "$SCRIPT_DIR/lib/ide.sh"
     source "$SCRIPT_DIR/lib/doctor.sh"
@@ -85,8 +87,13 @@ init_algo_config
 _setup_ide_aliases
 _check_update
 
-echo "✅ 알고리즘 셸 함수 로드 완료! (${ALGO_FUNCTIONS_VERSION})"
-echo "💡 'algo-config edit'로 설정을 변경할 수 있습니다"
+if type ui_ok >/dev/null 2>&1; then
+    ui_ok "Algo shell functions loaded (${ALGO_FUNCTIONS_VERSION})"
+    ui_hint "Run 'algo-config edit' to update settings."
+else
+    echo "Algo shell functions loaded (${ALGO_FUNCTIONS_VERSION})"
+    echo "Run 'algo-config edit' to update settings."
+fi
 
 # =============================================================================
 # algo-doctor - 시스템 및 설정 진단 도구 (V7.0) (V7.6 네임스페이스)
