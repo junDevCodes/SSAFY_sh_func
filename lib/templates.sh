@@ -1,155 +1,387 @@
 # =============================================================================
 # lib/templates.sh
-# Algorithm File Templates & Generation (V7.6)
+# Algorithm file templates & generation
 # =============================================================================
 
-# =============================================================================
-# al - 알고리즘 문제 환경 설정 (V7.6 네임스페이스)
-# =============================================================================
-ssafy_al() {
-    init_algo_config
-    
-    # 인자 검증
-    if [ $# -eq 0 ]; then
-        echo "❗️사용법: al <사이트> <문제번호> [py|cpp] [옵션]"
-        echo ""
-        echo "📋 지원 사이트:"
-        echo "  s  → SWEA (Samsung SW Expert Academy)"
-        echo "  b  → BOJ (Baekjoon Online Judge)"
-        echo "  p  → Programmers"
-        echo ""
-        echo "🧩 언어:"
-        echo "  py  → Python (기본값)"
-        echo "  cpp → C++"
-        echo ""
-        echo "⚙️  옵션:"
-        echo "  --no-git         Git 커밋/푸시 건너뛰기"
-        echo "  --no-open        파일 열기 건너뛰기"
-        echo "  --msg, -m <msg>  커밋 메시지 지정"
-        echo ""
-        echo "💡 사용 예제:"
-        echo "  al s 1234                  # SWEA 1234번 문제"
-        echo "  al b 10950                 # BOJ 10950번 문제"
-        echo "  al p 42576                 # 프로그래머스 42576번 문제"
-        echo "  al b 1000 --no-git         # Git 작업 없이 파일만 생성"
-        echo "  al b 1000 --msg \"fix: ty\"  # 커밋 메시지 지정"
-        echo "  al b 1000 cpp              # C++ 파일 생성"
+_ssafy_al_print_usage() {
+    cat <<'EOF'
+Usage: al <site> <problem> [py|cpp] [options]
+
+Sites:
+  s  -> SWEA (Samsung SW Expert Academy)
+  b  -> BOJ (Baekjoon Online Judge)
+  p  -> Programmers
+
+Languages:
+  py   -> Python (default)
+  cpp  -> C++
+
+Options:
+  --no-git         Skip git commit/push flow
+  --no-open        Skip opening file in IDE
+  --msg, -m <msg>  Commit message
+
+Examples:
+  al s 1234
+  al b 10950
+  al p 42576
+  al b 1000 --no-git
+  al b 1000 --msg "fix: typo"
+  al b 1000 cpp
+EOF
+}
+
+_ssafy_al_resolve_site() {
+    local site_code="$1"
+    case "$site_code" in
+        s|swea)
+            SSAFY_AL_SITE_NAME="swea"
+            SSAFY_AL_FILE_PREFIX="swea"
+            SSAFY_AL_SITE_DISPLAY="SWEA"
+            return 0
+            ;;
+        b|boj)
+            SSAFY_AL_SITE_NAME="boj"
+            SSAFY_AL_FILE_PREFIX="boj"
+            SSAFY_AL_SITE_DISPLAY="BOJ"
+            return 0
+            ;;
+        p|programmers)
+            SSAFY_AL_SITE_NAME="programmers"
+            SSAFY_AL_FILE_PREFIX="programmers"
+            SSAFY_AL_SITE_DISPLAY="Programmers"
+            return 0
+            ;;
+    esac
+    return 1
+}
+
+_ssafy_al_interactive_flow() {
+    local site_code="${1:-b}"
+    local problem="${2:-}"
+    local lang="${3:-py}"
+    local skip_git="${4:-false}"
+    local skip_open="${5:-false}"
+    local custom_commit_msg="${6:-}"
+    local answer=""
+    local rc=0
+    local step=1
+
+    if ! type input_choice >/dev/null 2>&1; then
         return 1
     fi
-    
-    local site_code="$1"
-    local problem="$2"
+
+    if [ -z "$site_code" ] || ! _ssafy_al_resolve_site "$site_code"; then
+        site_code="b"
+    fi
+    if [ "$lang" != "py" ] && [ "$lang" != "cpp" ]; then
+        lang="py"
+    fi
+
+    while true; do
+        case "$step" in
+            1)
+                input_choice site_code "Step 1/7: Select site" "$site_code" \
+                    "s:SWEA" "b:BOJ" "p:Programmers"
+                rc=$?
+                case "$rc" in
+                    0) step=2 ;;
+                    20) return 20 ;;
+                esac
+                ;;
+            2)
+                input_text problem "Step 2/7: Enter problem number" "$problem"
+                rc=$?
+                case "$rc" in
+                    0)
+                        if [[ "$problem" =~ ^[0-9]+$ ]]; then
+                            step=3
+                        else
+                            if type ui_warn >/dev/null 2>&1; then
+                                ui_warn "Problem number must be numeric."
+                            else
+                                echo "[WARN] Problem number must be numeric."
+                            fi
+                        fi
+                        ;;
+                    10) step=1 ;;
+                    20) return 20 ;;
+                esac
+                ;;
+            3)
+                input_choice lang "Step 3/7: Select language" "$lang" \
+                    "py:Python" "cpp:C++"
+                rc=$?
+                case "$rc" in
+                    0) step=4 ;;
+                    10) step=2 ;;
+                    20) return 20 ;;
+                esac
+                ;;
+            4)
+                if [ "$skip_git" = "true" ]; then
+                    answer="yes"
+                else
+                    answer="no"
+                fi
+                input_confirm answer "Step 4/7: Skip git stage?" "$([ "$answer" = "yes" ] && echo y || echo n)"
+                rc=$?
+                case "$rc" in
+                    0)
+                        if [ "$answer" = "yes" ]; then
+                            skip_git=true
+                        else
+                            skip_git=false
+                        fi
+                        step=5
+                        ;;
+                    10) step=3 ;;
+                    20) return 20 ;;
+                esac
+                ;;
+            5)
+                if [ "$skip_open" = "true" ]; then
+                    answer="yes"
+                else
+                    answer="no"
+                fi
+                input_confirm answer "Step 5/7: Skip open editor stage?" "$([ "$answer" = "yes" ] && echo y || echo n)"
+                rc=$?
+                case "$rc" in
+                    0)
+                        if [ "$answer" = "yes" ]; then
+                            skip_open=true
+                        else
+                            skip_open=false
+                        fi
+                        step=6
+                        ;;
+                    10) step=4 ;;
+                    20) return 20 ;;
+                esac
+                ;;
+            6)
+                input_text custom_commit_msg "Step 6/7: Commit message (blank for auto)" "$custom_commit_msg" true
+                rc=$?
+                case "$rc" in
+                    0)
+                        if [ -n "$custom_commit_msg" ] && [ -z "${custom_commit_msg//[[:space:]]/}" ]; then
+                            if type ui_warn >/dev/null 2>&1; then
+                                ui_warn "Commit message cannot be whitespace only."
+                            else
+                                echo "[WARN] Commit message cannot be whitespace only."
+                            fi
+                        else
+                            step=7
+                        fi
+                        ;;
+                    10) step=5 ;;
+                    20) return 20 ;;
+                esac
+                ;;
+            7)
+                if type ui_header >/dev/null 2>&1; then
+                    ui_header "al plan preview" "Review and run"
+                    ui_info "site=$site_code"
+                    ui_info "problem=$problem"
+                    ui_info "language=$lang"
+                    ui_info "skip_git=$skip_git"
+                    ui_info "skip_open=$skip_open"
+                    if [ -n "$custom_commit_msg" ]; then
+                        ui_info "commit_msg=$custom_commit_msg"
+                    else
+                        ui_info "commit_msg=(auto)"
+                    fi
+                else
+                    echo "[INFO] site=$site_code"
+                    echo "[INFO] problem=$problem"
+                    echo "[INFO] language=$lang"
+                fi
+                input_confirm answer "Step 7/7: Run now?" "y"
+                rc=$?
+                case "$rc" in
+                    0)
+                        if [ "$answer" = "yes" ]; then
+                            break
+                        fi
+                        return 20
+                        ;;
+                    10) step=6 ;;
+                    20) return 20 ;;
+                esac
+                ;;
+        esac
+    done
+
+    SSAFY_AL_FLOW_SITE="$site_code"
+    SSAFY_AL_FLOW_PROBLEM="$problem"
+    SSAFY_AL_FLOW_LANG="$lang"
+    SSAFY_AL_FLOW_SKIP_GIT="$skip_git"
+    SSAFY_AL_FLOW_SKIP_OPEN="$skip_open"
+    SSAFY_AL_FLOW_COMMIT_MSG="$custom_commit_msg"
+    return 0
+}
+
+ssafy_al() {
+    init_algo_config
+
+    local site_code="${1:-}"
+    local problem="${2:-}"
     local lang="py"
     local lang_provided=false
     local skip_git=false
     local skip_open=false
     local custom_commit_msg=""
+    local parse_error=""
+    local run_interactive=false
 
-    # 옵션/언어 파싱
-    shift 2
-    while [ $# -gt 0 ]; do
-        case "$1" in
-            py|cpp)
-                if [ "$lang_provided" = false ]; then
-                    lang="$1"
-                    lang_provided=true
+    if [ $# -ge 2 ]; then
+        shift 2
+        while [ $# -gt 0 ]; do
+            case "$1" in
+                py|cpp)
+                    if [ "$lang_provided" = false ]; then
+                        lang="$1"
+                        lang_provided=true
+                    else
+                        parse_error="Only one language can be selected."
+                        break
+                    fi
+                    ;;
+                --no-git) skip_git=true ;;
+                --no-open) skip_open=true ;;
+                --msg|-m)
+                    shift
+                    if [ -z "${1:-}" ] || [[ "$1" == --* ]]; then
+                        parse_error="--msg requires a commit message."
+                        break
+                    fi
+                    custom_commit_msg="$1"
+                    ;;
+                --msg=*)
+                    custom_commit_msg="${1#--msg=}"
+                    if [ -z "$custom_commit_msg" ]; then
+                        parse_error="--msg requires a commit message."
+                        break
+                    fi
+                    ;;
+                --*)
+                    parse_error="Unknown option: $1"
+                    break
+                    ;;
+                *)
+                    if [ -z "$custom_commit_msg" ]; then
+                        custom_commit_msg="$1"
+                    else
+                        parse_error="Commit message with spaces must be quoted."
+                        break
+                    fi
+                    ;;
+            esac
+            shift
+        done
+    else
+        parse_error="Missing required arguments."
+    fi
+
+    if [ -n "$custom_commit_msg" ] && [ -z "${custom_commit_msg//[[:space:]]/}" ]; then
+        parse_error="Commit message cannot be empty."
+    fi
+
+    if [ -n "$site_code" ] && ! _ssafy_al_resolve_site "$site_code"; then
+        parse_error="Invalid site code: $site_code"
+    fi
+
+    if [ -n "$problem" ] && ! [[ "$problem" =~ ^[0-9]+$ ]]; then
+        parse_error="Problem number must be numeric: $problem"
+    fi
+
+    if [ -n "$parse_error" ]; then
+        if _is_interactive; then
+            run_interactive=true
+        fi
+    fi
+
+    if [ "$run_interactive" = true ]; then
+        _ssafy_al_interactive_flow "$site_code" "$problem" "$lang" "$skip_git" "$skip_open" "$custom_commit_msg"
+        case $? in
+            0)
+                site_code="$SSAFY_AL_FLOW_SITE"
+                problem="$SSAFY_AL_FLOW_PROBLEM"
+                lang="$SSAFY_AL_FLOW_LANG"
+                lang_provided=true
+                skip_git="$SSAFY_AL_FLOW_SKIP_GIT"
+                skip_open="$SSAFY_AL_FLOW_SKIP_OPEN"
+                custom_commit_msg="$SSAFY_AL_FLOW_COMMIT_MSG"
+                ;;
+            20)
+                if type ui_warn >/dev/null 2>&1; then
+                    ui_warn "Canceled by user."
                 else
-                    echo "❗ 언어는 하나만 지정할 수 있습니다."
-                    return 1
+                    echo "[WARN] Canceled by user."
                 fi
-                ;;
-            --no-git) skip_git=true ;;
-            --no-open) skip_open=true ;;
-            --msg|-m)
-                shift
-                if [ -z "$1" ] || [[ "$1" == --* ]]; then
-                    echo "❗ --msg 옵션에는 커밋 메시지가 필요합니다."
-                    return 1
-                fi
-                custom_commit_msg="$1"
-                ;;
-            --msg=*)
-                custom_commit_msg="${1#--msg=}"
-                if [ -z "$custom_commit_msg" ]; then
-                    echo "❗ --msg 옵션에는 커밋 메시지가 필요합니다."
-                    return 1
-                fi
-                ;;
-            --*)
-                echo "❗ 알 수 없는 옵션: $1"
                 return 1
                 ;;
             *)
-                if [ -z "$custom_commit_msg" ]; then
-                    custom_commit_msg="$1"
-                else
-                    echo "❗ 커밋 메시지에 공백이 있으면 따옴표로 감싸주세요."
-                    echo "   예: al b 1000 \"feat: new commit\""
-                    return 1
-                fi
+                _ssafy_al_print_usage
+                return 1
                 ;;
         esac
-        shift
-    done
+    elif [ -n "$parse_error" ]; then
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "$parse_error"
+        else
+            echo "[ERROR] $parse_error"
+        fi
+        _ssafy_al_print_usage
+        return 1
+    fi
 
-    if [ -n "$custom_commit_msg" ] && [ -z "${custom_commit_msg//[[:space:]]/}" ]; then
-        echo "❗ 커밋 메시지가 비어 있습니다."
+    if ! _ssafy_al_resolve_site "$site_code"; then
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "Invalid site code: $site_code"
+        else
+            echo "[ERROR] Invalid site code: $site_code"
+        fi
         return 1
     fi
-    
-    # 사이트 코드 검증
-    local site_name file_prefix site_display
-    case "$site_code" in
-        s|swea)
-            site_name="swea"
-            file_prefix="swea"
-            site_display="SWEA"
-            ;;
-        b|boj)
-            site_name="boj"
-            file_prefix="boj"
-            site_display="BOJ"
-            ;;
-        p|programmers)
-            site_name="programmers"
-            file_prefix="programmers"
-            site_display="Programmers"
-            ;;
-        *)
-            echo "❗️지원하지 않는 사이트 코드: '$site_code'"
-            echo "올바른 코드: s, b, p"
-            return 1
-            ;;
-    esac
-    
-    # 문제번호 검증
+
+    local site_name="$SSAFY_AL_SITE_NAME"
+    local file_prefix="$SSAFY_AL_FILE_PREFIX"
+    local site_display="$SSAFY_AL_SITE_DISPLAY"
+
     if ! [[ "$problem" =~ ^[0-9]+$ ]]; then
-        echo "❗️문제번호는 숫자여야 합니다: '$problem'"
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "Problem number must be numeric: $problem"
+        else
+            echo "[ERROR] Problem number must be numeric: $problem"
+        fi
         return 1
     fi
-    
-    # 디렉토리 및 파일 경로 설정
+
     local dir="$ALGO_BASE_DIR/$site_name/$problem"
     local py_file="$dir/${file_prefix}_${problem}.py"
     local cpp_file="$dir/${file_prefix}_${problem}.cpp"
     local file=""
-    
-    echo "🎯 사이트: $site_display"
-    echo "📝 문제번호: $problem"
-    echo "📁 경로: $dir"
-    
-    # 디렉토리 생성
+
+    if type ui_header >/dev/null 2>&1; then
+        ui_header "al" "Panel style execution"
+        ui_info "site=$site_display"
+        ui_info "problem=$problem"
+        ui_info "language=${lang}"
+        ui_path "$dir"
+    else
+        echo "[INFO] site=$site_display"
+        echo "[INFO] problem=$problem"
+        echo "[PATH] $dir"
+    fi
+
     mkdir -p "$dir"
-    
-    # 파일 생성 또는 Git 작업
+
     local has_py=false
     local has_cpp=false
-    if [ -f "$py_file" ]; then
-        has_py=true
-    fi
-    if [ -f "$cpp_file" ]; then
-        has_cpp=true
-    fi
+    [ -f "$py_file" ] && has_py=true
+    [ -f "$cpp_file" ] && has_cpp=true
 
     if [ "$lang_provided" = true ]; then
         if [ "$lang" = "cpp" ]; then
@@ -161,11 +393,19 @@ ssafy_al() {
         if [ ! -f "$file" ]; then
             _create_algo_file "$file" "$site_name" "$site_display" "$problem" "$lang"
         else
-            echo "📄 기존 파일 발견!"
+            if type ui_warn >/dev/null 2>&1; then
+                ui_warn "Target file already exists."
+            else
+                echo "[WARN] Target file already exists."
+            fi
             if [ "$skip_git" = false ]; then
                 _handle_git_commit "$file" "$problem" "$custom_commit_msg" "$lang"
             else
-                echo "⏭️  Git 작업 건너뛰기"
+                if type ui_info >/dev/null 2>&1; then
+                    ui_info "Skip git stage."
+                else
+                    echo "[INFO] Skip git stage."
+                fi
             fi
         fi
     else
@@ -182,7 +422,11 @@ ssafy_al() {
                     _handle_git_commit "$cpp_file" "$problem" "$custom_commit_msg" "cpp"
                 fi
             else
-                echo "⏭️  Git 작업 건너뛰기"
+                if type ui_info >/dev/null 2>&1; then
+                    ui_info "Skip git stage."
+                else
+                    echo "[INFO] Skip git stage."
+                fi
             fi
 
             if [ "$has_py" = true ]; then
@@ -194,92 +438,108 @@ ssafy_al() {
             fi
         fi
     fi
-    
-    # 파일 열기 (Phase 3 Task 3-5: 폴더도 함께 열기)
+
     if [ "$skip_open" = false ]; then
-        local editor=$(get_active_ide)
-        local dir="$(dirname "$file")"
-        echo "🎉 $editor에서 파일을 여는 중..."
-        
-        # Phase 5 Task 5-3: IDE별 열기 로직 통일
+        local editor
+        editor=$(get_active_ide)
+        if type ui_step >/dev/null 2>&1; then
+            ui_step "Open file in editor: $editor"
+        else
+            echo "[STEP] Open file in editor: $editor"
+        fi
+
         if [[ "$editor" == "code" || "$editor" == "cursor" ]]; then
-            # VS Code 계열: 현재 창에서 파일 열기 (Goto File)
             "$editor" -g "$file"
         else
-            # PyCharm, IntelliJ 등: 파일만 열기 (프로젝트 컨텍스트 자동 포함)
             "$editor" "$file" &
         fi
     else
-        echo "⏭️  파일 열기 건너뛰기"
+        if type ui_info >/dev/null 2>&1; then
+            ui_info "Skip open stage."
+        else
+            echo "[INFO] Skip open stage."
+        fi
+    fi
+
+    if type ui_ok >/dev/null 2>&1; then
+        ui_ok "al completed."
+    else
+        echo "[OK] al completed."
     fi
 }
 
-# 파일 생성 내부 함수
 _create_algo_file() {
     local file="$1"
     local site_name="$2"
     local site_display="$3"
     local problem="$4"
     local lang="$5"
-    
-    echo "🆕 새 문제 파일 생성 중..."
 
-    local sample_file="$(dirname "$file")/sample_input.txt"
+    if type ui_step >/dev/null 2>&1; then
+        ui_step "Create template file: $file"
+    else
+        echo "[STEP] Create template file: $file"
+    fi
+
+    local sample_file
+    sample_file="$(dirname "$file")/sample_input.txt"
     if [ ! -f "$sample_file" ]; then
         : > "$sample_file"
     fi
 
     if [ "$lang" = "cpp" ]; then
         : > "$file"
-        echo "✅ 파일 생성 완료!"
-        return
+        if type ui_ok >/dev/null 2>&1; then
+            ui_ok "C++ file created."
+        else
+            echo "[OK] C++ file created."
+        fi
+        return 0
     fi
-    
+
     cat > "$file" <<PYCODE
-# $site_display $problem 문제 풀이
+# $site_display $problem problem
 import sys
 from pathlib import Path
 
-# 로컬 테스트용 파일 입력 설정
+# Local input for offline tests
 BASE_DIR = Path(__file__).resolve().parent
 sys.stdin = (BASE_DIR / 'sample_input.txt').open('r', encoding='utf-8')
 
 """
-[문제 설명]
+[Problem]
 
 
-[조건]
+[Constraints]
 
 
-[입력]
+[Input]
 
 
-[출력]
+[Output]
 
 
-[알고리즘]
-1. 
-2. 
-3. 
+[Approach]
+1.
+2.
+3.
 
-[복잡도]
-- 시간: O()
-- 공간: O()
+[Complexity]
+- Time: O()
+- Space: O()
 """
 
 PYCODE
 
-    # 사이트별 템플릿 추가
     case "$site_name" in
         swea)
             cat >> "$file" <<'SWEA_CODE'
 def solve():
     T = int(input())
-    
+
     for test_case in range(1, T + 1):
-        
         print(f"#{test_case}")
-        
+
 
 solve()
 SWEA_CODE
@@ -288,30 +548,31 @@ SWEA_CODE
             cat >> "$file" <<'BOJ_CODE'
 N = int(sys.stdin.readline())
 
-# 출력
 # print(result)
 BOJ_CODE
             ;;
         programmers)
             cat >> "$file" <<'PROG_CODE'
 def solution(param):
-    """
-    프로그래머스 솔루션 함수
-    """
     return param
 
-# 테스트
+
 if __name__ == "__main__":
     test_cases = [
-        # (입력, 예상출력)
+        # (input, expected)
     ]
 
     for i, (inp, expected) in enumerate(test_cases):
         result = solution(inp)
-        print(f"Test {i+1}: {'✅' if result == expected else '❌'}")
+        print(f"Test {i + 1}: {'OK' if result == expected else 'FAIL'}")
 PROG_CODE
             ;;
     esac
-    
-    echo "✅ 파일 생성 완료!"
+
+    if type ui_ok >/dev/null 2>&1; then
+        ui_ok "Python file created."
+    else
+        echo "[OK] Python file created."
+    fi
 }
+

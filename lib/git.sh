@@ -28,22 +28,22 @@ _confirm_commit_message() {
     CONFIRMED_COMMIT_MSG=""
 
     while true; do
-        echo "✅ 커밋 메시지: $msg"
-        read -r -p "이대로 커밋하고 push할까요? (y/n): " answer
+        echo "??????????????????遺얘턁??????????: $msg"
+        read -r -p "????????????????????????β뼯援????push?????壤굿?????? (y/n): " answer
         case "$answer" in
             y|Y)
                 CONFIRMED_COMMIT_MSG="$msg"
                 return 0
                 ;;
             n|N)
-                read -r -p "커밋 메시지 다시 입력: " msg
+                read -r -p "????????????????遺얘턁?????????? ????????꾨굴??????????⑤뜪輿? " msg
                 if [ -z "${msg//[[:space:]]/}" ]; then
-                    echo "❗ 커밋 메시지가 비어 있습니다."
+                    echo "??????????????????遺얘턁????????????????ル뭽?? ??????????????????????怨몄）."
                     return 1
                 fi
                 ;;
             *)
-                echo "❗ y 또는 n을 입력하세요."
+                echo "??y ?????n??????????⑤뜪輿???饔낅떽???壤굿??곸읆???"
                 ;;
         esac
     done
@@ -54,12 +54,13 @@ _handle_git_commit() {
     local problem="$2"
     local custom_msg="$3"
     local lang="$4"
-    
-    local original_dir=$(pwd)
-    
+
+    local original_dir
+    original_dir=$(pwd)
+
     local git_root=""
     local current_dir="$(dirname "$target_path")"
-    
+
     while [ "$current_dir" != "/" ] && [ "$current_dir" != "$HOME" ]; do
         if [ -d "$current_dir/.git" ]; then
             git_root="$current_dir"
@@ -67,72 +68,104 @@ _handle_git_commit() {
         fi
         current_dir=$(dirname "$current_dir")
     done
-    
+
     if [ -z "$git_root" ]; then
-        echo "⚠️  Git 저장소를 찾을 수 없습니다"
-        return
+        if type ui_warn >/dev/null 2>&1; then
+            ui_warn "Git repository not found."
+        else
+            echo "[WARN] Git repository not found."
+        fi
+        return 0
     fi
-    
-    cd "$git_root" || return
-    
-    local py_cmd
+
+    cd "$git_root" || return 1
+
+    local py_cmd=""
     if type _ssafy_python_lookup >/dev/null 2>&1; then
         py_cmd=$(_ssafy_python_lookup)
-    else
-        py_cmd="python3" # Fallback
     fi
-    
-    local relative_path=$(realpath --relative-to="$git_root" "$target_path" 2>/dev/null || \
+    [ -z "$py_cmd" ] && py_cmd="python3"
+
+    local relative_path=""
+    relative_path=$(realpath --relative-to="$git_root" "$target_path" 2>/dev/null || \
         "$py_cmd" -c "import os.path; print(os.path.relpath('$target_path', '$git_root'))")
-    
-    echo "✅ Git 저장소: $git_root"
-    echo "📁 대상: $relative_path"
-    
-    local relative_dir=$(dirname "$relative_path")
+
+    if type ui_info >/dev/null 2>&1; then
+        ui_info "git_root=$git_root"
+        ui_info "target=$relative_path"
+    else
+        echo "[INFO] git_root=$git_root"
+        echo "[INFO] target=$relative_path"
+    fi
+
+    local relative_dir
+    relative_dir=$(dirname "$relative_path")
     git add "$relative_dir"
-    
+
     local commit_msg=""
     if [ -n "$custom_msg" ]; then
-        _confirm_commit_message "$custom_msg" || return 1
+        _confirm_commit_message "$custom_msg" || {
+            cd "$original_dir" 2>/dev/null || true
+            return 1
+        }
         commit_msg="$CONFIRMED_COMMIT_MSG"
     else
         local lang_label="Python"
-        if [ "$lang" = "cpp" ]; then
-            lang_label="C++"
-        fi
+        [ "$lang" = "cpp" ] && lang_label="C++"
         commit_msg="${GIT_COMMIT_PREFIX}: ${problem} ${lang_label}"
     fi
-    
+
     if git commit -m "$commit_msg" 2>/dev/null; then
-        echo "✅ 커밋 완료: $commit_msg"
-        
+        if type ui_ok >/dev/null 2>&1; then
+            ui_ok "commit completed: $commit_msg"
+        else
+            echo "[OK] commit completed: $commit_msg"
+        fi
+
         if [ "$GIT_AUTO_PUSH" = true ]; then
-            local current_branch=$(git branch --show-current 2>/dev/null || git rev-parse --abbrev-ref HEAD 2>/dev/null)
-            
+            local current_branch
+            current_branch=$(git branch --show-current 2>/dev/null || git rev-parse --abbrev-ref HEAD 2>/dev/null)
+
             if git push origin "$GIT_DEFAULT_BRANCH" 2>/dev/null; then
-                echo "✅ 푸시 완료! (브랜치: $GIT_DEFAULT_BRANCH)"
+                if type ui_ok >/dev/null 2>&1; then
+                    ui_ok "push completed: origin/$GIT_DEFAULT_BRANCH"
+                else
+                    echo "[OK] push completed: origin/$GIT_DEFAULT_BRANCH"
+                fi
             else
                 if [ -n "$current_branch" ] && [ "$current_branch" != "$GIT_DEFAULT_BRANCH" ]; then
-                    echo "⚠️  브랜치 '$GIT_DEFAULT_BRANCH'로 푸시 실패, 현재 브랜치 '$current_branch'로 시도 중..."
                     if git push origin "$current_branch" 2>/dev/null; then
-                        echo "✅ 푸시 완료! (브랜치: $current_branch)"
+                        if type ui_ok >/dev/null 2>&1; then
+                            ui_ok "push completed: origin/$current_branch"
+                        else
+                            echo "[OK] push completed: origin/$current_branch"
+                        fi
                     else
-                        echo "❌ 푸시 실패 (시도한 브랜치: $GIT_DEFAULT_BRANCH, $current_branch)"
-                        echo "💡 'algo-config edit'로 브랜치명을 확인하거나 수동으로 푸시하세요"
+                        if type ui_warn >/dev/null 2>&1; then
+                            ui_warn "push failed. tried origin/$GIT_DEFAULT_BRANCH and origin/$current_branch"
+                        else
+                            echo "[WARN] push failed. tried origin/$GIT_DEFAULT_BRANCH and origin/$current_branch"
+                        fi
                     fi
                 else
-                    echo "❌ 푸시 실패 (브랜치: $GIT_DEFAULT_BRANCH)"
-                    echo "💡 'algo-config edit'로 브랜치명을 확인하거나 수동으로 푸시하세요"
+                    if type ui_warn >/dev/null 2>&1; then
+                        ui_warn "push failed: origin/$GIT_DEFAULT_BRANCH"
+                    else
+                        echo "[WARN] push failed: origin/$GIT_DEFAULT_BRANCH"
+                    fi
                 fi
             fi
         fi
     else
-        echo "⚠️  커밋할 변경사항이 없습니다"
+        if type ui_warn >/dev/null 2>&1; then
+            ui_warn "No changes to commit."
+        else
+            echo "[WARN] No changes to commit."
+        fi
     fi
-    
+
     cd "$original_dir" 2>/dev/null || true
 }
-
 _open_browser() {
     local url="$1"
     if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]] || command -v powershell.exe > /dev/null 2>&1; then
@@ -140,15 +173,14 @@ _open_browser() {
     elif [[ "$OSTYPE" == "darwin"* ]]; then
         open "$url"
     else
-        xdg-open "$url" 2>/dev/null || echo "🔗 $url"
+        xdg-open "$url" 2>/dev/null || echo "???$url"
     fi
 }
 
 _ssafy_base64_decode() {
     local value="$1"
 
-    # 메타 파일이 CRLF(\r\n)일 수 있어, 디코딩 전 공백/CR 제거
-    value="${value//$'\r'/}"
+    # ??遺얘턁?????? ??????CRLF(\r\n)???????????????, ????濾??????????????ㅿ폎???CR ??????쇰뮡??????    value="${value//$'\r'/}"
     value="${value//[[:space:]]/}"
 
     # Windows(Git Bash)/Linux: base64 -d, macOS: base64 -D
@@ -164,281 +196,178 @@ _show_submission_links() {
     local ssafy_root="$1"
     shift
     local folders=("$@")
-    
-    # Phase 3 Task 3-1: 변수 초기화
-    local i=1
-    local has_link=false
-    local -a urls=()
-    
-    local meta_file="$ssafy_root/.ssafy_session_meta"
-    if [ ! -f "$meta_file" ]; then
-        return 0
-    fi
-    
-    local course_id_enc=$(grep "^course_id_enc=" "$meta_file" 2>/dev/null | cut -d= -f2)
-    local course_id=""
 
+    local has_link=false
+    local urls=()
+    local index=1
+
+    local meta_file="$ssafy_root/.ssafy_session_meta"
+    [ -f "$meta_file" ] || return 0
+
+    local course_id=""
+    local course_id_enc=""
+    course_id_enc=$(grep "^course_id_enc=" "$meta_file" 2>/dev/null | cut -d= -f2)
     if [ -n "$course_id_enc" ]; then
         course_id=$(_ssafy_base64_decode "$course_id_enc")
     else
-        # 하위 호환:
-        # 기존에는 course_id= 에 base64 인코딩 값이 저장되던 케이스가 있어 디코딩을 우선 시도
-        local raw_course_id=$(grep "^course_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
-        local decoded_course_id=$(_ssafy_base64_decode "$raw_course_id")
-
+        local raw_course_id=""
+        raw_course_id=$(grep "^course_id=" "$meta_file" 2>/dev/null | cut -d= -f2)
+        local decoded_course_id=""
+        decoded_course_id=$(_ssafy_base64_decode "$raw_course_id")
         if [[ "$decoded_course_id" =~ ^CS[0-9]+$ ]]; then
             course_id="$decoded_course_id"
         else
             course_id="$raw_course_id"
         fi
     fi
-    
-    if [ -z "$course_id" ]; then
-        return 0
-    fi
-    
-    echo ""
-    echo "📋 제출 링크 목록:"
-    
-    
-    # [Fix V8.1] Parse Multi-line Meta Format
+
+    [ -n "$course_id" ] || return 0
+
     local lines=()
-    if [ -f "$meta_file" ]; then
-        while IFS= read -r line || [ -n "$line" ]; do
-            lines+=("$line")
-        done < "$meta_file"
-    fi
-    
+    local line=""
+    while IFS= read -r line || [ -n "$line" ]; do
+        lines+=("$line")
+    done < "$meta_file"
+
     local idx=0
     local len=${#lines[@]}
-    
     while [ $idx -lt $len ]; do
-        local line="${lines[$idx]}"
-        
-        # Skip headers
+        line="${lines[$idx]}"
         if [[ "$line" == *"="* ]]; then
             idx=$((idx + 1))
             continue
         fi
-        
-        # Check if this line matches any of our target folders
+
+        local folder=""
         for folder in "${folders[@]}"; do
-             if [ "$line" == "$folder" ]; then
-                 # Found folder, next 2 lines are PR and PA
-                 if [ $((idx + 2)) -lt $len ]; then
-                     local enc_pr="${lines[$((idx + 1))]}"
-                     local enc_pa="${lines[$((idx + 2))]}"
-                     
-                     local pr_id=$(_ssafy_base64_decode "$enc_pr")
-                     local pa_id=$(_ssafy_base64_decode "$enc_pa")
-                     
-                     if [ -n "$pr_id" ] && [ -n "$pa_id" ]; then
-                         # 제출 링크는 practicrooom 경로 사용 (SSAFY UI 기준)
-                         # 예: https://project.ssafy.com/practiceroom/course/CS00002398/practice/PR.../answer/PA...
-                         local link="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/answer/${pa_id}"
-                         echo "$i. $folder: $link"
-                         has_link=true
-                         urls+=("$link")
-                         i=$((i+1))
-                     fi
-                 fi
-                 break
-             fi
-        done
-        idx=$((idx + 1))
-    done
-    
-    if [ "$has_link" = false ]; then return 0; fi
-    echo ""
-    echo "👉 'a' → 전체 열기 | 번호 → 해당 링크 열기 | Enter → 종료"
-    read -r choice
-    
-    if [ "$choice" = "a" ]; then
-        echo "⏳ 브라우저를 열고 있습니다..."
-        for url in "${urls[@]}"; do
-            if [ -n "$url" ]; then
-                _open_browser "$url"
-                sleep 0.5 
+            if [ "$line" = "$folder" ] && [ $((idx + 2)) -lt $len ]; then
+                local pr_id
+                local pa_id
+                pr_id=$(_ssafy_base64_decode "${lines[$((idx + 1))]}")
+                pa_id=$(_ssafy_base64_decode "${lines[$((idx + 2))]}")
+                if [ -n "$pr_id" ] && [ -n "$pa_id" ]; then
+                    local link="https://project.ssafy.com/practiceroom/course/${course_id}/practice/${pr_id}/answer/${pa_id}"
+                    echo "$index. $folder: $link"
+                    urls+=("$link")
+                    has_link=true
+                    index=$((index + 1))
+                fi
+                break
             fi
         done
-    elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#urls[@]} ]; then
-        local idx=$((choice-1))
-        local selected_url="${urls[$idx]}"
-        if [ -n "$selected_url" ]; then
-            _open_browser "$selected_url"
-        else
-            echo "❌ 해당 항목은 링크가 없습니다."
+
+        idx=$((idx + 1))
+    done
+
+    [ "$has_link" = true ] || return 0
+
+    if _is_interactive; then
+        local choice=""
+        echo ""
+        echo "Actions: a=open all, [number]=open one, Enter=skip"
+        read -r choice
+
+        if [ "$choice" = "a" ]; then
+            local url=""
+            for url in "${urls[@]}"; do
+                [ -n "$url" ] || continue
+                _open_browser "$url"
+                sleep 0.5
+            done
+        elif [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#urls[@]} ]; then
+            _open_browser "${urls[$((choice - 1))]}"
         fi
     fi
 }
-
 _open_repo_file() {
     local repo_dir="$1"
-    
-    # 절대 경로로 변환 (Phase 0 Task 0-2)
-    local abs_repo_dir
+    local abs_repo_dir=""
+
     abs_repo_dir="$(cd "$repo_dir" 2>/dev/null && pwd)" || {
-        echo "??  디렉터리를 찾을 수 없습니다: $repo_dir"
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "Directory not found: $repo_dir"
+        else
+            echo "[ERROR] Directory not found: $repo_dir"
+        fi
         return 1
     }
-    
+
     if [ ! -d "$abs_repo_dir" ]; then
-        echo "??  디렉터리를 찾을 수 없습니다: $abs_repo_dir"
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "Directory not found: $abs_repo_dir"
+        else
+            echo "[ERROR] Directory not found: $abs_repo_dir"
+        fi
         return 1
     fi
 
     cd "$abs_repo_dir" || return 1
-    
-    # Phase 5 Task 5-2: 파일 탐색을 한 번만 수행
-    local files=()
-    while IFS= read -r file; do
-        if [ -n "$file" ]; then
-            files+=("${file#./}")
-        fi
-    done < <(find . -maxdepth 3 -not -path '*/.*' -type f 2>/dev/null | head -n 6)
-    local count=${#files[@]}
-    
-    # 1. Open Folder in IDE (Always)
-    # IDE 자동 탐색 - get_active_ide() 사용 (Phase 2 Task 2-1)
-    local ide_cmd
+
+    local ide_cmd=""
     ide_cmd=$(get_active_ide)
-    
-    if [ -z "$ide_cmd" ]; then
-        echo "⚠️ 사용 가능한 IDE를 찾을 수 없습니다. (폴더 이동만 수행)"
-    else
-        echo "💻 IDE ($ide_cmd)에서 '$abs_repo_dir'를 엽니다..."
-        
-        # IDE 열기 로직 개선 (Phase 2 Task 2-4)
-        if [[ "$ide_cmd" == "code" || "$ide_cmd" == "cursor" ]]; then
-            # VS Code/Cursor 계열 파일 오픈 규칙
-            # 1) 문제 폴더 내 파일이 1개면 그 파일을 연다
-            # 2) 파일이 5개 이하면 파일 목록을 보여준다
-            # 3) 파일이 5개 초과면 skeleton/ 파일을 우선 포함하여 상위 5개를 보여준다
-            local -a all_files=()
-            while IFS= read -r af; do
-                [ -n "$af" ] && all_files+=("$af")
-            done < <(find "$abs_repo_dir" -maxdepth 3 -not -path '*/.*' -type f 2>/dev/null)
 
-            local total_files=${#all_files[@]}
-
-            if [ "$total_files" -eq 1 ]; then
-                # 단 1개면 해당 파일만 열기
-                "$ide_cmd" -g "${all_files[0]}"
-            elif [ "$total_files" -gt 0 ] && [ "$total_files" -le 5 ]; then
-                # 5개 이하면 목록만 출력
-                echo "📄 파일 목록 (${total_files}개):"
-                local i=1
-                local f=""
-                for f in "${all_files[@]}"; do
-                    echo "  - $i. ${f#$abs_repo_dir/}"
-                    i=$((i+1))
-                done
-                
-                # UX: 번호 입력 시 해당 파일 열기 (대화형 셸에서만)
-                if (type _is_interactive >/dev/null 2>&1 && _is_interactive) || ([ -t 0 ] && [ -t 1 ]); then
-                    echo ""
-                    echo "👉 번호 입력 시 파일 열기 | Enter → 건너뛰기"
-                    read -r choice
-                    if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$total_files" ]; then
-                        "$ide_cmd" -g "${all_files[$((choice-1))]}"
-                    fi
-                fi
-            elif [ "$total_files" -gt 5 ]; then
-                # 5개 초과면 skeleton 파일 우선 포함 + 상위 5개 목록 출력
-                local -a top_files=()
-
-                # 1) skeleton/ 내 파일을 우선 포함
-                if [ -d "$abs_repo_dir/skeleton" ]; then
-                    while IFS= read -r sf; do
-                        [ -n "$sf" ] && top_files+=("$sf")
-                    done < <(find "$abs_repo_dir/skeleton" -maxdepth 1 -not -path '*/.*' -type f 2>/dev/null | head -n 5)
-                fi
-
-                # 2) 루트 파일(최상위)에서 남은 슬롯 채우기
-                while IFS= read -r rf; do
-                    [ -n "$rf" ] || continue
-                    if [ "${#top_files[@]}" -ge 5 ]; then
-                        break
-                    fi
-
-                    local exists=false
-                    local tf=""
-                    for tf in "${top_files[@]}"; do
-                        if [ "$tf" = "$rf" ]; then
-                            exists=true
-                            break
-                        fi
-                    done
-
-                    if [ "$exists" = false ]; then
-                        top_files+=("$rf")
-                    fi
-                done < <(find "$abs_repo_dir" -maxdepth 1 -not -path '*/.*' -type f 2>/dev/null)
-
-                echo "📄 파일 목록 (상위 5개, skeleton 우선):"
-                local j=1
-                local ff=""
-                for ff in "${top_files[@]}"; do
-                    if [ "$j" -le 5 ]; then
-                        echo "  - $j. ${ff#$abs_repo_dir/}"
-                        j=$((j+1))
-                    fi
-                done
-                
-                # UX: 번호 입력 시 해당 파일 열기 (대화형 셸에서만)
-                local display_count=${#top_files[@]}
-                if [ "$display_count" -gt 5 ]; then display_count=5; fi
-                if [ "$display_count" -gt 0 ] && ((type _is_interactive >/dev/null 2>&1 && _is_interactive) || ([ -t 0 ] && [ -t 1 ])); then
-                    echo ""
-                    echo "👉 번호 입력 시 파일 열기 | Enter → 건너뛰기"
-                    read -r choice
-                    if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$display_count" ]; then
-                        "$ide_cmd" -g "${top_files[$((choice-1))]}"
-                    fi
-                fi
-            else
-                # 파일이 하나도 없으면 아무 것도 열지 않음 (워크스페이스 구조 오염 방지)
-                echo "📂 열 수 있는 파일이 없습니다. (폴더는 열지 않습니다)"
-            fi
+    if [ -n "$ide_cmd" ]; then
+        if type ui_step >/dev/null 2>&1; then
+            ui_step "Open repository in IDE: $ide_cmd"
         else
-            # PyCharm, IntelliJ 등: 백그라운드 실행
+            echo "[STEP] Open repository in IDE: $ide_cmd"
+        fi
+
+        if [[ "$ide_cmd" == "code" || "$ide_cmd" == "cursor" ]]; then
+            "$ide_cmd" "$abs_repo_dir"
+        else
             "$ide_cmd" "$abs_repo_dir" &
         fi
+    else
+        if type ui_warn >/dev/null 2>&1; then
+            ui_warn "No IDE command detected."
+        else
+            echo "[WARN] No IDE command detected."
+        fi
     fi
 
-    # 2. List or Auto-open File (이미 탐색된 files 배열 재사용)
-    
-    if [ $count -eq 1 ]; then
-         local target_file="${files[0]}"
-         echo "📂 Single file detected. Opening: $target_file"
-         # VS Code 계열은 이미 위에서 열었으므로, 다른 IDE만 처리
-         if [ -n "$ide_cmd" ] && [[ "$ide_cmd" != "code" && "$ide_cmd" != "cursor" ]]; then
-             # 이미 폴더는 열었으므로 파일만 열기
-             _open_in_editor "$ide_cmd" "$target_file"
-         elif [ -z "$ide_cmd" ]; then
-             # IDE가 없으면 fallback
-             local fallback_editor=$(get_active_ide)
-             if [ -n "$fallback_editor" ]; then
-                 _open_in_editor "$fallback_editor" "$target_file"
-             fi
-         fi
-    elif [ $count -gt 0 ]; then
-         echo "📂 Repository Files (Top 5):"
-         local idx=0
-         for f in "${files[@]}"; do
-             if [ $idx -lt 5 ]; then
-                 echo "   - $f"
-             fi
-             idx=$((idx+1))
-         done
-         if [ $count -gt 5 ]; then
-             echo "   ... (and more)"
-         fi
-    else
-         echo "📂 (Empty repository or no files found)"
+    local files=()
+    local file=""
+    while IFS= read -r file; do
+        [ -n "$file" ] && files+=("${file#./}")
+    done < <(find . -maxdepth 3 -not -path '*/.*' -type f 2>/dev/null | head -n 6)
+
+    local count=${#files[@]}
+    if [ $count -eq 0 ]; then
+        if type ui_info >/dev/null 2>&1; then
+            ui_info "No files found in repository yet."
+        else
+            echo "[INFO] No files found in repository yet."
+        fi
+        return 0
+    fi
+
+    if type ui_section >/dev/null 2>&1; then
+        ui_section "Repository files (top 5)"
+    fi
+
+    local idx=0
+    for file in "${files[@]}"; do
+        if [ $idx -lt 5 ]; then
+            echo "  - $file"
+        fi
+        idx=$((idx + 1))
+    done
+    if [ $count -gt 5 ]; then
+        echo "  - ..."
+    fi
+
+    if _is_interactive && [ $count -gt 0 ] && [ -n "$ide_cmd" ] && [[ "$ide_cmd" == "code" || "$ide_cmd" == "cursor" ]]; then
+        local choice=""
+        input_text choice "Open file number (Enter to skip)" "" true
+        case $? in
+            10|20) return 0 ;;
+        esac
+        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$count" ]; then
+            "$ide_cmd" -g "$abs_repo_dir/${files[$((choice - 1))]}"
+        fi
     fi
 }
-
 _ssafy_next_repo() {
     local repo_name="$1"
     
@@ -497,15 +426,12 @@ _ssafy_next_repo() {
 }
 
 # =============================================================================
-# .ssafy_progress 관리 유틸리티
-# - 동일 key가 누적되지 않도록 "append"가 아닌 "update" 방식으로 관리
-# =============================================================================
+# .ssafy_progress ??????⑤㈇????????鶯ㅺ동????????????좊틣???欲꼲???# - ????????댄뱼??key??????ル뭽?? ??????꾩룆梨띰쭕???? ??????嶺뚮ㅎ????"append"??????ル뭽?? ??????꾩룆梨띰쭕???"update" ?????諛몃마??潁뺛깺苡???????????????⑤㈇????# =============================================================================
 _ssafy_progress_compact() {
     local progress_file="$1"
     [ -f "$progress_file" ] || return 0
 
-    # 중복 key가 있을 경우 마지막 값만 유지하도록 정리
-    # (예: de_ws_1_1=init ... de_ws_1_1=done -> de_ws_1_1=done)
+    # ?????熬곣벀嫄?????꾤뙴???key??????ル뭽?? ????關?쒎첎?嫄?????黎앸럽??筌??????遺얘턁??????????????ル뭽??????????癲됱빖?????????耀붾굝??????????    # (?? de_ws_1_1=init ... de_ws_1_1=done -> de_ws_1_1=done)
     local tmp_file="${progress_file}.tmp.$$"
     awk -F= '
         NF >= 2 {
@@ -533,7 +459,7 @@ _ssafy_progress_set() {
 
     [ -f "$progress_file" ] || : > "$progress_file"
 
-    # 이미 done이면 init로 되돌리지 않음
+    # Keep done state from being downgraded to init
     if [ "$state" = "init" ] && grep -q "^${repo_name}=done$" "$progress_file" 2>/dev/null; then
         return 0
     fi
@@ -542,7 +468,6 @@ _ssafy_progress_set() {
         if type _sed_inplace >/dev/null 2>&1; then
             _sed_inplace "s|^${repo_name}=.*|${repo_name}=${state}|" "$progress_file"
         else
-            # macOS/Linux 호환 (utils.sh가 로드되지 않았을 때를 대비)
             if sed --version >/dev/null 2>&1; then
                 sed -i "s|^${repo_name}=.*|${repo_name}=${state}|" "$progress_file"
             else
@@ -555,7 +480,6 @@ _ssafy_progress_set() {
 
     _ssafy_progress_compact "$progress_file"
 }
-
 _sync_playlist_status() {
     local ssafy_root="$1"
     local user_name=$(git config user.name)
@@ -591,56 +515,70 @@ _check_unsolved_folders() {
     local all_folders=("$@")
     local progress_file="$ssafy_root/.ssafy_progress"
     local unsolved=()
-    
+    local folder=""
+
     for folder in "${all_folders[@]}"; do
         if ! grep -q "^${folder}=done" "$progress_file" 2>/dev/null; then
             unsolved+=("$folder")
         fi
     done
-    
+
     if [ ${#unsolved[@]} -gt 0 ]; then
         echo ""
-        echo "⚠️  아직 완료되지 않은 문제가 있습니다:"
+        if type ui_warn >/dev/null 2>&1; then
+            ui_warn "Unsolved folders remain: ${#unsolved[@]}"
+        else
+            echo "[WARN] Unsolved folders remain: ${#unsolved[@]}"
+        fi
+
         local i=1
         for folder in "${unsolved[@]}"; do
             echo "  $i. $folder"
-            ((i++))
+            i=$((i + 1))
         done
-        echo ""
-        echo "👉 번호 입력 시 해당 폴더로 이동 | Enter → 종료"
-        read -r choice
-        if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#unsolved[@]} ]; then
-            local selected="${unsolved[$((choice-1))]}"
-            echo "➡️  $selected 로 이동합니다."
-            _open_repo_file "$ssafy_root/$selected"
-        fi
-    else
-        echo ""
-        echo "🎉 모든 문제를 완료했습니다! 고생하셨습니다!"
-        _show_submission_links "$ssafy_root" "${all_folders[@]}"
-        return 0 
-    fi
-    return 1 
-}
 
+        if _is_interactive; then
+            local choice=""
+            input_text choice "Select folder number to open (Enter to skip)" "" true
+            case $? in
+                10|20) return 1 ;;
+            esac
+            if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le ${#unsolved[@]} ]; then
+                _open_repo_file "$ssafy_root/${unsolved[$((choice - 1))]}"
+            fi
+        fi
+        return 1
+    fi
+
+    if type ui_ok >/dev/null 2>&1; then
+        ui_ok "All folders are marked done."
+    else
+        echo "[OK] All folders are marked done."
+    fi
+    _show_submission_links "$ssafy_root" "${all_folders[@]}"
+    return 0
+}
 _gitdown_all() {
     local ssafy_root=""
     ssafy_root=$(_find_ssafy_session_root "$(pwd)" 2>/dev/null || true)
-    
+
     if [ -z "$ssafy_root" ] && [ -n "${SSAFY_SESSION_ROOT:-}" ] && [ -d "$SSAFY_SESSION_ROOT" ]; then
         ssafy_root="$SSAFY_SESSION_ROOT"
     fi
-    
+
     if [ -z "$ssafy_root" ]; then
-        echo "❌ SSAFY 세션 루트를 찾을 수 없습니다."
-        echo "💡 gitup으로 실습실을 먼저 생성하세요."
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "SSAFY session root not found."
+        else
+            echo "[ERROR] SSAFY session root not found."
+        fi
         return 1
     fi
-    
+
     cd "$ssafy_root" || return 1
-    echo "📂 세션 루트: $ssafy_root"
-    
+
     local folders=()
+    local folder=""
     if [ -f ".ssafy_playlist" ]; then
         while IFS= read -r folder; do
             [ -d "$folder" ] && folders+=("$folder")
@@ -653,106 +591,229 @@ _gitdown_all() {
             fi
         done
     fi
-    
+
     if [ ${#folders[@]} -eq 0 ]; then
-        echo "⚠️  처리할 폴더가 없습니다."
+        if type ui_warn >/dev/null 2>&1; then
+            ui_warn "No target folders found."
+        else
+            echo "[WARN] No target folders found."
+        fi
         return 0
     fi
-    
-    echo "📋 처리할 폴더: ${#folders[@]}개"
-    echo ""
-    
+
     local success_count=0
     local fail_count=0
     local skip_count=0
-    local progress_file="$ssafy_root/.ssafy_progress"
     local pushed_folders=()
-    
+
     for folder in "${folders[@]}"; do
-        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-        echo "📁 [$folder]"
-        
         cd "$ssafy_root/$folder" || {
-            echo "  ❌ 폴더 이동 실패"
-            ((fail_count++))
+            fail_count=$((fail_count + 1))
             continue
         }
-        
+
         if [ -z "$(git status --porcelain 2>/dev/null)" ]; then
-            echo "  ⏭️  변경사항 없음 (스킵)"
-            ((skip_count++))
-            cd "$ssafy_root"
+            skip_count=$((skip_count + 1))
+            cd "$ssafy_root" || return 1
             continue
         fi
-        
+
         git add .
         if git commit -m "${GIT_COMMIT_PREFIX:-solve}: $folder" 2>/dev/null; then
             if git push 2>/dev/null; then
-                echo "  ✅ 푸시 완료"
-                ((success_count++))
+                success_count=$((success_count + 1))
                 pushed_folders+=("$folder")
                 _ssafy_progress_set "$ssafy_root" "$folder" "done"
             else
-                echo "  ❌ 푸시 실패"
-                ((fail_count++))
+                fail_count=$((fail_count + 1))
             fi
         else
-            echo "  ⚠️  커밋 실패 (이미 커밋됨?)"
-            ((skip_count++))
+            skip_count=$((skip_count + 1))
         fi
-        
-        cd "$ssafy_root"
+
+        cd "$ssafy_root" || return 1
     done
-    
-    echo ""
-    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "📊 결과: ✅ ${success_count} 성공 | ❌ ${fail_count} 실패 | ⏭️ ${skip_count} 스킵"
-    
+
+    if type ui_header >/dev/null 2>&1; then
+        ui_header "gitdown --all summary" "batch result"
+        ui_info "success=$success_count"
+        ui_info "failed=$fail_count"
+        ui_info "skipped=$skip_count"
+    else
+        echo "Result: success=$success_count failed=$fail_count skipped=$skip_count"
+    fi
+
     _check_unsolved_folders "$ssafy_root" "${folders[@]}"
     local playlist_complete=$?
-    
+
     if [ "$playlist_complete" -ne 0 ] && [ ${#pushed_folders[@]} -gt 0 ]; then
         _show_submission_links "$ssafy_root" "${pushed_folders[@]}"
     fi
 }
+_ssafy_git_is_valid_url() {
+    local value="$1"
+    [[ "$value" =~ ^https?:// ]]
+}
+
+_ssafy_git_is_valid_topic() {
+    local value="$1"
+    case "$value" in
+        *_ws_*|*_hw_*|*_ex_*) ;;
+        *) return 1 ;;
+    esac
+    printf '%s' "$value" | grep -Eq '^[A-Za-z0-9_]+$'
+}
+
+_ssafy_gitup_prompt_flow() {
+    local mode="1"
+    local input_value=""
+    local answer=""
+    local rc=0
+    local repo_estimate="1"
+
+    if ! type input_choice >/dev/null 2>&1; then
+        return 1
+    fi
+
+    input_choice mode "Step 1/4: Select input mode" "1" "1:SmartLink" "2:URL" "3:Topic"
+    rc=$?
+    case "$rc" in
+        20) return 20 ;;
+        10) return 20 ;;
+        0) ;;
+        *) return 1 ;;
+    esac
+
+    while true; do
+        case "$mode" in
+            1)
+                input_masked input_value "Step 2/4: Paste SmartLink (URL|Token): "
+                rc=$?
+                case "$rc" in
+                    10|20) return "$rc" ;;
+                    0) ;;
+                    *) return 1 ;;
+                esac
+
+                if [[ "$input_value" != *"|"* ]]; then
+                    if type ui_warn >/dev/null 2>&1; then
+                        ui_warn "SmartLink must contain 'URL|Token'."
+                    else
+                        echo "[WARN] SmartLink must contain 'URL|Token'."
+                    fi
+                    continue
+                fi
+
+                local smart_url="${input_value%%|*}"
+                if ! _ssafy_git_is_valid_url "$smart_url"; then
+                    if type ui_warn >/dev/null 2>&1; then
+                        ui_warn "SmartLink URL must start with http:// or https://"
+                    else
+                        echo "[WARN] SmartLink URL must start with http:// or https://"
+                    fi
+                    continue
+                fi
+                repo_estimate="batch or single (depends on URL)"
+                ;;
+            2)
+                input_text input_value "Step 2/4: Enter repository URL" ""
+                rc=$?
+                case "$rc" in
+                    10|20) return "$rc" ;;
+                    0) ;;
+                    *) return 1 ;;
+                esac
+                if ! _ssafy_git_is_valid_url "$input_value"; then
+                    if type ui_warn >/dev/null 2>&1; then
+                        ui_warn "URL must start with http:// or https://"
+                    else
+                        echo "[WARN] URL must start with http:// or https://"
+                    fi
+                    continue
+                fi
+                repo_estimate="1"
+                ;;
+            3)
+                input_text input_value "Step 2/4: Enter topic (e.g. algo_ws_3)" ""
+                rc=$?
+                case "$rc" in
+                    10|20) return "$rc" ;;
+                    0) ;;
+                    *) return 1 ;;
+                esac
+                if ! _ssafy_git_is_valid_topic "$input_value"; then
+                    if type ui_warn >/dev/null 2>&1; then
+                        ui_warn "Topic format must match *_ws_* or *_hw_* pattern."
+                    else
+                        echo "[WARN] Topic format must match *_ws_* or *_hw_* pattern."
+                    fi
+                    continue
+                fi
+                repo_estimate="7 (5 ws + 2 hw)"
+                ;;
+        esac
+        break
+    done
+
+    if type ui_header >/dev/null 2>&1; then
+        ui_header "gitup preview" "Step 3/4: parsed input"
+        case "$mode" in
+            1) ui_info "mode=SmartLink" ;;
+            2) ui_info "mode=URL" ;;
+            3) ui_info "mode=Topic" ;;
+        esac
+        ui_info "estimated_repos=$repo_estimate"
+    else
+        echo "[INFO] mode=$mode, estimated_repos=$repo_estimate"
+    fi
+
+    input_confirm answer "Step 4/4: Run clone flow now?" "y"
+    rc=$?
+    case "$rc" in
+        0)
+            if [ "$answer" != "yes" ]; then
+                return 20
+            fi
+            ;;
+        10|20) return "$rc" ;;
+        *) return 1 ;;
+    esac
+
+    SSAFY_GITUP_FLOW_MODE="$mode"
+    SSAFY_GITUP_FLOW_INPUT="$input_value"
+    return 0
+}
 
 ssafy_gitdown() {
     init_algo_config
-    
-    # Phase 3 Task 3-6: 플래그 파싱 정리
-    for arg in "$@"; do
-        case "$arg" in
-            --all|-a)
-                _gitdown_all
-                return $?
-                ;;
-        esac
-    done
-    
-    echo "🔍 현재 Git 상태:"
-    git status --short
-    echo ""
-    
+
+    local run_all=false
+    local ssafy_mode=false
     local commit_msg=""
     local custom_msg=false
-    local ssafy_mode=false
     local push_ok=false
-    local current_repo=$(basename "$(pwd)" 2>/dev/null)
-
-    if [[ "$current_repo" =~ ^[A-Za-z0-9]+_(ws|hw|ex)(_[0-9]+(_[0-9]+)?)?$ ]]; then
-        if [ "$ssafy_mode" = false ]; then
-            ssafy_mode=true
-            echo "✨ SSAFY 폴더 감지: 자동 모드 활성화"
-        fi
-    fi
+    local selected_push_branch=""
+    local open_submission_links=true
+    local move_to_next_problem=true
+    local answer=""
+    local current_repo
 
     while [ $# -gt 0 ]; do
         case "$1" in
-            --ssafy|-s) ssafy_mode=true ;;
+            --all|-a)
+                run_all=true
+                ;;
+            --ssafy|-s)
+                ssafy_mode=true
+                ;;
             --msg|-m)
                 shift
-                if [ -z "$1" ] || [[ "$1" == --* ]]; then
-                    echo "❗ --msg 옵션에는 커밋 메시지가 필요합니다."
+                if [ -z "${1:-}" ] || [[ "$1" == --* ]]; then
+                    if type ui_error >/dev/null 2>&1; then
+                        ui_error "--msg requires a commit message."
+                    else
+                        echo "[ERROR] --msg requires a commit message."
+                    fi
                     return 1
                 fi
                 commit_msg="$1"
@@ -761,7 +822,11 @@ ssafy_gitdown() {
             --msg=*)
                 commit_msg="${1#--msg=}"
                 if [ -z "$commit_msg" ]; then
-                    echo "❗ --msg 옵션에는 커밋 메시지가 필요합니다."
+                    if type ui_error >/dev/null 2>&1; then
+                        ui_error "--msg requires a commit message."
+                    else
+                        echo "[ERROR] --msg requires a commit message."
+                    fi
                     return 1
                 fi
                 custom_msg=true
@@ -771,8 +836,11 @@ ssafy_gitdown() {
                     commit_msg="$1"
                     custom_msg=true
                 else
-                    echo "❗ 커밋 메시지에 공백이 있으면 따옴표로 감싸주세요."
-                    echo "   예: gitdown \"feat: new commit\""
+                    if type ui_error >/dev/null 2>&1; then
+                        ui_error "Commit message with spaces must be quoted."
+                    else
+                        echo "[ERROR] Commit message with spaces must be quoted."
+                    fi
                     return 1
                 fi
                 ;;
@@ -780,13 +848,154 @@ ssafy_gitdown() {
         shift
     done
 
-    if [ "$custom_msg" = true ]; then
-        if [ -z "${commit_msg//[[:space:]]/}" ]; then
-            echo "❗ 커밋 메시지가 비어 있습니다."
+    if [ "$run_all" = true ]; then
+        if _is_interactive && type input_confirm >/dev/null 2>&1; then
+            input_confirm answer "Run gitdown in --all batch mode?" "n"
+            case $? in
+                20|10) return 1 ;;
+            esac
+            if [ "$answer" != "yes" ]; then
+                return 1
+            fi
+        fi
+        _gitdown_all
+        return $?
+    fi
+
+    current_repo=$(basename "$(pwd)" 2>/dev/null)
+    if [[ "$current_repo" =~ ^[A-Za-z0-9]+_(ws|hw|ex)(_[0-9]+(_[0-9]+)?)?$ ]]; then
+        ssafy_mode=true
+    fi
+
+    if type ui_header >/dev/null 2>&1; then
+        ui_header "gitdown" "Panel style execution"
+        if [ "$ssafy_mode" = true ]; then
+            ui_info "mode=ssafy"
+        else
+            ui_info "mode=normal"
+        fi
+        ui_section "Current changes"
+    else
+        echo "[INFO] gitdown"
+    fi
+    git status --short
+    echo ""
+
+    if _is_interactive && type input_choice >/dev/null 2>&1; then
+        local commit_mode="auto"
+
+        if [ "$custom_msg" = true ]; then
+            commit_mode="custom"
+        else
+            input_choice commit_mode "Step 1/5: Commit message mode" "auto" \
+                "auto:Auto generated message" \
+                "custom:Manual message"
+            case $? in
+                10|20) return 1 ;;
+            esac
+        fi
+
+        if [ "$commit_mode" = "custom" ]; then
+            if [ -z "$commit_msg" ]; then
+                input_text commit_msg "Step 2/5: Enter commit message" ""
+                case $? in
+                    10|20) return 1 ;;
+                esac
+            fi
+            if [ -z "${commit_msg//[[:space:]]/}" ]; then
+                if type ui_error >/dev/null 2>&1; then
+                    ui_error "Commit message cannot be empty."
+                else
+                    echo "[ERROR] Commit message cannot be empty."
+                fi
+                return 1
+            fi
+            custom_msg=true
+        fi
+
+        if [ "$GIT_AUTO_PUSH" = true ]; then
+            local branches=()
+            local branch=""
+            while IFS= read -r branch; do
+                [ -n "$branch" ] && branches+=("$branch")
+            done < <(git branch --list 2>/dev/null | sed 's/^[* ] //')
+
+            if [ "${#branches[@]}" -gt 0 ]; then
+                if type ui_section >/dev/null 2>&1; then
+                    ui_section "Step 3/5: Push branch"
+                else
+                    echo "[Step 3/5] Push branch"
+                fi
+                echo "  0) Auto select"
+                local i=1
+                for branch in "${branches[@]}"; do
+                    echo "  $i) $branch"
+                    i=$((i + 1))
+                done
+                local branch_choice=""
+                input_text branch_choice "Select branch number" "0"
+                case $? in
+                    10|20) return 1 ;;
+                esac
+                if [[ "$branch_choice" =~ ^[0-9]+$ ]] && [ "$branch_choice" -ge 1 ] && [ "$branch_choice" -le "${#branches[@]}" ]; then
+                    selected_push_branch="${branches[$((branch_choice - 1))]}"
+                fi
+            fi
+        fi
+
+        if [ "$ssafy_mode" = true ]; then
+            input_confirm answer "Step 4/5: Open submission links after push?" "y"
+            case $? in
+                10|20) return 1 ;;
+            esac
+            if [ "$answer" = "no" ]; then
+                open_submission_links=false
+            fi
+
+            input_confirm answer "Step 4/5: Move to next problem after push?" "y"
+            case $? in
+                10|20) return 1 ;;
+            esac
+            if [ "$answer" = "no" ]; then
+                move_to_next_problem=false
+            fi
+        fi
+
+        if type ui_header >/dev/null 2>&1; then
+            ui_header "gitdown preview" "Step 5/5"
+            if [ "$custom_msg" = true ]; then
+                ui_info "commit_msg=$commit_msg"
+            else
+                ui_info "commit_msg=auto"
+            fi
+            if [ -n "$selected_push_branch" ]; then
+                ui_info "push_branch=$selected_push_branch"
+            else
+                ui_info "push_branch=auto"
+            fi
+        fi
+        input_confirm answer "Proceed with git add/commit/push?" "y"
+        case $? in
+            10|20) return 1 ;;
+        esac
+        if [ "$answer" != "yes" ]; then
             return 1
         fi
-        _confirm_commit_message "$commit_msg" || return 1
-        commit_msg="$CONFIRMED_COMMIT_MSG"
+    fi
+
+    if [ "$custom_msg" = true ]; then
+        if [ -z "${commit_msg//[[:space:]]/}" ]; then
+            if type ui_error >/dev/null 2>&1; then
+                ui_error "Commit message cannot be empty."
+            else
+                echo "[ERROR] Commit message cannot be empty."
+            fi
+            return 1
+        fi
+        if _is_interactive; then
+            _confirm_commit_message "$commit_msg" || return 1
+            commit_msg="$CONFIRMED_COMMIT_MSG"
+        fi
     else
         if [ -z "$current_repo" ] || [ "$current_repo" = "/" ] || [ "$current_repo" = "\\" ]; then
             current_repo="update"
@@ -795,94 +1004,124 @@ ssafy_gitdown() {
     fi
 
     git add .
-    
-    echo "📌 커밋 메시지: $commit_msg"
-    if git commit -m "$commit_msg"; then
-        echo "✅ 커밋 완료"
-        
-        if [ "$GIT_AUTO_PUSH" = true ]; then
-            echo "🌐 원격 저장소로 푸시 중..."
-            
-            local branches=$(git branch --list 2>/dev/null | sed 's/^[* ] //' | tr '\n' ' ')
-            local has_master=false
-            local has_main=false
-            local push_branch=""
-            local remote_head=""
-            local need_select=true
+    if type ui_step >/dev/null 2>&1; then
+        ui_step "commit message: $commit_msg"
+    else
+        echo "[STEP] commit message: $commit_msg"
+    fi
 
+    if ! git commit -m "$commit_msg"; then
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "Commit failed."
+        else
+            echo "[ERROR] Commit failed."
+        fi
+        return 1
+    fi
+
+    if [ "$GIT_AUTO_PUSH" = true ]; then
+        local push_branch="$selected_push_branch"
+        local remote_head=""
+        local branches=""
+        local has_master=false
+        local has_main=false
+
+        if [ -z "$push_branch" ]; then
+            branches=$(git branch --list 2>/dev/null | sed 's/^[* ] //' | tr '\n' ' ')
             for branch in $branches; do
-                if [ "$branch" = "master" ]; then has_master=true; fi
-                if [ "$branch" = "main" ]; then has_main=true; fi
+                [ "$branch" = "master" ] && has_master=true
+                [ "$branch" = "main" ] && has_main=true
             done
 
             remote_head=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@')
             if [ -z "$remote_head" ]; then
                 remote_head=$(git remote show origin 2>/dev/null | awk '/HEAD branch/ {print $NF}')
             fi
-            
-            # Smart Branch Selection
-            if [ -n "$remote_head" ]; then
-                if [ "$has_master" = true ] && [ "$has_main" = true ]; then need_select=true;
-                elif [ "$has_master" = false ] && [ "$has_main" = false ]; then need_select=true;
-                elif [ "$remote_head" = "master" ] && [ "$has_master" = true ] && [ "$has_main" = false ]; then
-                    push_branch="$remote_head"; need_select=false;
-                elif [ "$remote_head" = "main" ] && [ "$has_main" = true ] && [ "$has_master" = false ]; then
-                    push_branch="$remote_head"; need_select=false;
-                else need_select=true; fi
-            else
-                need_select=true
-            fi
 
-            if [ "$need_select" = true ]; then
-                echo ""
-                echo "📋 사용 가능한 브랜치:"
-                local branch_list=$(git branch --list 2>/dev/null | sed 's/^[* ] //')
-                local branch_array=()
-                local index=1
-                
-                while IFS= read -r branch; do
-                    if [ -n "$branch" ]; then
-                        echo "  $index) $branch"
-                        branch_array[$index]="$branch"
-                        index=$((index + 1))
-                    fi
-                done <<< "$branch_list"
-                
-                if [ $index -eq 1 ]; then
-                    echo "❌ 사용 가능한 브랜치가 없습니다. 푸시를 건너뜁니다."
-                    return 0
-                fi
-                
-                echo ""
-                read -p "푸시할 브랜치 번호를 선택하세요 (1-$((index-1))): " branch_choice
-                
-                if [ -n "$branch_choice" ] && [ "$branch_choice" -ge 1 ] && [ "$branch_choice" -lt "$index" ] 2>/dev/null; then
-                    push_branch="${branch_array[$branch_choice]}"
-                else
-                    echo "❌ 잘못된 선택입니다. 푸시를 건너뜁니다."
-                    return 0
-                fi
-            fi
-            
-            if [ -n "$push_branch" ]; then
-                echo "🚀 브랜치 '$push_branch'로 푸시 중..."
-                if git push origin "$push_branch" 2>/dev/null; then
-                    echo "✅ 푸시 완료! (브랜치: $push_branch)"
-                    push_ok=true
-                else
-                    echo "❌ 푸시 실패 (브랜치: $push_branch)"
-                    echo "💡 수동으로 푸시하세요: git push origin $push_branch"
+            if [ -n "$remote_head" ]; then
+                if [ "$remote_head" = "master" ] && [ "$has_master" = true ] && [ "$has_main" = false ]; then
+                    push_branch="$remote_head"
+                elif [ "$remote_head" = "main" ] && [ "$has_main" = true ] && [ "$has_master" = false ]; then
+                    push_branch="$remote_head"
                 fi
             fi
         fi
-    else
-        echo "⚠️  커밋 실패"
-        return 1
+
+        if [ -z "$push_branch" ]; then
+            local branch_list
+            local branch_array=()
+            local index=1
+            local branch_choice=""
+            branch_list=$(git branch --list 2>/dev/null | sed 's/^[* ] //')
+
+            while IFS= read -r branch; do
+                if [ -n "$branch" ]; then
+                    echo "  $index) $branch"
+                    branch_array[$index]="$branch"
+                    index=$((index + 1))
+                fi
+            done <<< "$branch_list"
+
+            if [ $index -eq 1 ]; then
+                if type ui_warn >/dev/null 2>&1; then
+                    ui_warn "No branch available for push. Skip push."
+                else
+                    echo "[WARN] No branch available for push. Skip push."
+                fi
+                push_ok=false
+            else
+                if _is_interactive && type input_text >/dev/null 2>&1; then
+                    input_text branch_choice "Push branch number (1-$((index - 1)))" "1"
+                    case $? in
+                        10|20) return 1 ;;
+                    esac
+                else
+                    branch_choice="1"
+                fi
+
+                if [ -n "$branch_choice" ] && [ "$branch_choice" -ge 1 ] && [ "$branch_choice" -lt "$index" ] 2>/dev/null; then
+                    push_branch="${branch_array[$branch_choice]}"
+                else
+                    if type ui_warn >/dev/null 2>&1; then
+                        ui_warn "Invalid branch selection. Skip push."
+                    else
+                        echo "[WARN] Invalid branch selection. Skip push."
+                    fi
+                    push_ok=false
+                fi
+            fi
+        fi
+
+        if [ -n "$push_branch" ]; then
+            if type ui_step >/dev/null 2>&1; then
+                ui_step "Push to origin/$push_branch"
+            else
+                echo "[STEP] Push to origin/$push_branch"
+            fi
+            if git push origin "$push_branch" 2>/dev/null; then
+                push_ok=true
+                if type ui_ok >/dev/null 2>&1; then
+                    ui_ok "Push completed."
+                else
+                    echo "[OK] Push completed."
+                fi
+            else
+                push_ok=false
+                if type ui_error >/dev/null 2>&1; then
+                    ui_error "Push failed: origin/$push_branch"
+                else
+                    echo "[ERROR] Push failed: origin/$push_branch"
+                fi
+            fi
+        fi
     fi
-    
-    echo "📁 상위 폴더로 이동"
+
     cd .. || {
-        echo "⚠️  상위 폴더로 이동할 수 없습니다"
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "Failed to move to parent directory."
+        else
+            echo "[ERROR] Failed to move to parent directory."
+        fi
         return 1
     }
 
@@ -893,83 +1132,80 @@ ssafy_gitdown() {
             ssafy_root="$SSAFY_SESSION_ROOT"
         fi
         if [ -n "$ssafy_root" ]; then
-            cd "$ssafy_root" || {
-                echo "⚠️  SSAFY 루트로 이동할 수 없습니다: $ssafy_root"
-                return 1
-            }
+            cd "$ssafy_root" || return 1
         fi
     fi
 
     if [ "$ssafy_mode" = true ]; then
         if [ "$push_ok" = true ]; then
-             if [ -n "$ssafy_root" ] && [ -f "$ssafy_root/.ssafy_progress" ]; then
-                 # Phase 6: append가 아닌 update 방식으로 진행 상태 갱신
-                 _ssafy_progress_set "$ssafy_root" "$current_repo" "done"
+            if [ -n "$ssafy_root" ] && [ -f "$ssafy_root/.ssafy_progress" ]; then
+                _ssafy_progress_set "$ssafy_root" "$current_repo" "done"
             fi
 
-            _show_submission_links "$ssafy_root" "$current_repo"
-            
-            local next_repo=$(_ssafy_next_repo "$current_repo")
-            if [ -n "$next_repo" ] && [ ! -d "$next_repo" ]; then
-                echo "⚠️  다음 문제 레포가 로컬에 없습니다: $next_repo"
-                echo "💡  SSAFY에서 실습실/과제를 생성해야 레포가 만들어질 수 있습니다."
+            if [ "$open_submission_links" = true ]; then
+                _show_submission_links "$ssafy_root" "$current_repo"
             fi
-            if [ -n "$next_repo" ] && [ -d "$next_repo" ]; then
-                echo "➡️  다음 문제로 이동: $next_repo"
-                _open_repo_file "$next_repo" || echo "⚠️  다음 디렉터리로 이동할 수 없습니다: $next_repo"
-            else
-                _sync_playlist_status "$ssafy_root"
-                
-                local all_folders=()
-                local playlist_file="$ssafy_root/.ssafy_playlist"
-                local meta_file="$ssafy_root/.ssafy_session_meta"
-                
-                if [ -f "$playlist_file" ]; then
-                    while IFS= read -r line || [ -n "$line" ]; do
-                        all_folders+=("$line")
-                    done < "$playlist_file"
-                elif [ -f "$meta_file" ]; then
-                    while IFS= read -r line || [ -n "$line" ]; do
-                        if [[ "$line" =~ ^([^=]+)=([^=]+)$ ]]; then
-                            local key="${BASH_REMATCH[1]}"
-                            if [[ "$key" != "course_id" ]] && [[ "$key" != "course_id_enc" ]] && [[ "$key" != "practice_id" ]] && [[ "$key" != *"_pa" ]] && [[ "$key" != *"_enc" ]]; then
-                                all_folders+=("$key")
-                            fi
-                        fi
-                    done < "$meta_file"
-                fi
-                
-                if [ ${#all_folders[@]} -eq 0 ]; then
-                    for d in *_ws_* *_hw_* *_ex_*; do
-                        [ -d "$d" ] && all_folders+=("$d")
-                    done
-                fi
 
-                if [ ${#all_folders[@]} -gt 0 ]; then
-                    _check_unsolved_folders "$ssafy_root" "${all_folders[@]}"
-                else
-                    if [[ "$current_repo" =~ ^([A-Za-z0-9]+)_(ws|hw|ex)_([0-9]+)(_[0-9]+)?$ ]]; then
-                        local topic="${BASH_REMATCH[1]}"
-                        local session="${BASH_REMATCH[3]}"
-                        echo ""
-                        echo "🎉 [${topic}] 과목의 해당 [${session}]차시가 종료되었습니다. 고생하셨습니다"
+            if [ "$move_to_next_problem" = true ]; then
+                local next_repo
+                next_repo=$(_ssafy_next_repo "$current_repo")
+                if [ -n "$next_repo" ] && [ ! -d "$next_repo" ]; then
+                    if type ui_warn >/dev/null 2>&1; then
+                        ui_warn "Next repo is not cloned: $next_repo"
                     else
-                        echo "⚠️  다음 문제를 찾을 수 없습니다."
+                        echo "[WARN] Next repo is not cloned: $next_repo"
+                    fi
+                fi
+                if [ -n "$next_repo" ] && [ -d "$next_repo" ]; then
+                    _open_repo_file "$next_repo" || true
+                else
+                    _sync_playlist_status "$ssafy_root"
+
+                    local all_folders=()
+                    local playlist_file="$ssafy_root/.ssafy_playlist"
+                    local meta_file="$ssafy_root/.ssafy_session_meta"
+
+                    if [ -f "$playlist_file" ]; then
+                        while IFS= read -r line || [ -n "$line" ]; do
+                            all_folders+=("$line")
+                        done < "$playlist_file"
+                    elif [ -f "$meta_file" ]; then
+                        while IFS= read -r line || [ -n "$line" ]; do
+                            if [[ "$line" =~ ^([^=]+)=([^=]+)$ ]]; then
+                                local key="${BASH_REMATCH[1]}"
+                                if [[ "$key" != "course_id" ]] && [[ "$key" != "course_id_enc" ]] && [[ "$key" != "practice_id" ]] && [[ "$key" != *"_pa" ]] && [[ "$key" != *"_enc" ]]; then
+                                    all_folders+=("$key")
+                                fi
+                            fi
+                        done < "$meta_file"
+                    fi
+
+                    if [ ${#all_folders[@]} -eq 0 ]; then
+                        for d in *_ws_* *_hw_* *_ex_*; do
+                            [ -d "$d" ] && all_folders+=("$d")
+                        done
+                    fi
+
+                    if [ ${#all_folders[@]} -gt 0 ]; then
+                        _check_unsolved_folders "$ssafy_root" "${all_folders[@]}"
                     fi
                 fi
             fi
         else
-            echo "⚠️  푸시 실패/미실행으로 다음 문제 이동을 건너뜁니다."
+            if type ui_warn >/dev/null 2>&1; then
+                ui_warn "Skip follow-up flow because push failed or skipped."
+            else
+                echo "[WARN] Skip follow-up flow because push failed or skipped."
+            fi
         fi
     fi
 }
-
 _gitup_ssafy() {
     local input="$1"
 
     _ensure_ssafy_config
     if [ -z "${SSAFY_BASE_URL:-}" ] || [ -z "${SSAFY_USER_ID:-}" ]; then
-        echo "⚠️  SSAFY 설정이 필요합니다. 'algo-config edit'로 SSAFY_BASE_URL/SSAFY_USER_ID를 설정하세요."
+        echo "???????? SSAFY ????關?쒎첎?嫄??????????꾩룆梨띰쭕????饔낅떽??????? 'algo-config edit'??SSAFY_BASE_URL/SSAFY_USER_ID??????關?쒎첎?嫄?????饔낅떽???壤굿??곸읆???"
         return 1
     fi
 
@@ -992,21 +1228,21 @@ _gitup_ssafy() {
         session="${BASH_REMATCH[3]}"
     elif [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw|ex)$ ]]; then
         topic="${BASH_REMATCH[1]}"
-        read -r -p "차시 입력: " session
+        read -r -p "??遺얘턁????怨뚮옩????影?ろ뀮???????????⑤뜪輿? " session
     elif [[ "$repo_name" =~ ^([A-Za-z0-9]+)$ ]]; then
         topic="$repo_name"
-        read -r -p "차시 입력: " session
+        read -r -p "??遺얘턁????怨뚮옩????影?ろ뀮???????????⑤뜪輿? " session
     else
         if [[ "$repo_name" =~ ^(ws|hw|ex)_[0-9]+(_[0-9]+)?$ ]]; then
-            echo "?? SSAFY 입력 형식이 올바르지 않습니다: $repo_name"
-            echo "   예: <topic>_ws_<차시> 또는 <topic>_ws_<차시>_<번호>"
-            echo "   예: ds_ws_2 또는 ds_ws_2_1"
+            echo "?? SSAFY ????????⑤뜪輿???耀붾굝??????????⑤８?????????? ?????????????怨몄）: $repo_name"
+            echo "   ?? <topic>_ws_<??遺얘턁????怨뚮옩????影?ろ뀮??? ?????<topic>_ws_<??遺얘턁????怨뚮옩????影?ろ뀮???_<???????"
+            echo "   ?? ds_ws_2 ?????ds_ws_2_1"
         fi
         return 1
     fi
 
     if [ -z "$session" ] || ! [[ "$session" =~ ^[0-9]+$ ]]; then
-        echo "❗ 차시 번호가 올바르지 않습니다."
+        echo "????遺얘턁????怨뚮옩????影?ろ뀮??????????????? ??????? ?????????????怨몄）."
         return 1
     fi
 
@@ -1065,61 +1301,83 @@ _gitup_ssafy() {
 
 ssafy_gitup() {
     init_algo_config
-    # Phase 6: 세션 루트(전체 문제 디렉토리) 기준 파일 관리
-    # gitup을 어디에서 실행하든, 세션 루트를 감지해서 기록
+
     local session_root=""
     session_root=$(_find_ssafy_session_root "$(pwd)" 2>/dev/null || true)
     if [ -z "$session_root" ]; then
         session_root="$(pwd)"
     fi
     export SSAFY_SESSION_ROOT="$session_root"
+
     local ssafy_mode=false
     local input=""
+    local mode=""
 
     if [ $# -eq 0 ]; then
-        echo "🔐 [Secure Mode] Smart Link(URL|Token) 또는 URL을 붙여넣으세요."
-        echo "   (입력 내용은 화면에 표시되지 않습니다)"
-        
-        local prompt_input=$(_read_masked_input "👉 Paste Here (Ctrl+V + Enter): ")
-        echo "" # 줄바꿈
-        
-        if [ -z "$prompt_input" ]; then
-            echo "❌ 입력이 취소되었습니다."
+        if _is_interactive && type _ssafy_gitup_prompt_flow >/dev/null 2>&1; then
+            _ssafy_gitup_prompt_flow
+            case $? in
+                0)
+                    input="$SSAFY_GITUP_FLOW_INPUT"
+                    mode="$SSAFY_GITUP_FLOW_MODE"
+                    if [ "$mode" = "3" ]; then
+                        ssafy_mode=true
+                    fi
+                    ;;
+                10|20)
+                    if type ui_warn >/dev/null 2>&1; then
+                        ui_warn "Canceled by user."
+                    else
+                        echo "[WARN] Canceled by user."
+                    fi
+                    return 1
+                    ;;
+                *)
+                    echo "Usage: gitup <git-url | ssafy-topic | smart-link>"
+                    return 1
+                    ;;
+            esac
+        else
+            echo "Usage: gitup <git-url | ssafy-topic | smart-link>"
+            echo "Examples:"
+            echo "  gitup https://github.com/user/repo.git"
+            echo "  gitup data_ws_4"
+            echo "  gitup --ssafy data_ws_4"
             return 1
         fi
-        set -- "$prompt_input"
     fi
 
     while [ $# -gt 0 ]; do
         case "$1" in
-            --ssafy|-s) ssafy_mode=true ;;
+            --ssafy|-s)
+                ssafy_mode=true
+                ;;
             *)
                 if [[ "$1" == *"|"* ]]; then
                     local raw="$1"
                     local url="${raw%%|*}"
                     local token="${raw#*|}"
-                    
-                    if [ -z "$input" ]; then input="$url"; fi
-                    
-                    if [ -n "$token" ]; then
-                        if [ -f "$ALGO_CONFIG_FILE" ]; then
 
-                            local decoded=$(echo "$token" | base64 -d 2>/dev/null || echo "")
-                            if [[ "$decoded" == "Bearer "* ]]; then
-                                export SSAFY_AUTH_TOKEN="$decoded"
-                                echo "🔐 [Smart Copy] 인증 토큰 자동 업데이트 완료"
+                    if [ -z "$input" ]; then
+                        input="$url"
+                    fi
+
+                    if [ -n "$token" ] && [ -f "$ALGO_CONFIG_FILE" ]; then
+                        local decoded
+                        decoded=$(echo "$token" | base64 -d 2>/dev/null || echo "")
+                        if [[ "$decoded" == "Bearer "* ]]; then
+                            export SSAFY_AUTH_TOKEN="$decoded"
+                            if type ui_ok >/dev/null 2>&1; then
+                                ui_ok "SmartLink token applied to current session."
+                            else
+                                echo "[OK] SmartLink token applied to current session."
                             fi
                         fi
                     fi
                 elif [ -z "$input" ]; then
                     input="$1"
                 else
-                    echo "❗️사용법: gitup <git-repository-url | ssafy-topic>"
-                    echo "예시:"
-                    echo "  gitup https://github.com/user/repo.git"
-                    echo "  gitup data_ws"
-                    echo "  gitup https://lab.ssafy.com/${SSAFY_USER_ID}/data_ws_4_1"
-                    echo "  gitup --ssafy data_ws"
+                    echo "Usage: gitup <git-url | ssafy-topic | smart-link>"
                     return 1
                 fi
                 ;;
@@ -1128,34 +1386,67 @@ ssafy_gitup() {
     done
 
     if [ -z "$input" ]; then
-        echo "❗️사용법: gitup <git-repository-url | ssafy-topic>"
+        echo "Usage: gitup <git-url | ssafy-topic | smart-link>"
         return 1
     fi
 
-    local ssafy_detected=false
-    if [ "$ssafy_mode" = true ]; then
-        ssafy_detected=true
-    elif [[ "$input" =~ ^https?://lab\.ssafy\.com/ ]]; then
-        ssafy_detected=true
+    if type ui_header >/dev/null 2>&1; then
+        ui_header "gitup" "Panel style execution"
+        if [ "$ssafy_mode" = true ]; then
+            ui_info "input_mode=topic"
+        elif [[ "$input" == *"|"* ]]; then
+            ui_info "input_mode=smartlink"
+        elif _ssafy_git_is_valid_url "$input"; then
+            ui_info "input_mode=url"
+        else
+            ui_info "input_mode=auto"
+        fi
+        ui_info "input=$input"
     fi
 
     if [[ "$input" == https://project.ssafy.com/* ]]; then
+        if type ui_step >/dev/null 2>&1; then
+            ui_step "Run batch parser -> clone"
+        fi
         ssafy_batch "$input"
         return $?
     fi
 
-    if [[ "$input" =~ ^[A-Za-z0-9]+_(ws|hw)(_[0-9]+(_[0-9]+)?)?$ ]]; then
+    if [ "$ssafy_mode" = true ] || _ssafy_git_is_valid_topic "$input" || [[ "$input" =~ ^https?://lab\.ssafy\.com/ ]]; then
+        if type ui_step >/dev/null 2>&1; then
+            ui_step "Run SSAFY topic clone flow"
+        fi
         _gitup_ssafy "$input" || return 1
         return 0
     fi
-    
-    echo "🔄 Git 저장소 클론 중: $input"
+
+    if ! _ssafy_git_is_valid_url "$input"; then
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "Invalid input. URL must start with http(s) or use --ssafy with topic format."
+        else
+            echo "[ERROR] Invalid input. URL must start with http(s) or use --ssafy with topic format."
+        fi
+        return 1
+    fi
+
+    if type ui_step >/dev/null 2>&1; then
+        ui_step "clone repository"
+    else
+        echo "[STEP] clone repository"
+    fi
     git clone "$input" || return 1
-    
-    local repo_name=$(basename "$input" .git)
+
+    local repo_name
+    repo_name=$(basename "$input" .git)
+
+    if type ui_ok >/dev/null 2>&1; then
+        ui_ok "clone completed: $repo_name"
+    else
+        echo "[OK] clone completed: $repo_name"
+    fi
+
     _open_repo_file "$repo_name"
 }
-
 ssafy_batch() {
     if [ $# -eq 0 ]; then
         echo "Usage: ssafy_batch <URL> [COUNT=7]"
@@ -1180,18 +1471,17 @@ ssafy_batch() {
         export SSAFY_AUTH_TOKEN
     fi
     
-    # Phase 1 Task 1-3: ALGO_ROOT_DIR 사용
+    # Resolve helper script directory
     local script_dir="${ALGO_ROOT_DIR:-$HOME/.ssafy-tools}"
-    
-    # Python 스크립트 파일 존재 확인
+
+    # Python script location check
     if [ ! -f "$script_dir/ssafy_batch_create.py" ]; then
-        # 폴백: 다른 경로 시도
         if [ -f "$HOME/.ssafy-tools/ssafy_batch_create.py" ]; then
             script_dir="$HOME/.ssafy-tools"
         elif [ -f "$HOME/Desktop/SSAFY_sh_func/ssafy_batch_create.py" ]; then
             script_dir="$HOME/Desktop/SSAFY_sh_func"
         else
-            echo "❌ 실행 오류: 'ssafy_batch_create.py' 파일을 찾을 수 없습니다."
+            echo "[error] runner not found: ssafy_batch_create.py"
             return 1
         fi
     fi
@@ -1207,7 +1497,7 @@ ssafy_batch() {
          # [Fix V8.1] Capture output and clone, generate session files
          local first_repo=""
          
-         # Session files (세션 루트에서 단일 파일로 관리)
+         # Session files (??耀붾굝???????????猷맣㎫몭?????????????誘⑸쿋????????????좊쭬????????⑤㈇????
          local ssafy_root="${SSAFY_SESSION_ROOT:-$(pwd)}"
          if [ -z "$ssafy_root" ] || [ ! -d "$ssafy_root" ]; then
              ssafy_root="$(pwd)"
@@ -1229,7 +1519,7 @@ ssafy_batch() {
              course_id=$(echo "$course_id" | tr -d '\r')
              
              if [ -n "$url" ]; then
-                 echo "⬇️  Cloning: $url"
+                 echo "?????ㅼ뒧????紐껊젇?? Cloning: $url"
                  git clone "$url"
                  
                  local folder_name=$(basename "$url" .git)
@@ -1242,8 +1532,8 @@ ssafy_batch() {
                      local enc_course_id=$(echo -n "$course_id" | base64)
                      local created_at=$(date +"%Y%m%d%H%M%S")
                      {
-                         # course_id는 base64로 저장 (세션 메타데이터)
-                         # 하위 호환을 위해 course_id= 키를 유지
+                         # course_id??base64??????(??耀붾굝?????????遺얘턁???????????????
+                         # ?????怨뚮뼺?됰뗀??沅???耀붾굝????癲ル슢??㎖?밤뀋????????????▲뀋??course_id= ??? ???
                          echo "course_id=$enc_course_id"
                          echo "created_at=$created_at"
                      } > "$meta_file"
@@ -1267,13 +1557,13 @@ ssafy_batch() {
          done < <(echo "$SSAFY_AUTH_TOKEN" | "$py_cmd" "$script_dir/ssafy_batch_create.py" "$1" "$2" --pipe)
          
          if [ -n "$first_repo" ]; then
-             echo "📂 Opening first repository: $first_repo"
+             echo "???Opening first repository: $first_repo"
              # [Fix V8.1] Sync status immediately (chk done)
              _sync_playlist_status "$ssafy_root"
              _open_repo_file "$ssafy_root/$first_repo"
          fi
     else
-         echo "❌ Python을 찾을 수 없습니다."
+         echo "??Python????遺얘턁????????????????繹먮굞??????????怨몄）."
          return 1
     fi
 }
