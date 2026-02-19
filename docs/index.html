@@ -488,7 +488,7 @@
                         <div class="copy-hint">Click to Copy 📋</div>
                     </div>
                     <div class="terminal-body" id="terminal-content">
-                        <span class="prompt">$</span> <span class="cmd-text">bash <(curl -fsSL
+                        <span class="prompt">$</span> <span class="cmd-text">SSAFY_INSTALL_MODE=snapshot SSAFY_UPDATE_CHANNEL=stable bash <(curl -fsSL
                                 https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)</span><span
                                     class="cursor"></span>
                     </div>
@@ -573,7 +573,7 @@
 
     <script>
         function copyCommand() {
-            const cmd = "bash <(curl -fsSL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)\n";
+            const cmd = "SSAFY_INSTALL_MODE=snapshot SSAFY_UPDATE_CHANNEL=stable bash <(curl -fsSL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)\n";
 
             navigator.clipboard.writeText(cmd).then(() => {
                 showToast();

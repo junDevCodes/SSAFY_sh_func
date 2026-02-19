@@ -1,4 +1,4 @@
-# 알고리즘/실습 자동화 Shell 함수 (V8.1.4)
+# 알고리즘/실습 자동화 Shell 함수 (V8.1.5)
 
 이 저장소는 Bash 함수들을 제공하여 알고리즘 풀이와 SSAFY 실습 과제 제출을 자동화합니다.
 별도의 복잡한 설치 없이 스크립트 파일만 복사하여 즉시 사용할 수 있습니다.
@@ -27,19 +27,18 @@
 > **수동 설치를 원하시나요?**  
 > 터미널에서 아래 명령어를 실행하세요:
 > ```bash
-> bash <(curl -fsSL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)
+> SSAFY_INSTALL_MODE=snapshot SSAFY_UPDATE_CHANNEL=stable bash <(curl -fsSL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)
 > ```
 
 설치가 끝나면 `source ~/.bashrc`를 실행하거나 터미널을 다시 열어주세요.
 
 ### 방법 2: 수동 설치
 ```bash
-# 1. 저장소 복제
-git clone https://github.com/junDevCodes/SSAFY_sh_func.git ~/.ssafy-tools
+# 1. 기본 설치 (snapshot)
+SSAFY_INSTALL_MODE=snapshot SSAFY_UPDATE_CHANNEL=stable bash <(curl -fsSL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)
 
-# 2. 셸 설정 파일에 추가
-echo 'source ~/.ssafy-tools/algo_functions.sh' >> ~/.bashrc
-source ~/.bashrc
+# 2. Git mode install (contributors)
+SSAFY_INSTALL_MODE=git SSAFY_UPDATE_CHANNEL=main bash <(curl -fsSL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)
 ```
 
 ---
