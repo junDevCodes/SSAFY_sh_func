@@ -151,3 +151,25 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests/run_tests.ps1
 # Python 직접 실행 (결과 JSON 저장)
 python tests/run_tests.py --out tests/test_results.json
 ```
+
+---
+
+## Panel UI + Stable Input Flow (A)
+
+- Default UI style:
+  - `ALGO_UI_STYLE=panel` (fallback: `plain`)
+  - `ALGO_UI_COLOR=auto|always|never`
+- Input profile variable:
+  - `ALGO_INPUT_PROFILE=stable|quick|strict` (default behavior: `stable`)
+- Common interactive keys:
+  - `q`: cancel now (no side effects)
+  - `b`: go to previous step
+  - `Enter`: use default value
+
+### Command interaction summary
+- `al`: missing/invalid arguments open step-by-step flow (site -> problem -> lang -> options -> confirm)
+- `gitup`: guided flow for SmartLink / URL / Topic, with validation and preview before clone
+- `gitdown`: guided preflight for commit mode, push branch, follow-up actions, and final confirmation
+- `algo-config`: `show` panel view, `edit` with GUI or CLI mode, `reset` with two-step safety confirm
+- `algo-update`: update plan preview + confirmation (explicit warning for `legacy-git` migration)
+- `algo-doctor`: panel summary + optional action (`Enter` exit / `r` rerun / `c` reprint report)

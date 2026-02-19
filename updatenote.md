@@ -424,3 +424,18 @@
 - `df99a0f` feat: 기존 bash shell 함수와 충돌 방지를 위한 대체 방식으로 변경
 - `eb7737e` docs: README
 - `8b72d2c` first commit
+
+## V8.1.5 UI Patch (2026-02-19) - Panel Output + Stable Input Flow
+
+### Added
+- Panel style output helpers: `lib/ui.sh` (`ui_header`, `ui_section`, `ui_info`, `ui_ok`, `ui_warn`, `ui_error`, `ui_path`, `ui_hint`, `ui_divider`)
+- Stable input helpers: `lib/input.sh` (`input_text`, `input_choice`, `input_confirm`, `input_masked`)
+- Shared input controls: `q=cancel`, `b=back`, `Enter=default`
+
+### Updated command flows
+- `al`: guided fallback flow when args are missing/invalid
+- `gitup`: mode selection (SmartLink/URL/Topic), validation, preview, confirmation
+- `gitdown`: staged preflight (message/push/follow-up) before write operations
+- `algo-config`: GUI/CLI edit mode selection + CLI fallback and safer reset
+- `algo-update`: execution plan display + explicit migration warning and confirmation
+- `algo-doctor`: panel summary and optional post-action (`Enter`/`r`/`c`)
