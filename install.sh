@@ -1,205 +1,397 @@
 #!/bin/bash
 # =============================================================================
-# SSAFY Shell Functions 자동 설치 스크립트
+# SSAFY Shell Functions installer
 # =============================================================================
 set -e
 
 INSTALL_DIR="$HOME/.ssafy-tools"
-REPO_URL="https://github.com/junDevCodes/SSAFY_sh_func.git"
+INSTALL_META_FILE=".install_meta"
 
-echo ""
-echo "🚀 SSAFY Shell Functions 설치를 시작합니다..."
-echo ""
+REPO_OWNER="${SSAFY_REPO_OWNER:-junDevCodes}"
+REPO_NAME="${SSAFY_REPO_NAME:-SSAFY_sh_func}"
+REPO_URL="https://github.com/${REPO_OWNER}/${REPO_NAME}.git"
+RELEASE_API_URL="https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest"
 
-# 1. 기존 설치 확인
-if [ -d "$INSTALL_DIR" ]; then
-    echo "⚠️  기존 설치가 감지되었습니다: $INSTALL_DIR"
-    read -r -p "   기존 설치를 삭제하고 다시 설치할까요? (y/N): " confirm
-    if [[ "$confirm" =~ ^[Yy]$ ]]; then
-        rm -rf "$INSTALL_DIR"
-        echo "   ✅ 기존 설치 삭제 완료"
-    else
-        echo "   ❌ 설치가 취소되었습니다."
-        exit 1
-    fi
-fi
+INSTALL_MODE="${SSAFY_INSTALL_MODE:-snapshot}"
+UPDATE_CHANNEL="${SSAFY_UPDATE_CHANNEL:-stable}"
 
-# 2. Git Clone
-echo "📥 저장소 다운로드 중..."
-if command -v git > /dev/null 2>&1; then
-    # clone 실패 시 에러 메시지 출력 후 종료
-    if ! git clone --depth 1 "$REPO_URL" "$INSTALL_DIR"; then
-        echo ""
-        echo "❌ 저장소 다운로드에 실패했습니다. (네트워크 연결을 확인해주세요)"
-        exit 1
-    fi
-else
-    echo "❌ Git이 설치되어 있지 않습니다..."
-    exit 1
-fi
-
-# 2-1. 버전 로드 (SSOT: VERSION 파일)
-# - 설치된 저장소의 VERSION 파일을 읽어서 출력에 사용
-# - 파일이 없거나 읽기 실패 시 Unknown으로 표시
+RUN_SETUP=false
 INSTALLED_VERSION="Unknown"
-VERSION_FILE="$INSTALL_DIR/VERSION"
-if [ -f "$VERSION_FILE" ]; then
-    read -r INSTALLED_VERSION < "$VERSION_FILE" || true
-    INSTALLED_VERSION="${INSTALLED_VERSION//$'\r'/}"
-    INSTALLED_VERSION="${INSTALLED_VERSION//[[:space:]]/}"
-fi
 
-# 3. 기존 설치 정리 (중복 방지)
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+read_version_from_dir() {
+    local target_dir="$1"
+    local version_file="$target_dir/VERSION"
+    local version="Unknown"
+
+    if [ -f "$version_file" ]; then
+        read -r version < "$version_file" || true
+        version="${version//$'\r'/}"
+        version="${version//[[:space:]]/}"
+    fi
+
+    printf '%s' "$version"
+}
+
+normalize_install_mode() {
+    case "$INSTALL_MODE" in
+        snapshot|git) ;;
+        *)
+            echo "[warn] Unknown INSTALL_MODE=$INSTALL_MODE. Fallback to snapshot."
+            INSTALL_MODE="snapshot"
+            ;;
+    esac
+}
+
+normalize_update_channel() {
+    case "$UPDATE_CHANNEL" in
+        stable|main|edge) ;;
+        *)
+            echo "[warn] Unknown UPDATE_CHANNEL=$UPDATE_CHANNEL. Fallback to stable."
+            UPDATE_CHANNEL="stable"
+            ;;
+    esac
+}
+
+fetch_latest_release_tag() {
+    local response=""
+    local tag=""
+
+    if ! command_exists curl; then
+        return 1
+    fi
+
+    response=$(curl -fsSL "$RELEASE_API_URL" 2>/dev/null || true)
+    if [ -z "$response" ]; then
+        return 1
+    fi
+
+    tag=$(printf '%s\n' "$response" | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' | head -n 1)
+    if [ -z "$tag" ]; then
+        return 1
+    fi
+
+    printf '%s' "$tag"
+    return 0
+}
+
+build_tarball_url() {
+    local ref="$1"
+    if [ "$ref" = "main" ]; then
+        printf 'https://github.com/%s/%s/archive/refs/heads/main.tar.gz' "$REPO_OWNER" "$REPO_NAME"
+    else
+        printf 'https://github.com/%s/%s/archive/refs/tags/%s.tar.gz' "$REPO_OWNER" "$REPO_NAME" "$ref"
+    fi
+}
+
+sha256_of_file() {
+    local file="$1"
+
+    if command_exists sha256sum; then
+        sha256sum "$file" | awk '{print $1}'
+        return 0
+    fi
+
+    if command_exists shasum; then
+        shasum -a 256 "$file" | awk '{print $1}'
+        return 0
+    fi
+
+    return 1
+}
+
+verify_tarball_checksum() {
+    local archive_file="$1"
+    local tarball_url="$2"
+    local checksum_file="$3"
+    local expected=""
+    local actual=""
+
+    if ! actual=$(sha256_of_file "$archive_file"); then
+        echo "[warn] sha256 tool missing. Skip checksum verification."
+        return 0
+    fi
+
+    if [ -n "${SSAFY_TARBALL_SHA256:-}" ]; then
+        if [ "$actual" != "$SSAFY_TARBALL_SHA256" ]; then
+            echo "[error] Tarball checksum mismatch."
+            return 1
+        fi
+        return 0
+    fi
+
+    if command_exists curl && curl -fsSL "${tarball_url}.sha256" -o "$checksum_file" 2>/dev/null; then
+        expected=$(awk 'NF>0 {print $1; exit}' "$checksum_file")
+        if [ -n "$expected" ] && [ "$actual" = "$expected" ]; then
+            return 0
+        fi
+        echo "[error] Remote checksum verification failed."
+        return 1
+    fi
+
+    echo "[warn] No remote checksum file. Continue without remote checksum."
+    return 0
+}
+
+resolve_snapshot_ref() {
+    local ref=""
+
+    if [ -n "${SSAFY_INSTALL_REF:-}" ]; then
+        printf '%s' "$SSAFY_INSTALL_REF"
+        return 0
+    fi
+
+    if [ "$UPDATE_CHANNEL" = "stable" ]; then
+        ref=$(fetch_latest_release_tag || true)
+        if [ -n "$ref" ]; then
+            printf '%s' "$ref"
+            return 0
+        fi
+        echo "[warn] Failed to fetch latest release tag. Fallback to main snapshot."
+        printf '%s' "main"
+        return 0
+    fi
+
+    printf '%s' "main"
+}
+
+write_install_meta() {
+    local mode="$1"
+    local channel="$2"
+    local ref="$3"
+    local version="$4"
+    local installed_at=""
+
+    installed_at=$(date +"%Y-%m-%dT%H:%M:%S%z")
+    cat > "$INSTALL_DIR/$INSTALL_META_FILE" <<EOF
+mode=$mode
+channel=$channel
+ref=$ref
+version=$version
+installed_at=$installed_at
+EOF
+}
+
+install_snapshot() {
+    local ref=""
+    local tarball_url=""
+    local tmp_dir=""
+    local archive_file=""
+    local checksum_file=""
+
+    if ! command_exists curl; then
+        echo "[error] snapshot mode requires curl."
+        return 1
+    fi
+
+    if ! command_exists tar; then
+        echo "[error] snapshot mode requires tar."
+        return 1
+    fi
+
+    ref=$(resolve_snapshot_ref)
+    tarball_url=$(build_tarball_url "$ref")
+
+    tmp_dir=$(mktemp -d 2>/dev/null || mktemp -d -t ssafy_tools_install)
+    archive_file="$tmp_dir/repo.tar.gz"
+    checksum_file="$tmp_dir/repo.tar.gz.sha256"
+    trap 'rm -rf "$tmp_dir"' RETURN
+
+    echo "Downloading snapshot... (ref: $ref)"
+    if ! curl -fsSL "$tarball_url" -o "$archive_file"; then
+        if [ "$ref" != "main" ]; then
+            echo "[warn] Failed to download ref tarball. Retrying with main."
+            ref="main"
+            tarball_url=$(build_tarball_url "$ref")
+            curl -fsSL "$tarball_url" -o "$archive_file" || {
+                echo "[error] Snapshot download failed."
+                return 1
+            }
+        else
+            echo "[error] Snapshot download failed."
+            return 1
+        fi
+    fi
+
+    verify_tarball_checksum "$archive_file" "$tarball_url" "$checksum_file" || return 1
+
+    mkdir -p "$INSTALL_DIR"
+    if ! tar -xzf "$archive_file" -C "$INSTALL_DIR" --strip-components=1; then
+        echo "[error] Snapshot extraction failed."
+        return 1
+    fi
+
+    if [ -d "$INSTALL_DIR/.git" ]; then
+        echo "[warn] Unexpected .git found in snapshot install. Removing it."
+        rm -rf "$INSTALL_DIR/.git"
+    fi
+
+    INSTALLED_VERSION=$(read_version_from_dir "$INSTALL_DIR")
+    write_install_meta "snapshot" "$UPDATE_CHANNEL" "$ref" "$INSTALLED_VERSION"
+
+    trap - RETURN
+    rm -rf "$tmp_dir"
+}
+
+install_git_mode() {
+    local ref="${SSAFY_INSTALL_REF:-main}"
+
+    if ! command_exists git; then
+        echo "[error] git mode requires git."
+        return 1
+    fi
+
+    echo "Running git clone... (ref: $ref)"
+    if ! git clone --depth 1 --branch "$ref" "$REPO_URL" "$INSTALL_DIR"; then
+        echo "[warn] Failed to clone requested ref. Retrying default clone."
+        git clone --depth 1 "$REPO_URL" "$INSTALL_DIR" || {
+            echo "[error] Repository clone failed."
+            return 1
+        }
+        ref="main"
+    fi
+
+    INSTALLED_VERSION=$(read_version_from_dir "$INSTALL_DIR")
+    write_install_meta "git" "$UPDATE_CHANNEL" "$ref" "$INSTALLED_VERSION"
+}
+
 cleanup_old_install() {
     local rc_file="$1"
+
     if [ -f "$rc_file" ]; then
-        # [V7.5] 안전한 정리를 위해 특정 패턴만 제거
-        # 타겟 패턴 1: ssafy-tools/algo_functions.sh (표준 설치)
-        # 타겟 패턴 2: SSAFY_sh_func/algo_functions.sh (수동 설치)
-        
         local tmp_file="${rc_file}.tmp"
-        
-        # sed를 사용하여 특정 패턴이 포함된 줄만 삭제 (/d)
-        # 백업 생성 없이 즉시 처리하면 위험하므로 tmp 파일 사용
-        
-        # Windows/Linux 호환 sed 처리
-        if sed --version >/dev/null 2>&1; then
-            # GNU sed
-            sed '/ssafy-tools\/algo_functions\.sh/d' "$rc_file" | \
-            sed '/SSAFY_sh_func\/algo_functions\.sh/d' > "$tmp_file"
-        else
-            # BSD sed (macOS)
-            sed '/ssafy-tools\/algo_functions\.sh/d' "$rc_file" | \
-            sed '/SSAFY_sh_func\/algo_functions\.sh/d' > "$tmp_file"
-        fi
-        
+        sed '/ssafy-tools\/algo_functions\.sh/d' "$rc_file" | \
+        sed '/SSAFY_sh_func\/algo_functions\.sh/d' > "$tmp_file"
         mv "$tmp_file" "$rc_file"
     fi
-
-
 }
 
 add_source_line() {
     local rc_file="$1"
-
     local source_line="source \"$INSTALL_DIR/algo_functions.sh\""
 
-
-    
-    # 파일이 없으면 생성
     if [ ! -f "$rc_file" ]; then
         touch "$rc_file"
-        echo "   ✨ 새 설정 파일 생성: $rc_file"
+        echo "   Created config file: $rc_file"
     fi
 
-    # 기존 다른 경로 정리
     cleanup_old_install "$rc_file"
-    
-    # 이미 추가되어 있는지 확인
+
     if grep -q "ssafy-tools/algo_functions.sh" "$rc_file"; then
-        echo "   ⏭️  $rc_file 에 이미 설정되어 있습니다."
+        echo "   Source line already exists in $rc_file"
     else
-        # 파일이 비어있지 않으면 개행 추가
         if [ -s "$rc_file" ]; then
             echo "" >> "$rc_file"
         fi
-        
+
         echo "# SSAFY Shell Functions" >> "$rc_file"
-        
-        # [V7.8] Python Binding (영구적 Path 고정)
-        if [ -n "$detected_python" ]; then
-             echo "export SSAFY_PYTHON=\"$detected_python\"" >> "$rc_file"
-             echo "alias python=\"\$SSAFY_PYTHON\"" >> "$rc_file"
+        if [ -n "${detected_python:-}" ]; then
+            echo "export SSAFY_PYTHON=\"$detected_python\"" >> "$rc_file"
+            echo "alias python=\"\$SSAFY_PYTHON\"" >> "$rc_file"
         fi
-        
         echo "$source_line" >> "$rc_file"
-        echo "   ✅ $rc_file 에 설정 추가 완료 (Python: ${detected_python:-Unknown})"
+        echo "   Added source line to $rc_file"
     fi
 }
 
-echo ""
-echo "🔧 셸 설정 파일 업데이트 중..."
-
-# Bash
-add_source_line "$HOME/.bashrc"
-
-# Bash Profile (Windows Git Bash 등 Login Shell 호환)
-# .bash_profile이 없으면 생성하고, .bashrc를 로드하도록 설정
-# 이미 있으면 .bashrc를 로드하는지 확인하고 없으면 추가
 ensure_bashrc_sourced() {
     local profile="$1"
+
     if [ ! -f "$profile" ]; then
         if [[ "$OSTYPE" == "msys" ]] || [[ "$OSTYPE" == "win32" ]]; then
-            echo "   ✨ Windows Git Bash 환경 감지: $profile 생성"
             echo "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi" > "$profile"
+            echo "   Created $profile"
         fi
     else
-        # .bashrc 로딩 구문이 있는지 확인 (단순 grep)
         if ! grep -q ".bashrc" "$profile"; then
             echo "" >> "$profile"
             echo "# Load .bashrc if it exists" >> "$profile"
             echo "if [ -f ~/.bashrc ]; then . ~/.bashrc; fi" >> "$profile"
-            echo "   ✅ $profile 에 .bashrc 로딩 설정 추가"
+            echo "   Added .bashrc loader to $profile"
         fi
     fi
 }
 
+normalize_install_mode
+normalize_update_channel
+
+echo ""
+echo "Starting SSAFY Shell Functions installer."
+echo "Install mode: $INSTALL_MODE / Update channel: $UPDATE_CHANNEL"
+echo ""
+
+if [ -d "$INSTALL_DIR" ]; then
+    echo "[warn] Existing installation detected: $INSTALL_DIR"
+    read -r -p "Remove existing installation and continue? (y/N): " confirm
+    if [[ "$confirm" =~ ^[Yy]$ ]]; then
+        rm -rf "$INSTALL_DIR"
+        echo "Removed previous installation."
+    else
+        echo "Installation cancelled."
+        exit 1
+    fi
+fi
+
+echo "Preparing installation files..."
+if [ "$INSTALL_MODE" = "git" ]; then
+    install_git_mode || exit 1
+else
+    install_snapshot || exit 1
+fi
+
+echo ""
+echo "Updating shell profiles..."
+add_source_line "$HOME/.bashrc"
 ensure_bashrc_sourced "$HOME/.bash_profile"
 if [ ! -f "$HOME/.bash_profile" ]; then
     ensure_bashrc_sourced "$HOME/.profile"
 fi
 
-# Zsh (있으면)
 if [ -f "$HOME/.zshrc" ]; then
     add_source_line "$HOME/.zshrc"
 fi
 
-# 4. 기존 설정 초기화 여부 확인
-RUN_SETUP=false
 if [ -f "$HOME/.algo_config" ]; then
     echo ""
-    echo "⚠️  기존 사용자 설정이 감지되었습니다: ~/.algo_config"
-    read -r -p "   기존 설정을 초기화할까요? (새 PC 사용 시 권장) (y/N): " reset_config
+    echo "[warn] Existing user config found: ~/.algo_config"
+    read -r -p "Reset config now? (recommended on new PC) (y/N): " reset_config
     if [[ "$reset_config" =~ ^[Yy]$ ]]; then
         rm "$HOME/.algo_config"
-        echo "   ✅ 설정 초기화 완료"
         RUN_SETUP=true
+        echo "Config reset completed."
     else
-        echo "   ⏭️  기존 설정 유지"
+        echo "Keeping existing config."
     fi
 else
-    # 새 설치인 경우도 설정 시작
     RUN_SETUP=true
 fi
 
-# 4. 완료 메시지
 echo ""
 echo "============================================================"
-echo "✅ 설치가 완료되었습니다! (버전: ${INSTALLED_VERSION})"
+echo "Installation completed. (version: ${INSTALLED_VERSION})"
 echo "============================================================"
 echo ""
-echo "👉 지금 바로 사용하려면 아래 명령어를 실행하세요:"
-echo ""
+echo "Run this to start now:"
 echo "   source ~/.bashrc"
 echo ""
-echo "💡 주요 명령어:"
-echo "   - gitup <URL>          : Git 저장소 클론 및 파일 열기"
-echo "   - gitdown              : 커밋 후 푸시"
-echo "   - algo-config show     : 설정 보기"
-echo "   - algo-config edit     : 설정 편집"
-echo "   - algo-update          : 최신 버전으로 업데이트"
+echo "Main commands"
+echo "   - gitup <URL>          : clone repository and open files"
+echo "   - gitdown              : commit and push"
+echo "   - algo-config show     : show config"
+echo "   - algo-config edit     : edit config"
+echo "   - algo-update          : update to latest"
 echo ""
-echo "📖 자세한 사용법: https://github.com/junDevCodes/SSAFY_sh_func"
+echo "Guide: https://github.com/junDevCodes/SSAFY_sh_func"
 echo ""
 
-# 5. 설정 초기화 시 바로 설정 시작
 if [ "$RUN_SETUP" = true ]; then
-    echo "🔧 초기 설정을 시작합니다..."
+    echo "Starting initial config..."
     echo ""
-    
-    # 설정 파일 생성
+
     CONFIG_FILE="$HOME/.algo_config"
-    # Phase 3 Task 3-7: lib/config.sh 템플릿과 동일하게 수정
     cat > "$CONFIG_FILE" << 'EOF'
 # SSAFY Algo Functions Config
 ALGO_BASE_DIR="$HOME/algos"
@@ -209,19 +401,18 @@ GIT_AUTO_PUSH=true
 IDE_EDITOR=""
 SSAFY_BASE_URL="https://lab.ssafy.com"
 SSAFY_USER_ID=""
-# 토큰은 보안상 파일에 저장하지 않음 (세션 전용)
+# Token is not persisted to file for security (session-only)
 EOF
-    
-    # SSAFY GitLab 사용자명 입력
-    read -r -p "SSAFY GitLab 사용자명 (lab.ssafy.com/{여기} 부분): " ssafy_user
+
+    read -r -p "SSAFY GitLab username (lab.ssafy.com/{here}): " ssafy_user
     if [ -n "$ssafy_user" ]; then
         sed -i "s/SSAFY_USER_ID=\"\"/SSAFY_USER_ID=\"$ssafy_user\"/" "$CONFIG_FILE"
     fi
-    
+
     echo ""
-    echo "✅ 초기 설정 완료!"
-    echo "💡 토큰은 gitup 실행 시 자동으로 안내됩니다."
+    echo "Initial config completed."
+    echo "Token input is prompted automatically when running gitup."
     echo ""
-    read -r -p "🎉 Enter를 누르면 설정을 적용합니다..." _
+    read -r -p "Press Enter to apply settings..." _
     exec bash
 fi
