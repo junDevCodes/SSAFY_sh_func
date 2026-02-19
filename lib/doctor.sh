@@ -4,24 +4,24 @@
 # =============================================================================
 
 # =============================================================================
-# algo-doctor - 시스템 및 설정 진단 도구 (V7.0) (V7.6 네임스페이스)
+# algo-doctor - ?쒖뒪??諛??ㅼ젙 吏꾨떒 ?꾧뎄 (V7.0) (V7.6 ?ㅼ엫?ㅽ럹?댁뒪)
 # =============================================================================
 #
-# 안내:
-# - 이 파일의 출력은 사용자가 그대로 복사해서 이슈 트래커에 붙여넣는 것을 전제로 합니다.
-# - 토큰/설정 내용 등 민감정보는 절대 출력하지 않습니다.
+# ?덈궡:
+# - ???뚯씪??異쒕젰? ?ъ슜?먭? 洹몃?濡?蹂듭궗?댁꽌 ?댁뒋 ?몃옒而ㅼ뿉 遺숈뿬?ｋ뒗 寃껋쓣 ?꾩젣濡??⑸땲??
+# - ?좏겙/?ㅼ젙 ?댁슜 ??誘쇨컧?뺣낫???덈? 異쒕젰?섏? ?딆뒿?덈떎.
 
 _ssafy_doctor__first_line() {
-    # 표준 출력에서 첫 줄만 안전하게 가져옵니다.
-    # (head 의존 없이 bash built-in read 사용)
+    # ?쒖? 異쒕젰?먯꽌 泥?以꾨쭔 ?덉쟾?섍쾶 媛?몄샃?덈떎.
+    # (head ?섏〈 ?놁씠 bash built-in read ?ъ슜)
     local line=""
     IFS= read -r line || true
     printf '%s' "$line"
 }
 
 _ssafy_doctor__safe_uname() {
-    # 호스트명(개인 식별 가능 정보)이 포함될 수 있는 uname -a 대신,
-    # 최소한의 OS/커널/아키텍처 정보만 출력합니다.
+    # ?몄뒪?몃챸(媛쒖씤 ?앸퀎 媛???뺣낫)???ы븿?????덈뒗 uname -a ???
+    # 理쒖냼?쒖쓽 OS/而ㅻ꼸/?꾪궎?띿쿂 ?뺣낫留?異쒕젰?⑸땲??
     local kernel_name="unknown"
     local kernel_release="unknown"
     local machine="unknown"
@@ -32,13 +32,13 @@ _ssafy_doctor__safe_uname() {
 }
 
 _print_diagnostic_report() {
-    # 이슈 트래커에 바로 붙여넣기 좋은 Markdown 리포트 블록을 출력합니다.
-    # - 개인정보/민감정보(토큰, 설정파일 내용, 사용자명 등) 출력 금지
-    # - 경로는 최소 정보만 제공 (마지막 폴더만)
+    # ?댁뒋 ?몃옒而ㅼ뿉 諛붾줈 遺숈뿬?ｊ린 醫뗭? Markdown 由ы룷??釉붾줉??異쒕젰?⑸땲??
+    # - 媛쒖씤?뺣낫/誘쇨컧?뺣낫(?좏겙, ?ㅼ젙?뚯씪 ?댁슜, ?ъ슜?먮챸 ?? 異쒕젰 湲덉?
+    # - 寃쎈줈??理쒖냼 ?뺣낫留??쒓났 (留덉?留??대뜑留?
     echo ""
-    echo "==================== 복사용 진단 리포트 (Markdown) ===================="
-    echo "아래 블록을 그대로 복사해서 GitHub Issue/DM에 붙여넣어주세요."
-    echo "(개인정보/토큰/설정 내용은 포함되지 않습니다)"
+    echo "==================== 蹂듭궗??吏꾨떒 由ы룷??(Markdown) ===================="
+    echo "?꾨옒 釉붾줉??洹몃?濡?蹂듭궗?댁꽌 GitHub Issue/DM??遺숈뿬?ｌ뼱二쇱꽭??"
+    echo "(媛쒖씤?뺣낫/?좏겙/?ㅼ젙 ?댁슜? ?ы븿?섏? ?딆뒿?덈떎)"
     echo ""
 
     local now_utc=""
@@ -56,18 +56,18 @@ _print_diagnostic_report() {
     if command -v uname >/dev/null 2>&1; then
         uname_compact="$(_ssafy_doctor__safe_uname)"
     else
-        uname_compact="(uname 없음)"
+        uname_compact="(uname ?놁쓬)"
     fi
 
-    local git_line="(미설치)"
+    local git_line="(誘몄꽕移?"
     if command -v git >/dev/null 2>&1; then
-        git_line="$(git --version 2>/dev/null || echo "(확인 실패)")"
+        git_line="$(git --version 2>/dev/null || echo "(?뺤씤 ?ㅽ뙣)")"
     fi
 
-    local curl_line="(미설치)"
+    local curl_line="(誘몄꽕移?"
     if command -v curl >/dev/null 2>&1; then
         curl_line="$(curl --version 2>/dev/null | _ssafy_doctor__first_line)"
-        [ -z "$curl_line" ] && curl_line="(확인 실패)"
+        [ -z "$curl_line" ] && curl_line="(?뺤씤 ?ㅽ뙣)"
     fi
 
     local py_cmd=""
@@ -75,11 +75,11 @@ _print_diagnostic_report() {
         py_cmd="$(_ssafy_python_lookup)"
     fi
 
-    local python_line="(미설치)"
+    local python_line="(誘몄꽕移?"
     if [ -n "$py_cmd" ]; then
         local py_ver=""
         py_ver="$("$py_cmd" --version 2>&1 | _ssafy_doctor__first_line)"
-        # Windows(Git Bash) 환경에서 CRLF(\r) 섞이는 케이스 정리
+        # Windows(Git Bash) ?섍꼍?먯꽌 CRLF(\r) ?욎씠??耳?댁뒪 ?뺣━
         py_ver="${py_ver//$'\r'/}"
         if [ -n "$py_ver" ]; then
             python_line="$py_cmd ($py_ver)"
@@ -88,8 +88,8 @@ _print_diagnostic_report() {
         fi
     fi
 
-    local ide_editor_disp="${IDE_EDITOR:-"(미설정)"}"
-    local ide_priority_disp="${IDE_PRIORITY:-"(미설정)"}"
+    local ide_editor_disp="${IDE_EDITOR:-"(誘몄꽕??"}"
+    local ide_priority_disp="${IDE_PRIORITY:-"(誘몄꽕??"}"
 
     local config_exists="no"
     if [ -n "${ALGO_CONFIG_FILE:-}" ] && [ -f "$ALGO_CONFIG_FILE" ]; then
@@ -101,192 +101,201 @@ _print_diagnostic_report() {
         cache_exists="yes"
     fi
 
-    # Markdown 코드블록: here-doc(백틱 커맨드 치환) 이슈를 피하기 위해 echo/printf로 구성합니다.
+    # Markdown 肄붾뱶釉붾줉: here-doc(諛깊떛 而ㅻ㎤??移섑솚) ?댁뒋瑜??쇳븯湲??꾪빐 echo/printf濡?援ъ꽦?⑸땲??
     echo '```text'
-    echo '[SSAFY Algo Tools Doctor 리포트]'
-    printf -- '- 생성시각(UTC): %s\n' "$now_utc"
+    echo '[SSAFY Algo Tools Doctor 由ы룷??'
+    printf -- '- ?앹꽦?쒓컖(UTC): %s\n' "$now_utc"
     printf -- '- ALGO_FUNCTIONS_VERSION: %s\n' "${ALGO_FUNCTIONS_VERSION:-unknown}"
     printf -- '- OSTYPE: %s\n' "$ostype"
-    printf -- '- uname(마스킹): %s\n' "$uname_compact"
+    printf -- '- uname(留덉뒪??: %s\n' "$uname_compact"
     printf -- '- SHELL: %s\n' "$shell_path"
-    printf -- '- PWD(마스킹): .../%s\n' "$pwd_tail"
+    printf -- '- PWD(留덉뒪??: .../%s\n' "$pwd_tail"
     printf -- '- Git: %s\n' "$git_line"
     printf -- '- Curl: %s\n' "$curl_line"
     printf -- '- Python: %s\n' "$python_line"
     printf -- '- IDE_EDITOR: %s\n' "$ide_editor_disp"
     printf -- '- IDE_PRIORITY: %s\n' "$ide_priority_disp"
-    printf -- '- 설정파일(~/.algo_config): 존재: %s\n' "$config_exists"
-    printf -- '- 상태캐시(~/.algo_status_cache): 존재: %s\n' "$cache_exists"
+    printf -- '- ?ㅼ젙?뚯씪(~/.algo_config): 議댁옱: %s\n' "$config_exists"
+    printf -- '- ?곹깭罹먯떆(~/.algo_status_cache): 議댁옱: %s\n' "$cache_exists"
     echo '```'
 
     echo "======================================================================="
 }
 
 ssafy_algo_doctor() {
-    # Ensure config/auth/ide are loaded
-    if type init_algo_config >/dev/null 2>&1; then init_algo_config; fi
+    if type init_algo_config >/dev/null 2>&1; then
+        init_algo_config
+    fi
 
-    echo "=================================================="
-    echo "  SSAFY Algo Tools Doctor (${ALGO_FUNCTIONS_VERSION})"
-    echo "=================================================="
-    echo ""
-    
-    # [Kill Switch Check]
+    if type ui_header >/dev/null 2>&1; then
+        ui_header "algo-doctor" "version=${ALGO_FUNCTIONS_VERSION:-unknown}"
+        ui_info "scope=tools/config/network"
+    else
+        echo "=================================================="
+        echo "  SSAFY Algo Tools Doctor (${ALGO_FUNCTIONS_VERSION})"
+        echo "=================================================="
+    fi
+
     if ! _check_service_status; then
-        echo "⚠️  서비스 상태 확인 중 문제가 발생했습니다 (또는 점검 중)."
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "Service status check failed."
+        else
+            echo "[ERROR] Service status check failed."
+        fi
         return 1
     fi
-    
+
     local issues=0
-    
-    # [1] 필수 도구 점검
-    echo "1️⃣  필수 도구 점검"
+    local py_cmd=""
+
+    if type ui_section >/dev/null 2>&1; then
+        ui_section "Checks"
+    fi
+
     for tool in git curl base64; do
         if command -v "$tool" >/dev/null 2>&1; then
-            echo "   ✅ $tool: 설치됨 ($(command -v "$tool"))"
+            if type ui_ok >/dev/null 2>&1; then
+                ui_ok "$tool installed: $(command -v "$tool")"
+            else
+                echo "[OK] $tool installed"
+            fi
         else
-            echo "   ❌ $tool: 설치되지 않음!"
-            ((issues++))
+            if type ui_warn >/dev/null 2>&1; then
+                ui_warn "$tool is missing"
+            else
+                echo "[WARN] $tool is missing"
+            fi
+            issues=$((issues + 1))
         fi
     done
-    
-    # Python check (allow python or python3)
-    # Use _ssafy_python_lookup if available
-    local py_cmd=""
+
     if type _ssafy_python_lookup >/dev/null 2>&1; then
         py_cmd=$(_ssafy_python_lookup)
     fi
-
     if [ -n "$py_cmd" ]; then
-        echo "   ✅ python: 설치됨 ($py_cmd)"
+        if type ui_ok >/dev/null 2>&1; then
+            ui_ok "python available: $py_cmd"
+        else
+            echo "[OK] python available: $py_cmd"
+        fi
     else
-        echo "   ❌ python: 설치되지 않음! (python3 또는 python 필요)"
-        ((issues++))
+        if type ui_warn >/dev/null 2>&1; then
+            ui_warn "python is missing (python or python3 required)."
+        else
+            echo "[WARN] python is missing"
+        fi
+        issues=$((issues + 1))
     fi
-    
-    # [2] 설정 파일 보안 점검
-    echo ""
-    echo "2️⃣  설정 파일 보안 점검"
+
     if [ -f "$ALGO_CONFIG_FILE" ]; then
-        if [[ "$OSTYPE" != "msys" ]] && [[ "$OSTYPE" != "win32" ]]; then
-            local perms=$(stat -c "%a" "$ALGO_CONFIG_FILE" 2>/dev/null || echo "unknown")
-            if [ "$perms" == "600" ]; then
-                echo "   ✅ 권한: 600 (안전함)"
-            else
-                echo "   ⚠️  권한: $perms (권장: 600)"
-                # issues++ (윈도우 이슈로 경고만)
-            fi
+        if type ui_ok >/dev/null 2>&1; then
+            ui_ok "config found: $ALGO_CONFIG_FILE"
         else
-             echo "   ℹ️  Windows/Git Bash 환경 (권한 체크 생략)"
+            echo "[OK] config found: $ALGO_CONFIG_FILE"
         fi
-        
-        # [Security V7.7] 토큰 세션 상태 체크 (만료 여부 포함)
-        if [ -n "${SSAFY_AUTH_TOKEN:-}" ]; then
-            if _is_token_expired "$SSAFY_AUTH_TOKEN"; then
-                echo "   ⚠️  토큰 상태: 만료됨 (재입력 필요)"
-                echo "      (gitup 실행 시 새 토큰을 입력하세요)"
-                ((issues++))
-            else
-                # 남은 시간 계산
-                local jwt="${SSAFY_AUTH_TOKEN#Bearer }"
-                local payload=$(echo "$jwt" | cut -d'.' -f2)
-                
-                # Payload Decoding for exp (Use Python)
-                local exp_time=0
-                if [ -n "$py_cmd" ]; then
-                    exp_time=$(echo "$payload" | "$py_cmd" -c "
-import sys, base64, json
-try:
-    p = sys.stdin.read().strip().replace('-','+').replace('_','/')
-    p += '=' * (4 - len(p) % 4) if len(p) % 4 else ''
-    print(json.loads(base64.b64decode(p)).get('exp',0))
-except: print(0)
-" 2>/dev/null || echo "0")
-                fi
+    else
+        if type ui_warn >/dev/null 2>&1; then
+            ui_warn "config file is missing: $ALGO_CONFIG_FILE"
+        else
+            echo "[WARN] config file is missing: $ALGO_CONFIG_FILE"
+        fi
+        issues=$((issues + 1))
+    fi
 
-                local now=$(date +%s)
-                local remaining=$((exp_time - now))
-                local hours=$((remaining / 3600))
-                local mins=$(((remaining % 3600) / 60))
-                
-                echo "   ✅ 토큰 상태: 유효 (세션 전용)"
-                echo "      (남은 시간: ${hours}시간 ${mins}분)"
+    if [ -n "${IDE_EDITOR:-}" ]; then
+        if command -v "$IDE_EDITOR" >/dev/null 2>&1 || command -v "${IDE_EDITOR}.exe" >/dev/null 2>&1; then
+            if type ui_ok >/dev/null 2>&1; then
+                ui_ok "IDE command available: $IDE_EDITOR"
+            else
+                echo "[OK] IDE command available: $IDE_EDITOR"
             fi
         else
-            echo "   ℹ️  토큰 미설정 (gitup 실행 시 입력 요청)"
+            if type ui_warn >/dev/null 2>&1; then
+                ui_warn "IDE command not found: $IDE_EDITOR"
+            else
+                echo "[WARN] IDE command not found: $IDE_EDITOR"
+            fi
+            issues=$((issues + 1))
         fi
     else
-        echo "   ❌ 설정 파일 없음 (~/.algo_config)"
-        ((issues++))
-    fi
-    
-    # [3] IDE 설정 점검
-    echo ""
-    echo "3️⃣  IDE 설정 점검"
-    if [ -n "$IDE_EDITOR" ]; then
-        if command -v "$IDE_EDITOR" >/dev/null 2>&1; then
-            echo "   ✅ IDE: $IDE_EDITOR (실행 가능)"
+        if type ui_warn >/dev/null 2>&1; then
+            ui_warn "IDE_EDITOR is not configured."
         else
-             # Windows의 경우 .exe가 빠져있을 수 있으므로 체크
-             if command -v "${IDE_EDITOR}.exe" >/dev/null 2>&1; then
-                 echo "   ✅ IDE: $IDE_EDITOR.exe (실행 가능)"
-             else
-                 echo "   ❌ IDE: $IDE_EDITOR (명령어를 찾을 수 없음)"
-                 echo "      -> PATH에 추가하거나 algo-config에서 올바른 명령어로 변경하세요."
-                 ((issues++))
-             fi
+            echo "[WARN] IDE_EDITOR is not configured."
         fi
-    else
-        echo "   ⚠️  IDE 미설정"
     fi
-    
-    # [4] SSAFY 서버 연결 (토큰 유효성)
-    echo ""
-    echo "4️⃣  SSAFY 서버 연결"
-    
-    # 토큰 타입에 따라 검증 방식 분기
-    if [ -n "$SSAFY_AUTH_TOKEN" ]; then
+
+    if [ -n "${SSAFY_AUTH_TOKEN:-}" ]; then
         if [[ "$SSAFY_AUTH_TOKEN" == "Bearer "* ]]; then
-            # [Case A] LMS Bearer Token (JWT)
-            # GitLab API로 검증 불가하므로, 형식만 체크합니다.
-            
-            if [[ "$SSAFY_AUTH_TOKEN" == *"ey"* ]]; then
-                 echo "   ✅ 인증 상태: 유효 (SSAFY LMS Bearer Token)"
-                 echo "      (참고: LMS 토큰은 로컬에서 형식만 검증되었습니다)"
+            if type _is_token_expired >/dev/null 2>&1 && _is_token_expired "$SSAFY_AUTH_TOKEN"; then
+                if type ui_warn >/dev/null 2>&1; then
+                    ui_warn "Session token is expired."
+                else
+                    echo "[WARN] Session token is expired."
+                fi
+                issues=$((issues + 1))
             else
-                 echo "   ❌ 인증 상태: 토큰 형식이 올바르지 않음 (Bearer ...)"
-                 ((issues++))
+                if type ui_ok >/dev/null 2>&1; then
+                    ui_ok "Bearer token looks valid (local check)."
+                else
+                    echo "[OK] Bearer token looks valid (local check)."
+                fi
             fi
         else
-            # [Case B] GitLab Private Token (glpat-...)
-            # GitLab API 호출로 검증
-            local status_code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $SSAFY_AUTH_TOKEN" "${SSAFY_BASE_URL:-https://lab.ssafy.com}/api/v4/user" || echo "fail")
-            
-            if [ "$status_code" == "200" ]; then
-                echo "   ✅ 인증 상태: 유효함 (연결 성공)"
-            elif [ "$status_code" == "401" ]; then
-                 echo "   ❌ 인증 상태: 토큰 만료 또는 잘못됨 (401)"
-                 echo "   💡 LMS 토큰이라면 'Bearer '로 시작해야 합니다."
-                 ((issues++))
-            elif [ "$status_code" == "fail" ]; then
-                 echo "   ⚠️  서버 연결 실패 (네트워크 확인)"
+            local status_code=""
+            status_code=$(curl -s -o /dev/null -w "%{http_code}" -H "Authorization: Bearer $SSAFY_AUTH_TOKEN" "${SSAFY_BASE_URL:-https://lab.ssafy.com}/api/v4/user" 2>/dev/null || echo "fail")
+            if [ "$status_code" = "200" ]; then
+                if type ui_ok >/dev/null 2>&1; then
+                    ui_ok "GitLab API auth check passed."
+                else
+                    echo "[OK] GitLab API auth check passed."
+                fi
             else
-                 echo "   ❓ 응답 코드: $status_code"
+                if type ui_warn >/dev/null 2>&1; then
+                    ui_warn "GitLab API auth check failed (code=$status_code)."
+                else
+                    echo "[WARN] GitLab API auth check failed (code=$status_code)."
+                fi
+                issues=$((issues + 1))
             fi
         fi
     else
-        echo "   ⚠️  토큰 미설정 (검증 건너뜀)"
+        if type ui_warn >/dev/null 2>&1; then
+            ui_warn "SSAFY_AUTH_TOKEN is not set (session-only value)."
+        else
+            echo "[WARN] SSAFY_AUTH_TOKEN is not set"
+        fi
     fi
 
-    echo ""
-    echo "=================================================="
     if [ $issues -eq 0 ]; then
-        echo "  모든 시스템이 정상입니다!"
+        if type ui_ok >/dev/null 2>&1; then
+            ui_ok "PASS: all checks look healthy."
+        else
+            echo "[OK] PASS: all checks look healthy."
+        fi
     else
-        echo "⚠️  $issues 건의 문제점이 발견되었습니다."
+        if type ui_warn >/dev/null 2>&1; then
+            ui_warn "WARN: found $issues issue(s)."
+        else
+            echo "[WARN] found $issues issue(s)."
+        fi
     fi
-    echo "=================================================="
 
-    # 사용자 제보 UX: 마지막에 복사용 Markdown 리포트 블록 출력
     _print_diagnostic_report
+
+    if _is_interactive; then
+        local action=""
+        echo ""
+        echo "Actions: [Enter]=exit, r=rerun, c=reprint report"
+        read -r action
+        case "$action" in
+            r|R)
+                ssafy_algo_doctor
+                return $?
+                ;;
+            c|C)
+                _print_diagnostic_report
+                ;;
+        esac
+    fi
 }

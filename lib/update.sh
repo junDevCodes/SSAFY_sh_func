@@ -403,46 +403,114 @@ ssafy_algo_update() {
     local script_dir="${ALGO_ROOT_DIR:-$HOME/.ssafy-tools}"
     local install_mode=""
     local channel=""
+    local current_version=""
+    local answer=""
 
     if [ ! -d "$script_dir" ]; then
-        echo "[error] Install path not found: $script_dir"
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "Install path not found: $script_dir"
+        else
+            echo "[error] Install path not found: $script_dir"
+        fi
         return 1
     fi
 
     install_mode=$(_ssafy_resolve_install_mode "$script_dir")
     channel=$(_ssafy_resolve_update_channel "$script_dir")
+    current_version=$(_ssafy_read_version_from_dir "$script_dir")
 
-    echo "Install path: $script_dir"
-    echo "Updating... (mode: $install_mode, channel: $channel)"
+    if type ui_header >/dev/null 2>&1; then
+        ui_header "algo-update" "Panel style execution"
+        ui_info "install_mode=$install_mode"
+        ui_info "channel=$channel"
+        ui_info "current_version=$current_version"
+        ui_path "$script_dir"
+    else
+        echo "Install path: $script_dir"
+        echo "Updating... (mode: $install_mode, channel: $channel)"
+    fi
+
+    if _is_interactive && type input_confirm >/dev/null 2>&1; then
+        if [ "$install_mode" = "legacy-git" ]; then
+            if type ui_warn >/dev/null 2>&1; then
+                ui_warn "Legacy git install will migrate to snapshot mode."
+            else
+                echo "[warn] Legacy git install will migrate to snapshot mode."
+            fi
+            input_confirm answer "Continue migration and update?" "n"
+            case $? in
+                10|20) return 1 ;;
+            esac
+            if [ "$answer" != "yes" ]; then
+                return 1
+            fi
+        else
+            input_confirm answer "Run update now?" "y"
+            case $? in
+                10|20) return 1 ;;
+            esac
+            if [ "$answer" != "yes" ]; then
+                return 1
+            fi
+        fi
+    fi
 
     case "$install_mode" in
         git)
             _ssafy_update_git_install "$script_dir" || {
-                echo "[error] Git mode update failed."
+                if type ui_error >/dev/null 2>&1; then
+                    ui_error "Git mode update failed."
+                else
+                    echo "[error] Git mode update failed."
+                fi
                 return 1
             }
             ;;
         legacy-git)
             _ssafy_migrate_legacy_git_install "$script_dir" "$channel" || {
-                echo "[error] Legacy git migration failed."
+                if type ui_error >/dev/null 2>&1; then
+                    ui_error "Legacy git migration failed."
+                else
+                    echo "[error] Legacy git migration failed."
+                fi
                 return 1
             }
             ;;
         snapshot|*)
             _ssafy_update_snapshot_install "$script_dir" "$channel" || {
-                echo "[error] Snapshot update failed."
+                if type ui_error >/dev/null 2>&1; then
+                    ui_error "Snapshot update failed."
+                else
+                    echo "[error] Snapshot update failed."
+                fi
                 return 1
             }
             ;;
     esac
 
-    echo ""
-    echo "Update completed."
-    echo "Open a new terminal or run 'source ~/.bashrc' to apply changes."
-    echo ""
-    read -r -p "Restart shell now? (y/N): " restart_choice
-    if [[ "$restart_choice" =~ ^[Yy]$ ]]; then
-        exec bash
+    if type ui_ok >/dev/null 2>&1; then
+        ui_ok "Update completed."
+        ui_hint "Open a new terminal or run 'source ~/.bashrc'."
+    else
+        echo ""
+        echo "Update completed."
+        echo "Open a new terminal or run 'source ~/.bashrc' to apply changes."
+        echo ""
+    fi
+
+    if _is_interactive && type input_confirm >/dev/null 2>&1; then
+        input_confirm answer "Restart shell now?" "n"
+        case $? in
+            10|20) return 0 ;;
+        esac
+        if [ "$answer" = "yes" ]; then
+            exec bash
+        fi
+    else
+        read -r -p "Restart shell now? (y/N): " restart_choice
+        if [[ "$restart_choice" =~ ^[Yy]$ ]]; then
+            exec bash
+        fi
     fi
 }
 

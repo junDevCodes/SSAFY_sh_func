@@ -1,16 +1,13 @@
 # =============================================================================
 # lib/config.sh
-# Configuration Management & Initialization
+# Configuration management & initialization
 # =============================================================================
 
-
-# 설정 파일 경로 정의 (Global)
-# Phase 1 Task 1-1: 경로 통일 (.algo_config)
 ALGO_CONFIG_FILE="$HOME/.algo_config"
 
 init_algo_config() {
     if [ ! -f "$ALGO_CONFIG_FILE" ]; then
-        echo "⚙️  설정 파일이 없어 새로 생성합니다: $ALGO_CONFIG_FILE"
+        echo "[INFO] creating config file: $ALGO_CONFIG_FILE"
         cat <<EOF > "$ALGO_CONFIG_FILE"
 # SSAFY Algo Functions Config
 ALGO_BASE_DIR="$HOME/algos"
@@ -20,14 +17,12 @@ GIT_AUTO_PUSH=true
 IDE_EDITOR=""
 SSAFY_BASE_URL="https://lab.ssafy.com"
 SSAFY_USER_ID=""
-# 토큰은 보안상 파일에 저장하지 않음 (세션 전용)
 EOF
     fi
 
-    # Load Config
+    # shellcheck disable=SC1090
     source "$ALGO_CONFIG_FILE"
-    
-    # [V7.6] 호환성: ALGO_BASE_DIR가 없으면 추가
+
     if [ -z "${ALGO_BASE_DIR:-}" ]; then
         echo 'ALGO_BASE_DIR="$HOME/algos"' >> "$ALGO_CONFIG_FILE"
         export ALGO_BASE_DIR="$HOME/algos"
@@ -46,124 +41,334 @@ _get_config_value() {
 _set_config_value() {
     local key="$1"
     local value="$2"
-    
-    # [보안] 토큰은 파일에 저장하지 않음 (세션 전용)
-    # - 문서(README) 정책과 실제 동작을 일치시키기 위한 가드
-    # - 토큰 값은 환경변수로만 유지하고 설정 파일에는 기록하지 않는다
+
     if [ "$key" = "SSAFY_AUTH_TOKEN" ]; then
         export SSAFY_AUTH_TOKEN="$value"
-        echo "🔐 토큰은 보안상 설정 파일에 저장하지 않습니다. (세션 전용)"
+        if type ui_info >/dev/null 2>&1; then
+            ui_info "Token is stored in session only."
+        else
+            echo "[INFO] Token is stored in session only."
+        fi
         return 0
     fi
 
     if [ ! -f "$ALGO_CONFIG_FILE" ]; then
         init_algo_config
     fi
-    
-    # 기존 키가 있으면 변경
+
     if grep -q "^${key}=" "$ALGO_CONFIG_FILE"; then
-        # Phase 4 Task 4-2: sed 공통 함수 사용
         _sed_inplace "s|^${key}=.*|${key}=\"${value}\"|" "$ALGO_CONFIG_FILE"
     else
-        # 없으면 추가
         echo "${key}=\"${value}\"" >> "$ALGO_CONFIG_FILE"
     fi
-    
-    # 환경변수 즉시 반영
+
     export "${key}=${value}"
 }
 
-# 설정 편집 명령어 (V7.6 네임스페이스)
+_ssafy_algo_config_find_wizard() {
+    local script_dir="${ALGO_ROOT_DIR:-$HOME/.ssafy-tools}"
+
+    if [ -f "$script_dir/algo_config_wizard.py" ]; then
+        printf '%s' "$script_dir/algo_config_wizard.py"
+        return 0
+    fi
+    if [ -f "$HOME/Desktop/SSAFY_sh_func/algo_config_wizard.py" ]; then
+        printf '%s' "$HOME/Desktop/SSAFY_sh_func/algo_config_wizard.py"
+        return 0
+    fi
+    if [ -f "$HOME/.ssafy-tools/algo_config_wizard.py" ]; then
+        printf '%s' "$HOME/.ssafy-tools/algo_config_wizard.py"
+        return 0
+    fi
+    return 1
+}
+
+_ssafy_algo_config_reload() {
+    if [ -f "$HOME/.bashrc" ]; then
+        # shellcheck disable=SC1090
+        source "$HOME/.bashrc"
+    else
+        init_algo_config
+    fi
+}
+
+_ssafy_algo_config_run_gui() {
+    local wizard=""
+    local py_cmd=""
+
+    wizard=$(_ssafy_algo_config_find_wizard 2>/dev/null || true)
+    if [ -z "$wizard" ]; then
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "algo_config_wizard.py not found."
+        else
+            echo "[ERROR] algo_config_wizard.py not found."
+        fi
+        return 1
+    fi
+
+    if type _ssafy_python_lookup >/dev/null 2>&1; then
+        py_cmd=$(_ssafy_python_lookup)
+    fi
+    if [ -z "$py_cmd" ]; then
+        py_cmd="python"
+    fi
+
+    "$py_cmd" "$wizard" || return 1
+    _ssafy_algo_config_reload
+    return 0
+}
+
+_ssafy_algo_config_show() {
+    if type ui_header >/dev/null 2>&1; then
+        ui_header "algo-config" "version=${ALGO_FUNCTIONS_VERSION:-unknown}"
+        ui_section "Base"
+        ui_info "ALGO_BASE_DIR=${ALGO_BASE_DIR:-unset}"
+        ui_section "IDE"
+        ui_info "IDE_EDITOR=${IDE_EDITOR:-unset}"
+        ui_section "Git"
+        ui_info "GIT_DEFAULT_BRANCH=${GIT_DEFAULT_BRANCH:-main}"
+        ui_info "GIT_COMMIT_PREFIX=${GIT_COMMIT_PREFIX:-solve}"
+        ui_info "GIT_AUTO_PUSH=${GIT_AUTO_PUSH:-true}"
+        ui_section "SSAFY"
+        ui_info "SSAFY_BASE_URL=${SSAFY_BASE_URL:-https://lab.ssafy.com}"
+        ui_info "SSAFY_USER_ID=${SSAFY_USER_ID:-unset}"
+        if [ -n "${SSAFY_AUTH_TOKEN:-}" ]; then
+            ui_info "SSAFY_AUTH_TOKEN=session-only(set)"
+        else
+            ui_info "SSAFY_AUTH_TOKEN=session-only(unset)"
+        fi
+        ui_hint "use: algo-config edit | algo-config reset | algo-config show"
+    else
+        echo "ALGO_BASE_DIR=${ALGO_BASE_DIR:-unset}"
+        echo "IDE_EDITOR=${IDE_EDITOR:-unset}"
+        echo "GIT_DEFAULT_BRANCH=${GIT_DEFAULT_BRANCH:-main}"
+        echo "GIT_COMMIT_PREFIX=${GIT_COMMIT_PREFIX:-solve}"
+        echo "GIT_AUTO_PUSH=${GIT_AUTO_PUSH:-true}"
+        echo "SSAFY_BASE_URL=${SSAFY_BASE_URL:-https://lab.ssafy.com}"
+        echo "SSAFY_USER_ID=${SSAFY_USER_ID:-unset}"
+    fi
+}
+
+_ssafy_algo_config_cli_collect_value() {
+    local key="$1"
+    local current="$2"
+    local out_var="$3"
+    local value=""
+
+    case "$key" in
+        GIT_AUTO_PUSH)
+            input_choice value "Select value for ${key}" "${current}" "true:true" "false:false"
+            case $? in
+                0) printf -v "$out_var" '%s' "$value"; return 0 ;;
+                *) return $? ;;
+            esac
+            ;;
+        ALGO_UI_STYLE)
+            input_choice value "Select value for ${key}" "${current}" "panel:panel" "plain:plain"
+            case $? in
+                0) printf -v "$out_var" '%s' "$value"; return 0 ;;
+                *) return $? ;;
+            esac
+            ;;
+        ALGO_UI_COLOR)
+            input_choice value "Select value for ${key}" "${current}" "auto:auto" "always:always" "never:never"
+            case $? in
+                0) printf -v "$out_var" '%s' "$value"; return 0 ;;
+                *) return $? ;;
+            esac
+            ;;
+        ALGO_INPUT_PROFILE)
+            input_choice value "Select value for ${key}" "${current}" "stable:stable" "quick:quick" "strict:strict"
+            case $? in
+                0) printf -v "$out_var" '%s' "$value"; return 0 ;;
+                *) return $? ;;
+            esac
+            ;;
+        *)
+            input_text value "Enter value for ${key}" "$current" true
+            case $? in
+                0) printf -v "$out_var" '%s' "$value"; return 0 ;;
+                *) return $? ;;
+            esac
+            ;;
+    esac
+}
+
+_ssafy_algo_config_cli_edit() {
+    local key_choice=""
+    local key=""
+    local value=""
+    local answer=""
+    local rc=0
+    local pending_keys=()
+    local pending_values=()
+    local i=0
+
+    if ! _is_interactive || ! type input_choice >/dev/null 2>&1; then
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "CLI edit needs interactive terminal."
+        else
+            echo "[ERROR] CLI edit needs interactive terminal."
+        fi
+        return 1
+    fi
+
+    while true; do
+        input_choice key_choice "Select config key to edit" "done" \
+            "ALGO_BASE_DIR:ALGO_BASE_DIR" \
+            "IDE_EDITOR:IDE_EDITOR" \
+            "GIT_DEFAULT_BRANCH:GIT_DEFAULT_BRANCH" \
+            "GIT_COMMIT_PREFIX:GIT_COMMIT_PREFIX" \
+            "GIT_AUTO_PUSH:GIT_AUTO_PUSH" \
+            "SSAFY_BASE_URL:SSAFY_BASE_URL" \
+            "SSAFY_USER_ID:SSAFY_USER_ID" \
+            "SSAFY_UPDATE_CHANNEL:SSAFY_UPDATE_CHANNEL" \
+            "ALGO_UI_STYLE:ALGO_UI_STYLE" \
+            "ALGO_UI_COLOR:ALGO_UI_COLOR" \
+            "ALGO_INPUT_PROFILE:ALGO_INPUT_PROFILE" \
+            "done:Finish editing"
+        rc=$?
+        case "$rc" in
+            20) return 1 ;;
+            10) continue ;;
+        esac
+
+        if [ "$key_choice" = "done" ]; then
+            break
+        fi
+
+        key="$key_choice"
+        _ssafy_algo_config_cli_collect_value "$key" "$(_get_config_value "$key")" value
+        rc=$?
+        case "$rc" in
+            20) return 1 ;;
+            10) continue ;;
+            0) ;;
+            *) return 1 ;;
+        esac
+
+        pending_keys+=("$key")
+        pending_values+=("$value")
+
+        if type ui_ok >/dev/null 2>&1; then
+            ui_ok "staged: $key=$value"
+        else
+            echo "[OK] staged: $key=$value"
+        fi
+    done
+
+    if [ "${#pending_keys[@]}" -eq 0 ]; then
+        if type ui_warn >/dev/null 2>&1; then
+            ui_warn "No changes staged."
+        else
+            echo "[WARN] No changes staged."
+        fi
+        return 0
+    fi
+
+    if type ui_header >/dev/null 2>&1; then
+        ui_header "algo-config edit summary" "pending changes"
+    fi
+    for i in "${!pending_keys[@]}"; do
+        echo "  - ${pending_keys[$i]}=${pending_values[$i]}"
+    done
+
+    input_confirm answer "Save these changes?" "y"
+    case $? in
+        20|10) return 1 ;;
+    esac
+    if [ "$answer" != "yes" ]; then
+        return 1
+    fi
+
+    for i in "${!pending_keys[@]}"; do
+        _set_config_value "${pending_keys[$i]}" "${pending_values[$i]}"
+    done
+
+    _ssafy_algo_config_reload
+    if type ui_ok >/dev/null 2>&1; then
+        ui_ok "Config updated."
+    else
+        echo "[OK] Config updated."
+    fi
+    return 0
+}
+
+_ssafy_algo_config_reset() {
+    local answer=""
+
+    if _is_interactive && type input_confirm >/dev/null 2>&1; then
+        input_confirm answer "Reset all config values?" "n"
+        case $? in
+            20|10) return 1 ;;
+        esac
+        [ "$answer" = "yes" ] || return 1
+
+        input_confirm answer "Are you sure? This cannot be undone." "n"
+        case $? in
+            20|10) return 1 ;;
+        esac
+        [ "$answer" = "yes" ] || return 1
+    fi
+
+    rm -f "$ALGO_CONFIG_FILE"
+    init_algo_config
+    if type ui_ok >/dev/null 2>&1; then
+        ui_ok "Config reset completed."
+    else
+        echo "[OK] Config reset completed."
+    fi
+}
+
 ssafy_algo_config() {
     init_algo_config
-    
-    if [ "$1" = "edit" ]; then
-        # V7.0: Python 마법사 사용
-        # Phase 1 Task 1-3: ALGO_ROOT_DIR 사용
-        # Phase 1 Task 1-4: readlink -f 호환성 수정 (macOS)
-        local script_dir="${ALGO_ROOT_DIR:-$HOME/.ssafy-tools}"
-        
-        # Python 스크립트 파일 존재 확인
-        if [ ! -f "$script_dir/algo_config_wizard.py" ]; then
-            # 폴백: 다른 경로 시도
-            if [ -f "$HOME/Desktop/SSAFY_sh_func/algo_config_wizard.py" ]; then
-                script_dir="$HOME/Desktop/SSAFY_sh_func"
-            elif [ -f "$HOME/.ssafy-tools/algo_config_wizard.py" ]; then
-                script_dir="$HOME/.ssafy-tools"
-            else
-                echo "❌ algo_config_wizard.py를 찾을 수 없습니다."
-                return 1
+
+    case "${1:-show}" in
+        show)
+            _ssafy_algo_config_show
+            return 0
+            ;;
+        edit)
+            if _is_interactive && type input_choice >/dev/null 2>&1; then
+                local edit_mode="gui"
+                input_choice edit_mode "Select edit mode" "gui" \
+                    "gui:GUI wizard (recommended)" \
+                    "cli:CLI quick edit"
+                case $? in
+                    20|10) return 1 ;;
+                esac
+
+                if [ "$edit_mode" = "gui" ]; then
+                    _ssafy_algo_config_run_gui || {
+                        if type ui_warn >/dev/null 2>&1; then
+                            ui_warn "GUI wizard failed. Switching to CLI edit."
+                        else
+                            echo "[WARN] GUI wizard failed. Switching to CLI edit."
+                        fi
+                        _ssafy_algo_config_cli_edit
+                        return $?
+                    }
+                    return 0
+                fi
+
+                _ssafy_algo_config_cli_edit
+                return $?
             fi
-        fi
-        
-        python "$script_dir/algo_config_wizard.py"
-        
-        # [UX] 자동 적용 (엔터 없이 바로 적용)
-        echo "🔄 변경된 설정을 적용 중입니다..."
-        # ~/.bashrc가 있으면 source, 없으면 algo_functions.sh만 다시 로드?
-        # 보통 사용자는 ~/.bashrc를 통해 로드하므로
-        if [ -f "$HOME/.bashrc" ]; then
-             source "$HOME/.bashrc"
-        else
-             init_algo_config
-        fi
-        
-        echo "✅ 설정이 적용되었습니다!"
-        return
-    fi
-    
-    if [ "$1" = "show" ]; then
-        echo "=================================================="
-        echo " 🛠  SSAFY Algo Config (${ALGO_FUNCTIONS_VERSION})"
-        echo "=================================================="
-        echo ""
-        
-        echo "📂 [기본 설정]"
-        echo "  • 작업 경로 : ${ALGO_BASE_DIR:-미설정}"
-        echo ""
-        
-        echo "💻 [IDE 설정]"
-        if [ -n "${IDE_EDITOR:-}" ]; then
-            echo "  • 사용 IDE  : ${IDE_EDITOR}"
-            # alias 등으로 잡혀있을 수 있으므로 type 사용이 나을 수도 있으나, command -v로 체크
-            local ide_path=$(command -v "$IDE_EDITOR" 2>/dev/null || echo "❌ 연결 안됨 (자동 탐색 필요)")
-            echo "  • 실행 경로 : $ide_path"
-        else
-            echo "  • 사용 IDE  : 미설정"
-        fi
-        echo ""
-        
-        echo "🐙 [Git 설정]"
-        echo "  • 브랜치    : ${GIT_DEFAULT_BRANCH:-main}"
-        echo "  • 접두어    : ${GIT_COMMIT_PREFIX:-solve}"
-        echo "  • 자동푸시  : ${GIT_AUTO_PUSH:-true}"
-        echo ""
-        
-        echo "🔑 [SSAFY 설정]"
-        echo "  • 서버 URL  : ${SSAFY_BASE_URL:-https://lab.ssafy.com}"
-        echo "  • 사용자 ID : ${SSAFY_USER_ID:-미설정}"
-        if [ -n "${SSAFY_AUTH_TOKEN:-}" ]; then
-             echo "  • 인증 토큰 : 🔐 설정됨 (세션 전용)"
-        else
-             echo "  • 인증 토큰 : ❌ 미설정"
-        fi
-        
-        echo ""
-        echo "=================================================="
-        echo "💡 수정하려면: algo-config edit"
-        echo "=================================================="
-        return
-    fi
-    
-    if [ "$1" = "reset" ]; then
-        rm -f "$ALGO_CONFIG_FILE"
-        init_algo_config
-        echo "✅ 설정이 초기화되었습니다"
-        return
-    fi
-    
-    echo "사용법:"
-    echo "  algo-config edit   - 설정 파일 편집"
-    echo "  algo-config show   - 현재 설정 보기"
-    echo "  algo-config reset  - 설정 초기화"
+
+            _ssafy_algo_config_run_gui
+            return $?
+            ;;
+        reset)
+            _ssafy_algo_config_reset
+            return $?
+            ;;
+        *)
+            echo "Usage:"
+            echo "  algo-config show"
+            echo "  algo-config edit"
+            echo "  algo-config reset"
+            return 1
+            ;;
+    esac
 }
+
