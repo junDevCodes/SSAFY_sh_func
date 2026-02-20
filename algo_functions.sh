@@ -22,7 +22,7 @@ export ALGO_ROOT_DIR="$SCRIPT_DIR"
 # - VERSION 파일이 없거나 읽기 실패 시 기본값으로 폴백
 # - Windows(Git Bash) CRLF(\r) 제거 및 공백 제거 처리
 # =============================================================================
-ALGO_FUNCTIONS_VERSION_DEFAULT="V8.1.5"
+ALGO_FUNCTIONS_VERSION_DEFAULT="V8.1.6"
 VERSION_FILE="$SCRIPT_DIR/VERSION"
 
 if [ -f "$VERSION_FILE" ]; then
@@ -85,14 +85,22 @@ alias algo-config='ssafy_algo_config'
 init_algo_config
 # Phase 2 Task 2-3: _setup_ide_aliases 호출 추가
 _setup_ide_aliases
-_check_update
+if [ -o monitor ]; then
+    # Suppress job-control line ([1] PID) during background update check
+    set +m
+    _check_update
+    set -m
+else
+    _check_update
+fi
 
 if type ui_ok >/dev/null 2>&1; then
-    ui_ok "Algo shell functions loaded (${ALGO_FUNCTIONS_VERSION})"
-    ui_hint "Run 'algo-config edit' to update settings."
+    ui_header "SSAFY Algo Tools" "Version ${ALGO_FUNCTIONS_VERSION}"
+    ui_ok "알고리즘 셸 함수 로드 완료!"
+    ui_hint "'algo-config edit'로 설정을 변경할 수 있습니다."
 else
-    echo "Algo shell functions loaded (${ALGO_FUNCTIONS_VERSION})"
-    echo "Run 'algo-config edit' to update settings."
+    echo "✅ 알고리즘 셸 함수 로드 완료! (${ALGO_FUNCTIONS_VERSION})"
+    echo "💡 'algo-config edit'로 설정을 변경할 수 있습니다"
 fi
 
 # =============================================================================
