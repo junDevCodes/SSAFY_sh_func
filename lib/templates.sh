@@ -181,7 +181,7 @@ _ssafy_al_interactive_flow() {
                 ;;
             7)
                 if type ui_header >/dev/null 2>&1; then
-                    ui_header "al plan preview" "Review and run"
+                    ui_header "al" "실행 전 미리보기"
                     ui_info "site=$site_code"
                     ui_info "problem=$problem"
                     ui_info "language=$lang"
@@ -365,10 +365,10 @@ ssafy_al() {
     local file=""
 
     if type ui_header >/dev/null 2>&1; then
-        ui_header "al" "Panel style execution"
-        ui_info "site=$site_display"
-        ui_info "problem=$problem"
-        ui_info "language=${lang}"
+        ui_header "al" "문제 파일 생성 + 선택 흐름 실행"
+        ui_info "사이트=$site_display"
+        ui_info "문제번호=$problem"
+        ui_info "언어=${lang}"
         ui_path "$dir"
     else
         echo "[INFO] site=$site_display"
@@ -394,7 +394,7 @@ ssafy_al() {
             _create_algo_file "$file" "$site_name" "$site_display" "$problem" "$lang"
         else
             if type ui_warn >/dev/null 2>&1; then
-                ui_warn "Target file already exists."
+                ui_warn "대상 파일이 이미 존재합니다."
             else
                 echo "[WARN] Target file already exists."
             fi
@@ -402,7 +402,7 @@ ssafy_al() {
                 _handle_git_commit "$file" "$problem" "$custom_commit_msg" "$lang"
             else
                 if type ui_info >/dev/null 2>&1; then
-                    ui_info "Skip git stage."
+                    ui_info "Git 단계 건너뜀"
                 else
                     echo "[INFO] Skip git stage."
                 fi
@@ -423,7 +423,7 @@ ssafy_al() {
                 fi
             else
                 if type ui_info >/dev/null 2>&1; then
-                    ui_info "Skip git stage."
+                    ui_info "Git 단계 건너뜀"
                 else
                     echo "[INFO] Skip git stage."
                 fi
@@ -443,7 +443,7 @@ ssafy_al() {
         local editor
         editor=$(get_active_ide)
         if type ui_step >/dev/null 2>&1; then
-            ui_step "Open file in editor: $editor"
+            ui_step "에디터 열기: $editor"
         else
             echo "[STEP] Open file in editor: $editor"
         fi
@@ -455,14 +455,14 @@ ssafy_al() {
         fi
     else
         if type ui_info >/dev/null 2>&1; then
-            ui_info "Skip open stage."
+            ui_info "파일 열기 단계 건너뜀"
         else
             echo "[INFO] Skip open stage."
         fi
     fi
 
     if type ui_ok >/dev/null 2>&1; then
-        ui_ok "al completed."
+        ui_ok "al 작업 완료"
     else
         echo "[OK] al completed."
     fi
@@ -476,7 +476,7 @@ _create_algo_file() {
     local lang="$5"
 
     if type ui_step >/dev/null 2>&1; then
-        ui_step "Create template file: $file"
+        ui_step "템플릿 파일 생성: $file"
     else
         echo "[STEP] Create template file: $file"
     fi
@@ -490,7 +490,7 @@ _create_algo_file() {
     if [ "$lang" = "cpp" ]; then
         : > "$file"
         if type ui_ok >/dev/null 2>&1; then
-            ui_ok "C++ file created."
+            ui_ok "C++ 파일 생성 완료"
         else
             echo "[OK] C++ file created."
         fi
@@ -570,9 +570,8 @@ PROG_CODE
     esac
 
     if type ui_ok >/dev/null 2>&1; then
-        ui_ok "Python file created."
+        ui_ok "Python 파일 생성 완료"
     else
         echo "[OK] Python file created."
     fi
 }
-

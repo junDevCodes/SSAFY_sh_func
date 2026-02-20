@@ -21,7 +21,7 @@ _find_ssafy_session_root() {
     return 1
 }
 
-_confirm_commit_message() {
+_confirm_commit_message_legacy() {
     local msg="$1"
     local answer=""
 
@@ -49,6 +49,34 @@ _confirm_commit_message() {
     done
 }
 
+_confirm_commit_message_styled() {
+    local msg="$1"
+    local answer=""
+
+    CONFIRMED_COMMIT_MSG=""
+
+    while true; do
+        echo "📝 현재 커밋 메시지: $msg"
+        read -r -p "이 메시지로 커밋/푸시할까요? (y/n): " answer
+        case "$answer" in
+            y|Y)
+                CONFIRMED_COMMIT_MSG="$msg"
+                return 0
+                ;;
+            n|N)
+                read -r -p "새 커밋 메시지를 입력하세요: " msg
+                if [ -z "${msg//[[:space:]]/}" ]; then
+                    echo "❌ 커밋 메시지는 공백만 입력할 수 없습니다."
+                    return 1
+                fi
+                ;;
+            *)
+                echo "⚠️ y 또는 n 중에서 선택하세요."
+                ;;
+        esac
+    done
+}
+
 _handle_git_commit() {
     local target_path="$1"
     local problem="$2"
@@ -71,7 +99,7 @@ _handle_git_commit() {
 
     if [ -z "$git_root" ]; then
         if type ui_warn >/dev/null 2>&1; then
-            ui_warn "Git repository not found."
+            ui_warn "Git 저장소를 찾지 못했습니다."
         else
             echo "[WARN] Git repository not found."
         fi
@@ -92,7 +120,7 @@ _handle_git_commit() {
 
     if type ui_info >/dev/null 2>&1; then
         ui_info "git_root=$git_root"
-        ui_info "target=$relative_path"
+        ui_info "대상 파일=$relative_path"
     else
         echo "[INFO] git_root=$git_root"
         echo "[INFO] target=$relative_path"
@@ -104,7 +132,7 @@ _handle_git_commit() {
 
     local commit_msg=""
     if [ -n "$custom_msg" ]; then
-        _confirm_commit_message "$custom_msg" || {
+        _confirm_commit_message_styled "$custom_msg" || {
             cd "$original_dir" 2>/dev/null || true
             return 1
         }
@@ -117,7 +145,7 @@ _handle_git_commit() {
 
     if git commit -m "$commit_msg" 2>/dev/null; then
         if type ui_ok >/dev/null 2>&1; then
-            ui_ok "commit completed: $commit_msg"
+            ui_ok "커밋 완료: $commit_msg"
         else
             echo "[OK] commit completed: $commit_msg"
         fi
@@ -128,7 +156,7 @@ _handle_git_commit() {
 
             if git push origin "$GIT_DEFAULT_BRANCH" 2>/dev/null; then
                 if type ui_ok >/dev/null 2>&1; then
-                    ui_ok "push completed: origin/$GIT_DEFAULT_BRANCH"
+                    ui_ok "푸시 완료: origin/$GIT_DEFAULT_BRANCH"
                 else
                     echo "[OK] push completed: origin/$GIT_DEFAULT_BRANCH"
                 fi
@@ -136,20 +164,20 @@ _handle_git_commit() {
                 if [ -n "$current_branch" ] && [ "$current_branch" != "$GIT_DEFAULT_BRANCH" ]; then
                     if git push origin "$current_branch" 2>/dev/null; then
                         if type ui_ok >/dev/null 2>&1; then
-                            ui_ok "push completed: origin/$current_branch"
+                            ui_ok "푸시 완료: origin/$current_branch"
                         else
                             echo "[OK] push completed: origin/$current_branch"
                         fi
                     else
                         if type ui_warn >/dev/null 2>&1; then
-                            ui_warn "push failed. tried origin/$GIT_DEFAULT_BRANCH and origin/$current_branch"
+                            ui_warn "푸시 실패: origin/$GIT_DEFAULT_BRANCH, origin/$current_branch 시도"
                         else
                             echo "[WARN] push failed. tried origin/$GIT_DEFAULT_BRANCH and origin/$current_branch"
                         fi
                     fi
                 else
                     if type ui_warn >/dev/null 2>&1; then
-                        ui_warn "push failed: origin/$GIT_DEFAULT_BRANCH"
+                        ui_warn "푸시 실패: origin/$GIT_DEFAULT_BRANCH"
                     else
                         echo "[WARN] push failed: origin/$GIT_DEFAULT_BRANCH"
                     fi
@@ -158,7 +186,7 @@ _handle_git_commit() {
         fi
     else
         if type ui_warn >/dev/null 2>&1; then
-            ui_warn "No changes to commit."
+            ui_warn "커밋할 변경사항이 없습니다."
         else
             echo "[WARN] No changes to commit."
         fi
@@ -635,7 +663,7 @@ _gitdown_all() {
     done
 
     if type ui_header >/dev/null 2>&1; then
-        ui_header "gitdown --all summary" "batch result"
+        ui_header "gitdown" "배치 결과 요약"
         ui_info "success=$success_count"
         ui_info "failed=$fail_count"
         ui_info "skipped=$skip_count"
@@ -756,13 +784,13 @@ _ssafy_gitup_prompt_flow() {
     done
 
     if type ui_header >/dev/null 2>&1; then
-        ui_header "gitup preview" "Step 3/4: parsed input"
+        ui_header "gitup" "실행 전 미리보기"
         case "$mode" in
-            1) ui_info "mode=SmartLink" ;;
-            2) ui_info "mode=URL" ;;
-            3) ui_info "mode=Topic" ;;
+            1) ui_info "입력모드=SmartLink" ;;
+            2) ui_info "입력모드=URL" ;;
+            3) ui_info "입력모드=Topic" ;;
         esac
-        ui_info "estimated_repos=$repo_estimate"
+        ui_info "예상 레포 수=$repo_estimate"
     else
         echo "[INFO] mode=$mode, estimated_repos=$repo_estimate"
     fi
@@ -868,13 +896,13 @@ ssafy_gitdown() {
     fi
 
     if type ui_header >/dev/null 2>&1; then
-        ui_header "gitdown" "Panel style execution"
+        ui_header "gitdown" "커밋/푸시 실행"
         if [ "$ssafy_mode" = true ]; then
-            ui_info "mode=ssafy"
+            ui_info "모드=ssafy"
         else
-            ui_info "mode=normal"
+            ui_info "모드=normal"
         fi
-        ui_section "Current changes"
+        ui_section "현재 변경사항"
     else
         echo "[INFO] gitdown"
     fi
@@ -922,7 +950,7 @@ ssafy_gitdown() {
 
             if [ "${#branches[@]}" -gt 0 ]; then
                 if type ui_section >/dev/null 2>&1; then
-                    ui_section "Step 3/5: Push branch"
+                    ui_section "푸시 브랜치 선택"
                 else
                     echo "[Step 3/5] Push branch"
                 fi
@@ -962,7 +990,7 @@ ssafy_gitdown() {
         fi
 
         if type ui_header >/dev/null 2>&1; then
-            ui_header "gitdown preview" "Step 5/5"
+            ui_header "gitdown" "최종 확인"
             if [ "$custom_msg" = true ]; then
                 ui_info "commit_msg=$commit_msg"
             else
@@ -1005,7 +1033,7 @@ ssafy_gitdown() {
 
     git add .
     if type ui_step >/dev/null 2>&1; then
-        ui_step "commit message: $commit_msg"
+        ui_step "커밋 메시지: $commit_msg"
     else
         echo "[STEP] commit message: $commit_msg"
     fi
@@ -1094,21 +1122,21 @@ ssafy_gitdown() {
 
         if [ -n "$push_branch" ]; then
             if type ui_step >/dev/null 2>&1; then
-                ui_step "Push to origin/$push_branch"
+                ui_step "원격 푸시: origin/$push_branch"
             else
                 echo "[STEP] Push to origin/$push_branch"
             fi
             if git push origin "$push_branch" 2>/dev/null; then
                 push_ok=true
                 if type ui_ok >/dev/null 2>&1; then
-                    ui_ok "Push completed."
+                    ui_ok "푸시 완료"
                 else
                     echo "[OK] Push completed."
                 fi
             else
                 push_ok=false
                 if type ui_error >/dev/null 2>&1; then
-                    ui_error "Push failed: origin/$push_branch"
+                    ui_error "푸시 실패: origin/$push_branch"
                 else
                     echo "[ERROR] Push failed: origin/$push_branch"
                 fi
@@ -1151,7 +1179,7 @@ ssafy_gitdown() {
                 next_repo=$(_ssafy_next_repo "$current_repo")
                 if [ -n "$next_repo" ] && [ ! -d "$next_repo" ]; then
                     if type ui_warn >/dev/null 2>&1; then
-                        ui_warn "Next repo is not cloned: $next_repo"
+                        ui_warn "다음 레포가 아직 clone되지 않았습니다: $next_repo"
                     else
                         echo "[WARN] Next repo is not cloned: $next_repo"
                     fi
@@ -1193,7 +1221,7 @@ ssafy_gitdown() {
             fi
         else
             if type ui_warn >/dev/null 2>&1; then
-                ui_warn "Skip follow-up flow because push failed or skipped."
+                ui_warn "푸시가 실패/건너뜀 상태라 후속 플로우를 생략합니다."
             else
                 echo "[WARN] Skip follow-up flow because push failed or skipped."
             fi
@@ -1205,7 +1233,11 @@ _gitup_ssafy() {
 
     _ensure_ssafy_config
     if [ -z "${SSAFY_BASE_URL:-}" ] || [ -z "${SSAFY_USER_ID:-}" ]; then
-        echo "???????? SSAFY ????關?쒎첎?嫄??????????꾩룆梨띰쭕????饔낅떽??????? 'algo-config edit'??SSAFY_BASE_URL/SSAFY_USER_ID??????關?쒎첎?嫄?????饔낅떽???壤굿??곸읆???"
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "SSAFY 설정이 비어 있습니다. 'algo-config edit'에서 SSAFY_BASE_URL/SSAFY_USER_ID를 설정하세요."
+        else
+            echo "[ERROR] SSAFY settings are missing. Configure SSAFY_BASE_URL/SSAFY_USER_ID via algo-config edit."
+        fi
         return 1
     fi
 
@@ -1228,21 +1260,28 @@ _gitup_ssafy() {
         session="${BASH_REMATCH[3]}"
     elif [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw|ex)$ ]]; then
         topic="${BASH_REMATCH[1]}"
-        read -r -p "??遺얘턁????怨뚮옩????影?ろ뀮???????????⑤뜪輿? " session
+        read -r -p "회차 숫자를 입력하세요: " session
     elif [[ "$repo_name" =~ ^([A-Za-z0-9]+)$ ]]; then
         topic="$repo_name"
-        read -r -p "??遺얘턁????怨뚮옩????影?ろ뀮???????????⑤뜪輿? " session
+        read -r -p "회차 숫자를 입력하세요: " session
     else
         if [[ "$repo_name" =~ ^(ws|hw|ex)_[0-9]+(_[0-9]+)?$ ]]; then
-            echo "?? SSAFY ????????⑤뜪輿???耀붾굝??????????⑤８?????????? ?????????????怨몄）: $repo_name"
-            echo "   ?? <topic>_ws_<??遺얘턁????怨뚮옩????影?ろ뀮??? ?????<topic>_ws_<??遺얘턁????怨뚮옩????影?ろ뀮???_<???????"
-            echo "   ?? ds_ws_2 ?????ds_ws_2_1"
+            if type ui_error >/dev/null 2>&1; then
+                ui_error "토픽명이 빠진 형식입니다: $repo_name"
+                ui_info "예시: ds_ws_2 또는 ds_ws_2_1"
+            else
+                echo "[ERROR] Invalid SSAFY topic: $repo_name"
+            fi
         fi
         return 1
     fi
 
     if [ -z "$session" ] || ! [[ "$session" =~ ^[0-9]+$ ]]; then
-        echo "????遺얘턁????怨뚮옩????影?ろ뀮??????????????? ??????? ?????????????怨몄）."
+        if type ui_error >/dev/null 2>&1; then
+            ui_error "회차는 숫자로 입력해야 합니다."
+        else
+            echo "[ERROR] Session number must be numeric."
+        fi
         return 1
     fi
 
@@ -1273,9 +1312,19 @@ _gitup_ssafy() {
         fi
     done
 
-    echo "Clone summary: ok=${#cloned[@]}, skipped=${#skipped[@]}, failed=${#failed[@]}"
-    if [ "${#failed[@]}" -gt 0 ]; then
-        echo "Failed: ${failed[*]}"
+    if type ui_header >/dev/null 2>&1; then
+        ui_header "gitup" "SSAFY clone 결과"
+        ui_info "성공=${#cloned[@]}"
+        ui_info "건너뜀=${#skipped[@]}"
+        ui_info "실패=${#failed[@]}"
+        if [ "${#failed[@]}" -gt 0 ]; then
+            ui_warn "실패 목록: ${failed[*]}"
+        fi
+    else
+        echo "Clone summary: ok=${#cloned[@]}, skipped=${#skipped[@]}, failed=${#failed[@]}"
+        if [ "${#failed[@]}" -gt 0 ]; then
+            echo "Failed: ${failed[*]}"
+        fi
     fi
 
     local session_root="$(pwd)"
@@ -1295,7 +1344,11 @@ _gitup_ssafy() {
     elif [ "${#skipped[@]}" -gt 0 ]; then
         _open_repo_file "${skipped[0]}"
     else
-        echo "No repository to open."
+        if type ui_warn >/dev/null 2>&1; then
+            ui_warn "열 수 있는 레포지토리가 없습니다."
+        else
+            echo "No repository to open."
+        fi
     fi
 }
 
@@ -1326,7 +1379,7 @@ ssafy_gitup() {
                     ;;
                 10|20)
                     if type ui_warn >/dev/null 2>&1; then
-                        ui_warn "Canceled by user."
+                        ui_warn "사용자 취소로 종료합니다."
                     else
                         echo "[WARN] Canceled by user."
                     fi
@@ -1368,7 +1421,7 @@ ssafy_gitup() {
                         if [[ "$decoded" == "Bearer "* ]]; then
                             export SSAFY_AUTH_TOKEN="$decoded"
                             if type ui_ok >/dev/null 2>&1; then
-                                ui_ok "SmartLink token applied to current session."
+                                ui_ok "SmartLink 토큰을 현재 세션에 적용했습니다."
                             else
                                 echo "[OK] SmartLink token applied to current session."
                             fi
@@ -1391,22 +1444,22 @@ ssafy_gitup() {
     fi
 
     if type ui_header >/dev/null 2>&1; then
-        ui_header "gitup" "Panel style execution"
+        ui_header "gitup" "클론 실행"
         if [ "$ssafy_mode" = true ]; then
-            ui_info "input_mode=topic"
+            ui_info "입력모드=topic"
         elif [[ "$input" == *"|"* ]]; then
-            ui_info "input_mode=smartlink"
+            ui_info "입력모드=smartlink"
         elif _ssafy_git_is_valid_url "$input"; then
-            ui_info "input_mode=url"
+            ui_info "입력모드=url"
         else
-            ui_info "input_mode=auto"
+            ui_info "입력모드=auto"
         fi
         ui_info "input=$input"
     fi
 
     if [[ "$input" == https://project.ssafy.com/* ]]; then
         if type ui_step >/dev/null 2>&1; then
-            ui_step "Run batch parser -> clone"
+            ui_step "배치 파싱 후 clone 실행"
         fi
         ssafy_batch "$input"
         return $?
@@ -1414,7 +1467,7 @@ ssafy_gitup() {
 
     if [ "$ssafy_mode" = true ] || _ssafy_git_is_valid_topic "$input" || [[ "$input" =~ ^https?://lab\.ssafy\.com/ ]]; then
         if type ui_step >/dev/null 2>&1; then
-            ui_step "Run SSAFY topic clone flow"
+            ui_step "SSAFY 토픽 clone 플로우 실행"
         fi
         _gitup_ssafy "$input" || return 1
         return 0
@@ -1422,7 +1475,7 @@ ssafy_gitup() {
 
     if ! _ssafy_git_is_valid_url "$input"; then
         if type ui_error >/dev/null 2>&1; then
-            ui_error "Invalid input. URL must start with http(s) or use --ssafy with topic format."
+            ui_error "입력이 올바르지 않습니다. http(s) URL 또는 --ssafy 토픽 형식을 사용하세요."
         else
             echo "[ERROR] Invalid input. URL must start with http(s) or use --ssafy with topic format."
         fi
@@ -1430,7 +1483,7 @@ ssafy_gitup() {
     fi
 
     if type ui_step >/dev/null 2>&1; then
-        ui_step "clone repository"
+        ui_step "레포지토리 clone"
     else
         echo "[STEP] clone repository"
     fi
@@ -1440,7 +1493,7 @@ ssafy_gitup() {
     repo_name=$(basename "$input" .git)
 
     if type ui_ok >/dev/null 2>&1; then
-        ui_ok "clone completed: $repo_name"
+        ui_ok "clone 완료: $repo_name"
     else
         echo "[OK] clone completed: $repo_name"
     fi
@@ -1516,10 +1569,14 @@ ssafy_batch() {
          while IFS='|' read -r url course_id pr_id pa_id; do
              # Remove CR for Windows compatibility
              url=$(echo "$url" | tr -d '\r')
-             course_id=$(echo "$course_id" | tr -d '\r')
-             
+            course_id=$(echo "$course_id" | tr -d '\r')
+              
              if [ -n "$url" ]; then
-                 echo "?????ㅼ뒧????紐껊젇?? Cloning: $url"
+                 if type ui_step >/dev/null 2>&1; then
+                     ui_step "클론 중: $url"
+                 else
+                     echo "Cloning: $url"
+                 fi
                  git clone "$url"
                  
                  local folder_name=$(basename "$url" .git)
@@ -1555,15 +1612,23 @@ ssafy_batch() {
                  fi
              fi
          done < <(echo "$SSAFY_AUTH_TOKEN" | "$py_cmd" "$script_dir/ssafy_batch_create.py" "$1" "$2" --pipe)
-         
+          
          if [ -n "$first_repo" ]; then
-             echo "???Opening first repository: $first_repo"
+             if type ui_step >/dev/null 2>&1; then
+                 ui_step "첫 레포 열기: $first_repo"
+             else
+                 echo "Opening first repository: $first_repo"
+             fi
              # [Fix V8.1] Sync status immediately (chk done)
              _sync_playlist_status "$ssafy_root"
              _open_repo_file "$ssafy_root/$first_repo"
          fi
     else
-         echo "??Python????遺얘턁????????????????繹먮굞??????????怨몄）."
+         if type ui_error >/dev/null 2>&1; then
+             ui_error "Python 실행 환경을 찾을 수 없습니다."
+         else
+             echo "[ERROR] Python command not found."
+         fi
          return 1
     fi
 }
