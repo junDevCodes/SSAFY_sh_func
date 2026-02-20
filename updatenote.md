@@ -1,5 +1,44 @@
 # 📋 업데이트 노트 (Release Notes)
 
+## V8.1.6 (2026-02-20) - Emoji Width Profile Stabilization
+
+### 🧩 VS Code Git Bash 우측 경계 1칸 오차 수정
+- 원인: 일부 이모지(예: `🛠`)의 표시폭이 터미널/폰트 환경에 따라 1칸 또는 2칸으로 다르게 렌더링되어 우측 경계 정렬이 어긋나는 문제
+- 해결: 패널 렌더러에 이모지 폭 보정 프로파일을 도입해 환경별 편차를 흡수
+
+### ⚙️ 신규 UI 환경변수
+- `ALGO_UI_EMOJI_WIDTH=auto|narrow|wide` (기본: `auto`)
+- `auto` 동작:
+  - VS Code + Git Bash(msys) 계열: `narrow`
+  - 그 외 환경: `wide`
+- 필요 시 사용자가 `narrow`/`wide`를 직접 강제해 즉시 보정 가능
+
+### 📚 문서/버전 동기화
+- `VERSION`, `ALGO_FUNCTIONS_VERSION_DEFAULT`, `README.md` 버전을 `V8.1.6`으로 동기화
+- README에 VS Code Git Bash 정렬 이슈 대응 가이드 추가
+
+## V8.1.5 (2026-02-20) - CMD Panel Alignment Hotfix
+
+### 🧱 Panel UI 정렬 안정화 (`algo-config`, `algo-doctor`)
+- 단일 패널 렌더링 구조(`ui_panel_begin`/`ui_panel_end`)를 도입하여 섹션/상태 라인이 박스 밖으로 튀어나오던 문제를 수정했습니다.
+- `ui_section`, `ui_info`, `ui_ok`, `ui_warn`, `ui_error`, `ui_hint`가 패널 열린 상태에서 일관된 패널 라인으로 출력되도록 개선했습니다.
+- border/line 계산 기준을 통일하여 우측 경계가 2칸 어긋나던 문제를 수정했습니다.
+- 이모지 폭 보정 프로파일(`ALGO_UI_EMOJI_WIDTH=auto|narrow|wide`)을 추가해 `algo-config` 우측 경계 1칸 오차를 해결했습니다.
+
+### 📐 창 크기 연동 패널 폭 계산
+- `UI_PANEL_WIDTH` 미설정 시 터미널 현재 폭을 기준으로 패널 전체폭을 자동 계산합니다.
+- `ALGO_UI_PANEL_MARGIN`(기본 `4`), `ALGO_UI_PANEL_MIN_WIDTH`(기본 `52`), `ALGO_UI_PANEL_MAX_WIDTH`(기본 `0`, 무제한)로 폭 정책을 제어할 수 있습니다.
+- 패널 시작 시 폭을 snapshot(`UI_PANEL_FRAME_WIDTH`)하여 같은 패널 내에서는 창 크기 변화가 있어도 폭이 흔들리지 않도록 했습니다.
+
+### 🐍 렌더러 선택 및 폴백 개선
+- 신규 환경변수 `ALGO_UI_RENDERER=auto|python|plain`를 추가했습니다. 기본값은 `auto`입니다.
+- 패널 렌더러가 안정적으로 동작하지 않는 환경에서는 강제로 깨진 패널을 출력하지 않고 `plain`으로 자동 전환합니다.
+- Python 폭 계산 렌더러 입력 전달 방식을 개선하여 한글/이모지가 포함된 라인의 우측 경계 정렬 정확도를 높였습니다.
+
+### 🩺 Doctor 출력 일관성 개선
+- 진단 리포트 구분선을 `ui_divider "="`로 통일했습니다.
+- 하단 동작 안내를 `ui_hint` 스타일로 출력하여 경고 메시지와 의미를 분리했습니다.
+
 ## V8.1.5 (2026-02-19) - Snapshot Installer & Hybrid Update Strategy
 
 ### 🔒 원클릭 설치 보안/운영 개선

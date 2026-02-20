@@ -1,4 +1,4 @@
-# 알고리즘/실습 자동화 Shell 함수 (V8.1.5)
+# 알고리즘/실습 자동화 Shell 함수 (V8.1.6)
 
 이 저장소는 Bash 함수들을 제공하여 알고리즘 풀이와 SSAFY 실습 과제 제출을 자동화합니다.
 별도의 복잡한 설치 없이 스크립트 파일만 복사하여 즉시 사용할 수 있습니다.
@@ -31,6 +31,11 @@
 > ```
 
 설치가 끝나면 `source ~/.bashrc`를 실행하거나 터미널을 다시 열어주세요.
+
+문제가 생기면 저장소 절대경로로 직접 로드해 현재 코드 기준으로 다시 시작할 수 있습니다.
+```bash
+source /c/Users/<사용자명>/Desktop/workspace/python/projects/SSAFY_sh_func/algo_functions.sh
+```
 
 ### 방법 2: 수동 설치
 ```bash
@@ -159,6 +164,22 @@ python tests/run_tests.py --out tests/test_results.json
 - Default UI style:
   - `ALGO_UI_STYLE=panel` (fallback: `plain`)
   - `ALGO_UI_COLOR=auto|always|never`
+  - `ALGO_UI_RENDERER=auto|python|plain` (default: `auto`, renderer 실패 시 `plain` 자동 전환)
+  - `ALGO_UI_EMOJI_WIDTH=auto|narrow|wide` (default: `auto`, VS Code/Git Bash는 자동으로 `narrow`)
+- Panel width behavior:
+  - `UI_PANEL_WIDTH`를 지정하면 고정폭으로 출력
+  - 미지정 시 `패널 전체폭 = 터미널 현재 폭 - ALGO_UI_PANEL_MARGIN`으로 자동 계산 (기본 `4`)
+  - 최소폭 `ALGO_UI_PANEL_MIN_WIDTH` (기본 `52`)
+  - 최대폭 `ALGO_UI_PANEL_MAX_WIDTH` (`0`이면 상한 없음)
+  - 패널 시작 시 폭을 1회 snapshot하여 같은 패널 내 border/line 폭을 고정
+  - 환경별 이모지 폭 차이로 우측 경계가 어긋나면 `ALGO_UI_EMOJI_WIDTH=narrow` 또는 `wide`로 강제 가능
+
+### V8.1.6 UI 정렬 가이드 (VS Code Git Bash)
+- 증상: `algo-config` 패널 우측 `|` 경계가 1칸 안쪽으로 들어가 보이는 현상
+- 기본 대응: `ALGO_UI_EMOJI_WIDTH=auto` (VS Code/Git Bash에서 자동 `narrow`)
+- 강제 보정:
+  - `export ALGO_UI_EMOJI_WIDTH=narrow`
+  - `export ALGO_UI_EMOJI_WIDTH=wide`
 - Input profile variable:
   - `ALGO_INPUT_PROFILE=stable|quick|strict` (default behavior: `stable`)
 - Common interactive keys:
