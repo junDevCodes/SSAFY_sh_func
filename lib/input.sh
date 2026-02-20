@@ -160,16 +160,16 @@ input_confirm() {
     local default_value="${3:-n}"
     local answer=""
     local normalized_default="n"
-    local guide="y/N"
+    local default_mark="N"
 
     case "$default_value" in
         y|Y|yes|YES)
             normalized_default="y"
-            guide="Y/n"
+            default_mark="Y"
             ;;
         *)
             normalized_default="n"
-            guide="y/N"
+            default_mark="N"
             ;;
     esac
 
@@ -183,7 +183,7 @@ input_confirm() {
     fi
 
     while true; do
-        read -r -p "${prompt} (${guide}, q=cancel, b=back): " answer
+        read -r -p "${prompt} (y/n, default=${default_mark}, q=cancel, b=back): " answer
         answer="${answer//$'\r'/}"
 
         _input_handle_nav_key "$answer"
@@ -245,4 +245,3 @@ input_masked() {
     printf -v "$out_var" '%s' "$value"
     return "$INPUT_RC_OK"
 }
-
