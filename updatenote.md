@@ -1,5 +1,24 @@
 # 📋 업데이트 노트 (Release Notes)
 
+## V8.1.7 (2026-02-24) - Gitup Flow Stabilization & Setup/Help Update
+
+### ✅ gitup guided flow 안정화
+- `Step 4 confirm`에서 `b=back` 입력 시 취소 종료되지 않고 `Step 2`로 복귀하도록 흐름을 안정화했습니다.
+- `Step 4` 기본값 처리(`Enter => yes`)와 확인 분기(`yes/no/cancel/back`)를 명확히 정리했습니다.
+- `SSAFY_DEBUG_FLOW=1` 디버그 로그를 통해 step/rc/answer/flow_rc 추적이 가능하도록 보강했습니다.
+
+### ✅ SmartLink 토큰 처리 개선
+- SmartLink(`URL|Token`) 입력 경로에서 토큰 파싱/적용 경로를 점검하고 안내를 보강했습니다.
+- `URL|Token` 형식 오류 시 예시 중심 안내를 제공해 재입력 혼선을 줄였습니다.
+
+### ✅ 설치 후 설정 플로우/도움말 정책 반영
+- 설치 완료 후 별도 설정 플로우가 이어지도록 정책을 정리했습니다.
+- 도움말 진입점을 `algo-help` 중심으로 일원화하고, `hint`는 현재 동작과 연계되는 최소 안내만 유지합니다.
+
+### ✅ 문서/버전 동기화
+- `VERSION`을 `V8.1.7`로 갱신했습니다.
+- `README.md`에 `V8.1.7` 기준 필수 공지/운영 안내를 반영했습니다.
+
 ## V8.1.6 (2026-02-20) - Emoji Width Profile Stabilization
 
 ### 🧩 VS Code Git Bash 우측 경계 1칸 오차 수정
