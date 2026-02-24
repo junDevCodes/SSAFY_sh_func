@@ -20,6 +20,7 @@ UI_PYTHON_CMD_CACHE=""
 UI_PANEL_OPEN=0
 UI_PANEL_OPEN_STYLE=""
 UI_PANEL_FRAME_WIDTH=""
+UI_PANEL_BUFFER=()
 
 _ui_title_with_icon() {
     local title="$1"
@@ -250,6 +251,222 @@ _ui_frame_width() {
     fi
 
     _ui_panel_width
+}
+
+_ui_panel_buffer_reset() {
+    UI_PANEL_BUFFER=()
+}
+
+_ui_panel_buffer_add() {
+    local entry="$1"
+    UI_PANEL_BUFFER+=("$entry")
+}
+
+_ui_panel_render_python_buffer() {
+    local width="$1"
+    local py_cmd=""
+    local payload=""
+
+    py_cmd=$(_ui_python_cmd) || return 1
+    payload=$(printf '%s\n' "${UI_PANEL_BUFFER[@]}")
+
+    UI_PANEL_BUFFER_PAYLOAD="$payload" UI_EMOJI_WIDTH_PROFILE="$(_ui_emoji_width_profile)" PYTHONUTF8=1 PYTHONIOENCODING=UTF-8 "$py_cmd" - "$width" <<'PY'
+import os
+import sys
+import unicodedata
+
+width = int(sys.argv[1]) if len(sys.argv) > 1 else 72
+entries = os.environ.get("UI_PANEL_BUFFER_PAYLOAD", "").splitlines()
+emoji_width_profile = os.environ.get("UI_EMOJI_WIDTH_PROFILE", "wide").strip().lower()
+if emoji_width_profile not in ("narrow", "wide"):
+    emoji_width_profile = "wide"
+
+if width < 1:
+    width = 1
+
+EMOJI_WIDTH_OVERRIDES = {
+    0x1F6E0: 1,
+}
+
+def _base_width(ch: str) -> int:
+    code = ord(ch)
+    if code in (0x200D, 0xFE0E, 0xFE0F):
+        return 0
+    if unicodedata.combining(ch):
+        return 0
+    category = unicodedata.category(ch)
+    if category in ("Mn", "Me", "Cf"):
+        return 0
+    if code in EMOJI_WIDTH_OVERRIDES:
+        return EMOJI_WIDTH_OVERRIDES[code]
+    if 0x1F1E6 <= code <= 0x1F1FF:
+        return 2
+    if emoji_width_profile == "wide" and 0x1F300 <= code <= 0x1FAFF:
+        return 2
+    if unicodedata.east_asian_width(ch) in ("W", "F"):
+        return 2
+    return 1
+
+def _iter_clusters(s: str):
+    i = 0
+    n = len(s)
+    while i < n:
+        ch = s[i]
+        code = ord(ch)
+        if code in (0x200D, 0xFE0E, 0xFE0F) or unicodedata.combining(ch):
+            yield ch, 0
+            i += 1
+            continue
+
+        cluster = ch
+        w = _base_width(ch)
+        i += 1
+
+        while i < n and ord(s[i]) in (0xFE0E, 0xFE0F):
+            if ord(s[i]) == 0xFE0F and w < 2:
+                w = 2
+            cluster += s[i]
+            i += 1
+
+        while i + 1 < n and ord(s[i]) == 0x200D:
+            cluster += s[i] + s[i + 1]
+            w = max(w, 2)
+            i += 2
+            while i < n and ord(s[i]) in (0xFE0E, 0xFE0F):
+                if ord(s[i]) == 0xFE0F and w < 2:
+                    w = 2
+                cluster += s[i]
+                i += 1
+
+        if w <= 0:
+            w = 1
+        yield cluster, w
+
+def _disp_width(s: str) -> int:
+    total = 0
+    for _, w in _iter_clusters(s):
+        total += w
+    return total
+
+def _split_by_width(s: str, maxw: int):
+    out = []
+    current = []
+    used = 0
+    for cluster, w in _iter_clusters(s):
+        if w > maxw:
+            cluster = "?"
+            w = 1
+        if current and (used + w) > maxw:
+            out.append("".join(current))
+            current = [cluster]
+            used = w
+        else:
+            current.append(cluster)
+            used += w
+    if current or not out:
+        out.append("".join(current))
+    return out
+
+def _wrap_line(s: str, maxw: int):
+    i = 0
+    while i < len(s) and s[i] == " ":
+        i += 1
+    indent = s[:i]
+    body = s[i:]
+
+    indent_w = _disp_width(indent)
+    if indent_w >= maxw:
+        indent = ""
+        indent_w = 0
+
+    available = max(1, maxw - indent_w)
+    if not body:
+        return [indent]
+
+    words = [w for w in body.split(" ") if w != ""]
+    if not words:
+        return [indent]
+
+    lines = []
+    current = ""
+    current_w = 0
+
+    for word in words:
+        word_w = _disp_width(word)
+        if not current:
+            if word_w <= available:
+                current = word
+                current_w = word_w
+            else:
+                parts = _split_by_width(word, available)
+                if len(parts) > 1:
+                    lines.extend(indent + p for p in parts[:-1])
+                current = parts[-1]
+                current_w = _disp_width(current)
+        else:
+            if current_w + 1 + word_w <= available:
+                current += " " + word
+                current_w += 1 + word_w
+            else:
+                lines.append(indent + current)
+                if word_w <= available:
+                    current = word
+                    current_w = word_w
+                else:
+                    parts = _split_by_width(word, available)
+                    if len(parts) > 1:
+                        lines.extend(indent + p for p in parts[:-1])
+                    current = parts[-1]
+                    current_w = _disp_width(current)
+
+    if current or not lines:
+        lines.append(indent + current)
+    return lines
+
+def emit(line: str):
+    used_width = _disp_width(line)
+    pad = max(0, width - used_width)
+    sys.stdout.write("| " + line + (" " * pad) + " |\n")
+
+for raw in entries:
+    kind, payload = (raw.split("|", 1) + [""])[:2]
+    if kind == "B":
+        sys.stdout.write("+" + ("-" * (width + 2)) + "+\n")
+    elif kind == "D":
+        sys.stdout.write("|" + ("." * (width + 2)) + "|\n")
+    else:
+        payload = payload.replace("\r", "").replace("\n", " ").replace("\t", "    ")
+        if payload == "":
+            emit("")
+        else:
+            for wrapped in _wrap_line(payload, width):
+                emit(wrapped)
+PY
+}
+
+_ui_panel_flush_buffer() {
+    local width="$1"
+    local entry=""
+    local kind=""
+    local payload=""
+
+    if [ "${#UI_PANEL_BUFFER[@]}" -eq 0 ]; then
+        return 0
+    fi
+
+    if ! _ui_panel_render_python_buffer "$width" 2>/dev/null; then
+        for entry in "${UI_PANEL_BUFFER[@]}"; do
+            kind="${entry%%|*}"
+            payload="${entry#*|}"
+            case "$kind" in
+                B) _ui_panel_border "$width" ;;
+                D) _ui_panel_border_thin "$width" ;;
+                *) printf '| %-*.*s |\n' "$width" "$width" "$payload" ;;
+            esac
+        done
+    fi
+
+    _ui_panel_buffer_reset
 }
 
 _ui_panel_border() {
@@ -519,6 +736,10 @@ _ui_panel_line() {
     local width
     width=$(_ui_frame_width "${2:-}")
     text="${text//$'\n'/ }"
+    if ui_panel_is_open && [ "${UI_PANEL_OPEN_STYLE:-}" = "panel" ]; then
+        _ui_panel_buffer_add "T|$text"
+        return 0
+    fi
     if ! _ui_panel_line_python "$text" "$width" 2>/dev/null; then
         printf '| %-*.*s |\n' "$width" "$width" "$text"
     fi
@@ -547,9 +768,10 @@ ui_panel_begin() {
     UI_PANEL_OPEN=1
     UI_PANEL_OPEN_STYLE="$style"
     UI_PANEL_FRAME_WIDTH="$frame_width"
+    _ui_panel_buffer_reset
 
     if [ "$style" = "panel" ]; then
-        _ui_panel_border "$frame_width"
+        _ui_panel_buffer_add "B|"
         _ui_panel_line "$title_view" "$frame_width" || printf '%s\n' "$title_view"
         if [ -n "$subtitle" ]; then
             _ui_panel_line "$subtitle" "$frame_width" || printf '%s\n' "$subtitle"
@@ -575,7 +797,8 @@ ui_panel_end() {
     fi
 
     if [ "$UI_PANEL_OPEN_STYLE" = "panel" ]; then
-        _ui_panel_border "$frame_width"
+        _ui_panel_buffer_add "B|"
+        _ui_panel_flush_buffer "$frame_width"
     else
         ui_divider
     fi
@@ -627,7 +850,7 @@ ui_section() {
     frame_width=$(_ui_frame_width)
 
     if ui_panel_is_open && [ "$UI_PANEL_OPEN_STYLE" = "panel" ]; then
-        _ui_panel_border_thin "$frame_width"
+        _ui_panel_buffer_add "D|"
         _ui_panel_line "📌 [$title]" "$frame_width" || printf '\n📌 [%s]\n' "$title"
         return 0
     fi
