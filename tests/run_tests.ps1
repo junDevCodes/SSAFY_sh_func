@@ -155,6 +155,19 @@ Run-Test 'explicit py creates py when cpp exists' {
     Assert-FileExists (Join-Path $dir 'boj_1017.py')
 }
 
+function Run-Suite([string]$name, [string]$relativePath) {
+    Run-Test $name {
+        $suitePath = Join-Path $RootDir $relativePath
+        $suitePosix = To-PosixPath $suitePath
+        Invoke-Bash "'$suitePosix'"
+    }
+}
+
+Run-Suite 'gitup flow unit suite' 'tests/test_gitup_flow.sh'
+Run-Suite 'algo-help unit suite' 'tests/test_algo_help.sh'
+Run-Suite 'ui panel batch suite' 'tests/test_ui_panel_batch.sh'
+Run-Suite 'commands integration suite' 'tests/test_commands_integration.sh'
+
 Write-Host ""
 Write-Host "Tests: $passCount passed, $failCount failed"
 if ($failCount -ne 0) {

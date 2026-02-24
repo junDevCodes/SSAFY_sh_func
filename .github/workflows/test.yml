@@ -1,4 +1,4 @@
-name: Tests
+name: CI Tests
 
 on:
   push:
@@ -7,25 +7,20 @@ on:
     branches: [ "main", "dev" ]
 
 jobs:
-  test:
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-
+  bash-tests:
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - name: Run bash test suite
+        shell: bash
+        run: |
+          bash tests/run_tests.sh
 
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.x'
-
-    - name: Run Tests (Bash)
-      if: runner.os != 'Windows'
-      run: python tests/run_tests.py --runner bash
-
-    # Windows에서는 PowerShell로 테스트 실행
-    - name: Run Tests (PowerShell)
-      if: runner.os == 'Windows'
-      run: python tests/run_tests.py --runner powershell
+  powershell-tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run PowerShell test suite
+        shell: powershell
+        run: |
+          powershell -NoProfile -ExecutionPolicy Bypass -File tests/run_tests.ps1

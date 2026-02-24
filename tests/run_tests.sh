@@ -166,6 +166,21 @@ run_test "cpp with msg flag creates cpp" test_cpp_with_msg_flag
 run_test "commit when file changed" test_commit_when_file_changed
 run_test "explicit py creates py when cpp exists" test_explicit_py_creates_py_when_cpp_exists
 
+run_external_test() {
+  local name="$1"
+  local script="$2"
+  if bash "$ROOT_DIR/$script"; then
+    pass "$name"
+  else
+    fail "$name"
+  fi
+}
+
+run_external_test "gitup flow unit suite" "tests/test_gitup_flow.sh"
+run_external_test "algo-help unit suite" "tests/test_algo_help.sh"
+run_external_test "ui panel batch suite" "tests/test_ui_panel_batch.sh"
+run_external_test "commands integration suite" "tests/test_commands_integration.sh"
+
 echo ""
 echo "Tests: $pass_count passed, $fail_count failed"
 if [ "$fail_count" -ne 0 ]; then
