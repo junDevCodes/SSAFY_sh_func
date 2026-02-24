@@ -5,6 +5,16 @@
 
 ALGO_CONFIG_FILE="$HOME/.algo_config"
 
+_ensure_default_key() {
+    local key="$1"
+    local default_value="$2"
+
+    if ! grep -q "^${key}=" "$ALGO_CONFIG_FILE"; then
+        echo "${key}=\"${default_value}\"" >> "$ALGO_CONFIG_FILE"
+        export "${key}=${default_value}"
+    fi
+}
+
 init_algo_config() {
     if [ ! -f "$ALGO_CONFIG_FILE" ]; then
         echo "[INFO] creating config file: $ALGO_CONFIG_FILE"
@@ -13,10 +23,14 @@ init_algo_config() {
 ALGO_BASE_DIR="$HOME/algos"
 GIT_DEFAULT_BRANCH="main"
 GIT_COMMIT_PREFIX="solve"
-GIT_AUTO_PUSH=true
-IDE_EDITOR=""
+GIT_AUTO_PUSH="true"
+IDE_EDITOR="code"
 SSAFY_BASE_URL="https://lab.ssafy.com"
 SSAFY_USER_ID=""
+SSAFY_UPDATE_CHANNEL="stable"
+ALGO_UI_STYLE="panel"
+ALGO_UI_COLOR="auto"
+ALGO_INPUT_PROFILE="stable"
 EOF
     fi
 
@@ -27,6 +41,17 @@ EOF
         echo 'ALGO_BASE_DIR="$HOME/algos"' >> "$ALGO_CONFIG_FILE"
         export ALGO_BASE_DIR="$HOME/algos"
     fi
+
+    _ensure_default_key "IDE_EDITOR" "code"
+    _ensure_default_key "GIT_DEFAULT_BRANCH" "main"
+    _ensure_default_key "GIT_COMMIT_PREFIX" "solve"
+    _ensure_default_key "GIT_AUTO_PUSH" "true"
+    _ensure_default_key "SSAFY_BASE_URL" "https://lab.ssafy.com"
+    _ensure_default_key "SSAFY_USER_ID" ""
+    _ensure_default_key "SSAFY_UPDATE_CHANNEL" "stable"
+    _ensure_default_key "ALGO_UI_STYLE" "panel"
+    _ensure_default_key "ALGO_UI_COLOR" "auto"
+    _ensure_default_key "ALGO_INPUT_PROFILE" "stable"
 }
 
 _get_config_value() {
@@ -137,7 +162,7 @@ _ssafy_algo_config_show() {
         else
             ui_info "SSAFY_AUTH_TOKEN=세션 전용(미설정)"
         fi
-        ui_hint "명령어: algo-config edit | algo-config reset | algo-config show"
+        ui_hint "수정하려면: algo-config edit"
         ui_panel_end
     elif type ui_header >/dev/null 2>&1; then
         ui_header "algo-config" "설정 요약 (version=${ALGO_FUNCTIONS_VERSION:-unknown})"
@@ -157,7 +182,7 @@ _ssafy_algo_config_show() {
         else
             ui_info "SSAFY_AUTH_TOKEN=세션 전용(미설정)"
         fi
-        ui_hint "명령어: algo-config edit | algo-config reset | algo-config show"
+        ui_hint "수정하려면: algo-config edit"
     else
         echo "ALGO_BASE_DIR=${ALGO_BASE_DIR:-unset}"
         echo "IDE_EDITOR=${IDE_EDITOR:-unset}"

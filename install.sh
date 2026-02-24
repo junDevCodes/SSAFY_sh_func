@@ -17,6 +17,7 @@ UPDATE_CHANNEL="${SSAFY_UPDATE_CHANNEL:-stable}"
 
 RUN_SETUP=false
 INSTALLED_VERSION="Unknown"
+CONFIG_FILE="$HOME/.algo_config"
 
 command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -315,6 +316,198 @@ ensure_bashrc_sourced() {
     fi
 }
 
+is_interactive_shell() {
+    [ -t 0 ] && [ -t 1 ]
+}
+
+sanitize_config_input() {
+    local value="$1"
+    value="${value//$'\r'/}"
+    value="${value//$'\n'/}"
+    value="${value//\"/}"
+    printf '%s' "$value"
+}
+
+write_default_config() {
+    cat > "$CONFIG_FILE" << 'EOF'
+# SSAFY Algo Functions Config
+ALGO_BASE_DIR="$HOME/algos"
+GIT_DEFAULT_BRANCH="main"
+GIT_COMMIT_PREFIX="solve"
+GIT_AUTO_PUSH="true"
+IDE_EDITOR="code"
+SSAFY_BASE_URL="https://lab.ssafy.com"
+SSAFY_USER_ID=""
+SSAFY_UPDATE_CHANNEL="stable"
+ALGO_UI_STYLE="panel"
+ALGO_UI_COLOR="auto"
+ALGO_INPUT_PROFILE="stable"
+# Token is not persisted to file for security (session-only)
+EOF
+}
+
+set_config_value() {
+    local key="$1"
+    local value="$2"
+    local safe_value=""
+    local tmp_file=""
+
+    safe_value=$(sanitize_config_input "$value")
+    tmp_file="${CONFIG_FILE}.tmp"
+
+    awk -v k="$key" -v v="$safe_value" '
+        BEGIN { updated=0 }
+        $0 ~ "^"k"=" {
+            print k"=\""v"\""
+            updated=1
+            next
+        }
+        { print }
+        END {
+            if (!updated) {
+                print k"=\""v"\""
+            }
+        }
+    ' "$CONFIG_FILE" > "$tmp_file"
+    mv "$tmp_file" "$CONFIG_FILE"
+}
+
+get_config_value_or_default() {
+    local key="$1"
+    local default_value="$2"
+    local current=""
+
+    if [ -f "$CONFIG_FILE" ]; then
+        current=$(grep "^${key}=" "$CONFIG_FILE" | head -n 1 | cut -d'=' -f2- | tr -d '"' || true)
+    fi
+    if [ -z "$current" ] && [ -n "$default_value" ]; then
+        current="$default_value"
+    fi
+    printf '%s' "$current"
+}
+
+prompt_with_default() {
+    local prompt="$1"
+    local default="$2"
+    local required="${3:-false}"
+    local answer=""
+
+    while true; do
+        read -r -p "$prompt [$default]: " answer
+        answer=$(sanitize_config_input "$answer")
+        if [ -z "$answer" ]; then
+            answer="$default"
+        fi
+        if [ "$required" = "true" ] && [ -z "${answer//[[:space:]]/}" ]; then
+            echo "This value is required."
+            continue
+        fi
+        printf '%s' "$answer"
+        return 0
+    done
+}
+
+prompt_ide_editor() {
+    local default_editor="${1:-code}"
+    local choice=""
+    local editor="$default_editor"
+
+    echo "Select IDE editor (current: $default_editor):"
+    echo "  1) code (VS Code)"
+    echo "  2) cursor (Cursor)"
+    echo "  3) pycharm (PyCharm)"
+    echo "  4) idea (IntelliJ IDEA)"
+    echo "  5) subl (Sublime Text)"
+    read -r -p "Choice [Enter to keep current]: " choice
+
+    case "$choice" in
+        "") editor="$default_editor" ;;
+        1) editor="code" ;;
+        2) editor="cursor" ;;
+        3) editor="pycharm" ;;
+        4) editor="idea" ;;
+        5) editor="subl" ;;
+        *) editor="$default_editor" ;;
+    esac
+    printf '%s' "$editor"
+}
+
+post_install_setup() {
+    local algo_base_dir=""
+    local ide_editor=""
+    local git_default_branch=""
+    local git_commit_prefix=""
+    local git_auto_push=""
+    local ssafy_base_url=""
+    local ssafy_user_id=""
+    local yn=""
+    local default_algo_base_dir=""
+    local default_ide_editor=""
+    local default_git_default_branch=""
+    local default_git_commit_prefix=""
+    local default_ssafy_base_url=""
+
+    if [ ! -f "$CONFIG_FILE" ]; then
+        write_default_config
+    fi
+
+    if ! is_interactive_shell; then
+        echo "[warn] Non-interactive shell detected. Keeping default config values."
+        echo "[info] Run 'algo-config edit' later to complete setup."
+        return 0
+    fi
+
+    echo "Starting post-install setup (core 7 keys)..."
+    echo ""
+
+    default_algo_base_dir=$(get_config_value_or_default "ALGO_BASE_DIR" "$HOME/algos")
+    default_ide_editor=$(get_config_value_or_default "IDE_EDITOR" "code")
+    default_git_default_branch=$(get_config_value_or_default "GIT_DEFAULT_BRANCH" "main")
+    default_git_commit_prefix=$(get_config_value_or_default "GIT_COMMIT_PREFIX" "solve")
+    default_ssafy_base_url=$(get_config_value_or_default "SSAFY_BASE_URL" "https://lab.ssafy.com")
+
+    algo_base_dir=$(prompt_with_default "ALGO_BASE_DIR" "$default_algo_base_dir" true)
+    ide_editor=$(prompt_ide_editor "$default_ide_editor")
+    git_default_branch=$(prompt_with_default "GIT_DEFAULT_BRANCH" "$default_git_default_branch" true)
+    git_commit_prefix=$(prompt_with_default "GIT_COMMIT_PREFIX" "$default_git_commit_prefix" true)
+
+    while true; do
+        read -r -p "GIT_AUTO_PUSH [Y/n]: " yn
+        case "${yn,,}" in
+            ""|y|yes) git_auto_push="true"; break ;;
+            n|no) git_auto_push="false"; break ;;
+            *) echo "Please enter y or n." ;;
+        esac
+    done
+
+    ssafy_base_url=$(prompt_with_default "SSAFY_BASE_URL" "$default_ssafy_base_url" true)
+    ssafy_user_id=$(prompt_with_default "SSAFY_USER_ID (lab.ssafy.com/{here})" "$(get_config_value_or_default "SSAFY_USER_ID" "")" true)
+
+    set_config_value "ALGO_BASE_DIR" "$algo_base_dir"
+    set_config_value "IDE_EDITOR" "$ide_editor"
+    set_config_value "GIT_DEFAULT_BRANCH" "$git_default_branch"
+    set_config_value "GIT_COMMIT_PREFIX" "$git_commit_prefix"
+    set_config_value "GIT_AUTO_PUSH" "$git_auto_push"
+    set_config_value "SSAFY_BASE_URL" "$ssafy_base_url"
+    set_config_value "SSAFY_USER_ID" "$ssafy_user_id"
+
+    # 부가 4개 항목은 안내만 하고 기본값을 유지한다.
+    set_config_value "SSAFY_UPDATE_CHANNEL" "${SSAFY_UPDATE_CHANNEL:-stable}"
+    set_config_value "ALGO_UI_STYLE" "panel"
+    set_config_value "ALGO_UI_COLOR" "auto"
+    set_config_value "ALGO_INPUT_PROFILE" "stable"
+
+    echo ""
+    echo "Additional optional keys kept with defaults:"
+    echo "  - SSAFY_UPDATE_CHANNEL=${SSAFY_UPDATE_CHANNEL:-stable}"
+    echo "  - ALGO_UI_STYLE=panel"
+    echo "  - ALGO_UI_COLOR=auto"
+    echo "  - ALGO_INPUT_PROFILE=stable"
+    echo "Use 'algo-config edit' if you want to change these values."
+    echo ""
+    echo "Post-install setup completed."
+}
+
 normalize_install_mode
 normalize_update_channel
 
@@ -360,14 +553,12 @@ if [ -f "$HOME/.algo_config" ]; then
     read -r -p "Reset config now? (recommended on new PC) (y/N): " reset_config
     if [[ "$reset_config" =~ ^[Yy]$ ]]; then
         rm "$HOME/.algo_config"
-        RUN_SETUP=true
         echo "Config reset completed."
     else
         echo "Keeping existing config."
     fi
-else
-    RUN_SETUP=true
 fi
+RUN_SETUP=true
 
 echo ""
 echo "============================================================"
@@ -382,37 +573,19 @@ echo "   - gitup <URL>          : clone repository and open files"
 echo "   - gitdown              : commit and push"
 echo "   - algo-config show     : show config"
 echo "   - algo-config edit     : edit config"
+echo "   - algo-help            : command summary and examples"
 echo "   - algo-update          : update to latest"
 echo ""
 echo "Guide: https://github.com/junDevCodes/SSAFY_sh_func"
+echo "After install/update, reload shell and verify:"
+echo "   - source ~/.bashrc"
+echo "   - type -a gitup"
+echo "   - echo \$ALGO_ROOT_DIR"
 echo ""
 
 if [ "$RUN_SETUP" = true ]; then
-    echo "Starting initial config..."
-    echo ""
-
-    CONFIG_FILE="$HOME/.algo_config"
-    cat > "$CONFIG_FILE" << 'EOF'
-# SSAFY Algo Functions Config
-ALGO_BASE_DIR="$HOME/algos"
-GIT_DEFAULT_BRANCH="main"
-GIT_COMMIT_PREFIX="solve"
-GIT_AUTO_PUSH=true
-IDE_EDITOR=""
-SSAFY_BASE_URL="https://lab.ssafy.com"
-SSAFY_USER_ID=""
-# Token is not persisted to file for security (session-only)
-EOF
-
-    read -r -p "SSAFY GitLab username (lab.ssafy.com/{here}): " ssafy_user
-    if [ -n "$ssafy_user" ]; then
-        sed -i "s/SSAFY_USER_ID=\"\"/SSAFY_USER_ID=\"$ssafy_user\"/" "$CONFIG_FILE"
-    fi
-
-    echo ""
-    echo "Initial config completed."
+    post_install_setup
     echo "Token input is prompted automatically when running gitup."
-    echo ""
     read -r -p "Press Enter to apply settings..." _
     exec bash
 fi
