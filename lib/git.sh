@@ -1524,7 +1524,7 @@ ssafy_gitup() {
     fi
 
     if type ui_header >/dev/null 2>&1; then
-        ui_header "gitup" "????곸죷 ????덈틖"
+        ui_header "gitup" "Input validation and clone run"
         if [ "$ssafy_mode" = true ]; then
             ui_info "input_mode=topic"
         elif [[ "$input" == *"|"* ]]; then
@@ -1539,7 +1539,7 @@ ssafy_gitup() {
 
     if [[ "$input" == https://project.ssafy.com/* ]]; then
         if type ui_step >/dev/null 2>&1; then
-            ui_step "?袁⑸즲??????????clone ????덈틖"
+            ui_step "Run clone with Smart Batch flow"
         fi
         ssafy_batch "$input"
         return $?
@@ -1547,7 +1547,7 @@ ssafy_gitup() {
 
     if [ "$ssafy_mode" = true ] || _ssafy_git_is_valid_topic "$input" || [[ "$input" =~ ^https?://lab\.ssafy\.com/ ]]; then
         if type ui_step >/dev/null 2>&1; then
-            ui_step "SSAFY ???ャ뀖??clone ???鸚??????덈틖"
+            ui_step "Run clone with SSAFY topic flow"
         fi
         _gitup_ssafy "$input" || return 1
         return 0

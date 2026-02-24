@@ -151,7 +151,7 @@ resolve_snapshot_ref() {
             printf '%s' "$ref"
             return 0
         fi
-        echo "[warn] Failed to fetch latest release tag. Fallback to main snapshot."
+        echo "[warn] Failed to fetch latest release tag. Fallback to main snapshot." >&2
         printf '%s' "main"
         return 0
     fi
@@ -432,7 +432,7 @@ prompt_ide_editor() {
     printf '%s' "$editor"
 }
 
-post_install_setup() {
+post_install_setup_cli() {
     local algo_base_dir=""
     local ide_editor=""
     local git_default_branch=""
@@ -447,17 +447,7 @@ post_install_setup() {
     local default_git_commit_prefix=""
     local default_ssafy_base_url=""
 
-    if [ ! -f "$CONFIG_FILE" ]; then
-        write_default_config
-    fi
-
-    if ! is_interactive_shell; then
-        echo "[warn] Non-interactive shell detected. Keeping default config values."
-        echo "[info] Run 'algo-config edit' later to complete setup."
-        return 0
-    fi
-
-    echo "Starting post-install setup (core 7 keys)..."
+    echo "GUI setup is unavailable. Switching to CLI setup."
     echo ""
 
     default_algo_base_dir=$(get_config_value_or_default "ALGO_BASE_DIR" "$HOME/algos")
@@ -490,12 +480,56 @@ post_install_setup() {
     set_config_value "GIT_AUTO_PUSH" "$git_auto_push"
     set_config_value "SSAFY_BASE_URL" "$ssafy_base_url"
     set_config_value "SSAFY_USER_ID" "$ssafy_user_id"
+}
 
-    # 부가 4개 항목은 안내만 하고 기본값을 유지한다.
+post_install_setup() {
+    local wizard_path="$INSTALL_DIR/algo_config_wizard.py"
+    local python_cmd=""
+
+    if [ ! -f "$CONFIG_FILE" ]; then
+        write_default_config
+    fi
+
+    # 부가 4개 항목은 설치 단계에서 기본값을 유지한다.
     set_config_value "SSAFY_UPDATE_CHANNEL" "${SSAFY_UPDATE_CHANNEL:-stable}"
     set_config_value "ALGO_UI_STYLE" "panel"
     set_config_value "ALGO_UI_COLOR" "auto"
     set_config_value "ALGO_INPUT_PROFILE" "stable"
+
+    if ! is_interactive_shell; then
+        echo "[warn] Non-interactive shell detected. Keeping default config values."
+        echo "[info] Run 'algo-config edit' later to complete setup."
+        return 0
+    fi
+
+    if [ -n "${SSAFY_PYTHON:-}" ] && command_exists "${SSAFY_PYTHON}"; then
+        python_cmd="${SSAFY_PYTHON}"
+    elif command_exists python3; then
+        python_cmd="python3"
+    elif command_exists python; then
+        python_cmd="python"
+    elif command_exists py; then
+        python_cmd="py"
+    fi
+
+    if [ -z "$python_cmd" ]; then
+        echo "[warn] Python runtime not found for GUI setup."
+        post_install_setup_cli
+        return $?
+    fi
+
+    if [ ! -f "$wizard_path" ]; then
+        echo "[warn] GUI wizard not found: $wizard_path"
+        post_install_setup_cli
+        return $?
+    fi
+
+    echo "Starting post-install setup (GUI wizard)..."
+    if ! "$python_cmd" "$wizard_path"; then
+        echo "[warn] GUI setup failed or canceled."
+        post_install_setup_cli
+        return $?
+    fi
 
     echo ""
     echo "Additional optional keys kept with defaults:"
@@ -507,7 +541,6 @@ post_install_setup() {
     echo ""
     echo "Post-install setup completed."
 }
-
 normalize_install_mode
 normalize_update_channel
 

@@ -167,6 +167,9 @@ Run-Suite 'gitup flow unit suite' 'tests/test_gitup_flow.sh'
 Run-Suite 'algo-help unit suite' 'tests/test_algo_help.sh'
 Run-Suite 'ui panel batch suite' 'tests/test_ui_panel_batch.sh'
 Run-Suite 'commands integration suite' 'tests/test_commands_integration.sh'
+Run-Suite 'update flow suite' 'tests/test_update_flow.sh'
+Run-Suite 'install post-setup suite' 'tests/test_install_post_setup.sh'
+Run-Suite 'encoding smoke suite' 'tests/test_encoding_smoke.sh'
 
 Write-Host ""
 Write-Host "Tests: $passCount passed, $failCount failed"

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 이전 세션에 남아 있는 함수/별칭을 정리해 최신 코드를 우선 로드한다.
+# 이전 세션에 남아있는 함수/별칭을 정리하고 최신 코드를 우선 로드한다.
 { unalias -- al gitup gitdown algo-config algo-update algo-doctor algo-help 2>/dev/null || true; }
 { unset -f -- al gitup gitdown algo_config algo-update algo-doctor algo-help ssafy_al ssafy_gitup ssafy_gitdown ssafy_algo_config ssafy_algo_update ssafy_algo_doctor ssafy_algo_help get_active_ide check_ide _confirm_commit_message _create_algo_file _handle_git_commit _open_in_editor _open_repo_file _gitup_ssafy _ssafy_next_repo init_algo_config _is_interactive _set_config_value _ensure_ssafy_config _find_ssafy_session_root _print_file_menu _choose_file_from_list _create_safe_alias 2>/dev/null || true; }
 
@@ -15,8 +15,8 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export ALGO_ROOT_DIR="$SCRIPT_DIR"
 
-# VERSION 파일에서 버전 로드 (없거나 실패 시 기본값 사용)
-ALGO_FUNCTIONS_VERSION_DEFAULT="V8.1.6"
+# VERSION 파일에서 버전 로드 (누락/읽기 실패 시 기본값 사용)
+ALGO_FUNCTIONS_VERSION_DEFAULT="V8.1.7"
 VERSION_FILE="$SCRIPT_DIR/VERSION"
 
 if [ -f "$VERSION_FILE" ]; then
@@ -48,7 +48,7 @@ else
     return 1
 fi
 
-# [V7.6] 설정 래퍼/별칭
+# [V7.6] 설정 헬퍼/별칭
 algo_config() { ssafy_algo_config "$@"; }
 alias algo-config='ssafy_algo_config'
 
@@ -60,13 +60,13 @@ alias algo-config='ssafy_algo_config'
 # - lib/ide.sh       : IDE 탐색/열기
 # - lib/templates.sh : 템플릿 생성
 # - lib/doctor.sh    : 시스템 진단
-# - lib/update.sh    : 업데이트 점검/실행
+# - lib/update.sh    : 업데이트 확인/실행
 
 init_algo_config
 _setup_ide_aliases
 
 if [ -o monitor ]; then
-    # 백그라운드 업데이트 체크 시 job-control 노이즈를 숨긴다.
+    # 백그라운드 업데이트 체크 시 job-control 노이즈를 억제한다.
     set +m
     _check_update
     set -m
@@ -93,7 +93,7 @@ fi
 
 if [ -f "$(pwd)/algo_functions.sh" ] && [ "$(pwd)" != "${ALGO_ROOT_DIR}" ]; then
     if type ui_warn >/dev/null 2>&1; then
-        ui_warn "현재 레포와 로드된 경로가 다릅니다. source ./algo_functions.sh 를 실행하세요."
+        ui_warn "현재 리포와 로드된 경로가 다릅니다. source ./algo_functions.sh 를 실행하세요."
     else
         echo "[WARN] Current repo differs from loaded path. Run: source ./algo_functions.sh"
     fi
@@ -107,14 +107,14 @@ _create_safe_alias() {
     if ! type "$alias_name" &>/dev/null; then
         alias "$alias_name"="$target_func"
     else
-        # 이미 SSAFY 도구로 등록된 별칭/함수는 재바인딩 허용
+        # 이미 SSAFY 도구로 등록된 별칭/함수는 재바인딩을 허용한다.
         local type_out
         type_out=$(type "$alias_name" 2>/dev/null)
         if [[ "$type_out" == *"ssafy_"* ]] || [[ "$type_out" == *"function"* ]]; then
             alias "$alias_name"="$target_func"
         else
-            echo "주의  '$alias_name' 명령어가 이미 존재하여 덮어쓰지 않습니다."
-            echo "    -> '$target_func' 명령어를 직접 사용하세요."
+            echo "주의: '$alias_name' 명령이 이미 존재하여 덮어쓰지 않습니다."
+            echo "    -> '$target_func' 명령을 직접 사용하세요."
         fi
     fi
 }

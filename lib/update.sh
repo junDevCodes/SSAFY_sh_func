@@ -134,6 +134,7 @@ _ssafy_resolve_snapshot_ref() {
             printf '%s' "$ref"
             return 0
         fi
+        echo "[warn] Failed to fetch latest release tag. Fallback to main snapshot." >&2
         printf '%s' "main"
         return 0
     fi
@@ -356,7 +357,7 @@ _ssafy_update_snapshot_install() {
     next_ref=$(_ssafy_read_meta_value "$staged_dir" "ref" 2>/dev/null || true)
 
     if [ "$channel" = "stable" ] && [ "$current_version" = "$next_version" ] && [ "$current_ref" = "$next_ref" ]; then
-        echo "이미 최신 버전입니다. (version: $current_version)"
+        echo "Already up to date. (version: $current_version)"
         rm -rf "$staged_dir"
         return 0
     fi
@@ -366,7 +367,7 @@ _ssafy_update_snapshot_install() {
         return 1
     }
 
-    echo "Snapshot 업데이트 완료. (from: $current_version to: $next_version)"
+    echo "Snapshot update completed. (from: $current_version to: $next_version)"
     return 0
 }
 
@@ -375,7 +376,7 @@ _ssafy_migrate_legacy_git_install() {
     local channel="$2"
     local staged_dir=""
 
-    echo "Legacy git 설치를 snapshot 모드로 마이그레이션합니다.."
+    echo "Migrating legacy git install to snapshot mode..."
     staged_dir=$(mktemp -d 2>/dev/null || mktemp -d -t ssafy_tools_migrate)
 
     _ssafy_extract_snapshot_to_dir "$staged_dir" "$channel" || {
@@ -394,21 +395,23 @@ _ssafy_migrate_legacy_git_install() {
         return 1
     }
 
-    echo "Legacy git 설치가 snapshot 모드로 전환되었습니다."
+    echo "Legacy git install migrated to snapshot mode."
     return 0
 }
-
-# Update command
 ssafy_algo_update() {
     local script_dir="${ALGO_ROOT_DIR:-$HOME/.ssafy-tools}"
     local install_mode=""
     local channel=""
     local current_version=""
+    local applied_version=""
+    local applied_mode=""
+    local applied_channel=""
+    local applied_ref=""
     local answer=""
 
     if [ ! -d "$script_dir" ]; then
         if type ui_error >/dev/null 2>&1; then
-            ui_error "설치 경로를 찾을 수 없습니다: $script_dir"
+            ui_error "Install path not found: $script_dir"
         else
             echo "[error] Install path not found: $script_dir"
         fi
@@ -420,7 +423,7 @@ ssafy_algo_update() {
     current_version=$(_ssafy_read_version_from_dir "$script_dir")
 
     if type ui_header >/dev/null 2>&1; then
-        ui_header "algo-update" "업데이트 실행 계획"
+        ui_header "algo-update" "Update execution plan"
         ui_info "install_mode=$install_mode"
         ui_info "channel=$channel"
         ui_info "current_version=$current_version"
@@ -433,11 +436,11 @@ ssafy_algo_update() {
     if _is_interactive && type input_confirm >/dev/null 2>&1; then
         if [ "$install_mode" = "legacy-git" ]; then
             if type ui_warn >/dev/null 2>&1; then
-                ui_warn "Legacy git 설치는 snapshot 모드로 마이그레이션됩니다."
+                ui_warn "Legacy git install will migrate to snapshot mode."
             else
                 echo "[warn] Legacy git install will migrate to snapshot mode."
             fi
-            input_confirm answer "마이그레이션 + 업데이트를 진행할까요?" "n"
+            input_confirm answer "Proceed with migration + update?" "n"
             case $? in
                 10|20) return 1 ;;
             esac
@@ -445,7 +448,7 @@ ssafy_algo_update() {
                 return 1
             fi
         else
-            input_confirm answer "지금 업데이트를 실행할까요?" "y"
+            input_confirm answer "Proceed with update now?" "y"
             case $? in
                 10|20) return 1 ;;
             esac
@@ -459,7 +462,7 @@ ssafy_algo_update() {
         git)
             _ssafy_update_git_install "$script_dir" || {
                 if type ui_error >/dev/null 2>&1; then
-                    ui_error "Git 모드 업데이트에 실패했습니다."
+                    ui_error "Git mode update failed."
                 else
                     echo "[error] Git mode update failed."
                 fi
@@ -469,7 +472,7 @@ ssafy_algo_update() {
         legacy-git)
             _ssafy_migrate_legacy_git_install "$script_dir" "$channel" || {
                 if type ui_error >/dev/null 2>&1; then
-                    ui_error "Legacy git 마이그레이션에 실패했습니다."
+                    ui_error "Legacy git migration failed."
                 else
                     echo "[error] Legacy git migration failed."
                 fi
@@ -479,7 +482,7 @@ ssafy_algo_update() {
         snapshot|*)
             _ssafy_update_snapshot_install "$script_dir" "$channel" || {
                 if type ui_error >/dev/null 2>&1; then
-                    ui_error "Snapshot 업데이트에 실패했습니다."
+                    ui_error "Snapshot update failed."
                 else
                     echo "[error] Snapshot update failed."
                 fi
@@ -488,14 +491,29 @@ ssafy_algo_update() {
             ;;
     esac
 
+    applied_version=$(_ssafy_read_version_from_dir "$script_dir")
+    applied_mode=$(_ssafy_read_meta_value "$script_dir" "mode" 2>/dev/null || true)
+    applied_channel=$(_ssafy_read_meta_value "$script_dir" "channel" 2>/dev/null || true)
+    applied_ref=$(_ssafy_read_meta_value "$script_dir" "ref" 2>/dev/null || true)
+
     if type ui_ok >/dev/null 2>&1; then
-        ui_ok "업데이트가 완료되었습니다."
-        ui_hint "변경 사항을 적용하려면 'source ~/.bashrc'를 실행하세요."
+        ui_ok "Update completed."
+        ui_info "install_path=$script_dir"
+        ui_info "applied_version=$applied_version"
+        ui_info "applied_mode=${applied_mode:-unknown}"
+        ui_info "applied_channel=${applied_channel:-unknown}"
+        ui_info "applied_ref=${applied_ref:-unknown}"
+        ui_hint "Apply changes: source ~/.bashrc"
         ui_info "Verify load: type -a gitup"
         ui_info "Verify path: echo \$ALGO_ROOT_DIR"
     else
         echo ""
         echo "Update completed."
+        echo "install_path=$script_dir"
+        echo "applied_version=$applied_version"
+        echo "applied_mode=${applied_mode:-unknown}"
+        echo "applied_channel=${applied_channel:-unknown}"
+        echo "applied_ref=${applied_ref:-unknown}"
         echo "Open a new terminal or run 'source ~/.bashrc' to apply changes."
         echo "Verify load: type -a gitup"
         echo "Verify path: echo \$ALGO_ROOT_DIR"
@@ -503,7 +521,7 @@ ssafy_algo_update() {
     fi
 
     if _is_interactive && type input_confirm >/dev/null 2>&1; then
-        input_confirm answer "지금 셸을 다시 시작할까요?" "n"
+        input_confirm answer "Restart shell now?" "n"
         case $? in
             10|20) return 0 ;;
         esac
@@ -517,7 +535,6 @@ ssafy_algo_update() {
         esac
     fi
 }
-
 _ssafy_check_update_git() {
     local script_dir="$1"
     local local_hash=""
@@ -540,8 +557,8 @@ _ssafy_check_update_git() {
 
         if [ -n "$local_hash" ] && [ -n "$remote_hash" ] && [ "$local_hash" != "$remote_hash" ]; then
             echo ""
-            echo "🔔 [Update] 새 버전을 사용할 수 있습니다! (현재: ${ALGO_FUNCTIONS_VERSION:-Unknown})"
-            echo "             'algo-update'를 실행하세요."
+            echo "[Update] New version is available. (current: ${ALGO_FUNCTIONS_VERSION:-Unknown})"
+            echo "         Run 'algo-update'"
             echo ""
         fi
     )
@@ -569,8 +586,8 @@ _ssafy_check_update_snapshot() {
 
     if [ -n "$remote_version" ] && [ "$remote_version" != "$local_version" ]; then
         echo ""
-        echo "🔔 [Update] 새 버전을 사용할 수 있습니다! (현재: $local_version, 최신: $remote_version)"
-        echo "             'algo-update'를 실행하세요."
+        echo "[Update] New version is available. (current: $local_version, latest: $remote_version)"
+        echo "         Run 'algo-update'"
         echo ""
     fi
 }
@@ -608,8 +625,8 @@ _check_update() {
                 ;;
             legacy-git)
                 echo ""
-                echo "주의  [Update] Legacy git 설치가 감지되었습니다."
-                echo "             'algo-update' 실행 시 snapshot 모드로 마이그레이션됩니다."
+                echo "[Update] Legacy git install detected."
+                echo "         'algo-update' will migrate to snapshot mode."
                 echo ""
                 ;;
             snapshot|*)

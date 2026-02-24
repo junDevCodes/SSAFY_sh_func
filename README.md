@@ -164,6 +164,13 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests/run_tests.ps1
 python tests/run_tests.py --out tests/test_results.json
 ```
 
+```bash
+# 신규 안정화 검증 스위트
+bash tests/test_update_flow.sh
+bash tests/test_install_post_setup.sh
+bash tests/test_encoding_smoke.sh
+```
+
 ---
 
 ## Panel UI + Stable Input Flow (A)
