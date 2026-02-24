@@ -356,7 +356,7 @@ _ssafy_update_snapshot_install() {
     next_ref=$(_ssafy_read_meta_value "$staged_dir" "ref" 2>/dev/null || true)
 
     if [ "$channel" = "stable" ] && [ "$current_version" = "$next_version" ] && [ "$current_ref" = "$next_ref" ]; then
-        echo "✅ 이미 최신 버전입니다. (version: $current_version)"
+        echo "이미 최신 버전입니다. (version: $current_version)"
         rm -rf "$staged_dir"
         return 0
     fi
@@ -366,7 +366,7 @@ _ssafy_update_snapshot_install() {
         return 1
     }
 
-    echo "✅ Snapshot 업데이트 완료. (from: $current_version to: $next_version)"
+    echo "Snapshot 업데이트 완료. (from: $current_version to: $next_version)"
     return 0
 }
 
@@ -375,7 +375,7 @@ _ssafy_migrate_legacy_git_install() {
     local channel="$2"
     local staged_dir=""
 
-    echo "🔄 Legacy git 설치를 snapshot 모드로 마이그레이션합니다..."
+    echo "Legacy git 설치를 snapshot 모드로 마이그레이션합니다.."
     staged_dir=$(mktemp -d 2>/dev/null || mktemp -d -t ssafy_tools_migrate)
 
     _ssafy_extract_snapshot_to_dir "$staged_dir" "$channel" || {
@@ -394,7 +394,7 @@ _ssafy_migrate_legacy_git_install() {
         return 1
     }
 
-    echo "✅ Legacy git 설치가 snapshot 모드로 전환되었습니다."
+    echo "Legacy git 설치가 snapshot 모드로 전환되었습니다."
     return 0
 }
 
@@ -490,16 +490,20 @@ ssafy_algo_update() {
 
     if type ui_ok >/dev/null 2>&1; then
         ui_ok "업데이트가 완료되었습니다."
-        ui_hint "새 터미널을 열거나 'source ~/.bashrc'를 실행하세요."
+        ui_hint "변경 사항을 적용하려면 'source ~/.bashrc'를 실행하세요."
+        ui_info "Verify load: type -a gitup"
+        ui_info "Verify path: echo \$ALGO_ROOT_DIR"
     else
         echo ""
         echo "Update completed."
         echo "Open a new terminal or run 'source ~/.bashrc' to apply changes."
+        echo "Verify load: type -a gitup"
+        echo "Verify path: echo \$ALGO_ROOT_DIR"
         echo ""
     fi
 
     if _is_interactive && type input_confirm >/dev/null 2>&1; then
-        input_confirm answer "지금 셸을 재시작할까요?" "n"
+        input_confirm answer "지금 셸을 다시 시작할까요?" "n"
         case $? in
             10|20) return 0 ;;
         esac
@@ -604,7 +608,7 @@ _check_update() {
                 ;;
             legacy-git)
                 echo ""
-                echo "⚠️  [Update] Legacy git 설치가 감지되었습니다."
+                echo "주의  [Update] Legacy git 설치가 감지되었습니다."
                 echo "             'algo-update' 실행 시 snapshot 모드로 마이그레이션됩니다."
                 echo ""
                 ;;

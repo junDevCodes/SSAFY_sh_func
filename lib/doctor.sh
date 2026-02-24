@@ -136,6 +136,22 @@ ssafy_algo_doctor() {
         echo "=================================================="
     fi
 
+    if type ui_info >/dev/null 2>&1; then
+        ui_info "loaded_from=${ALGO_ROOT_DIR:-unknown}"
+        ui_info "version=${ALGO_FUNCTIONS_VERSION:-unknown}"
+    else
+        echo "[INFO] loaded_from=${ALGO_ROOT_DIR:-unknown}"
+        echo "[INFO] version=${ALGO_FUNCTIONS_VERSION:-unknown}"
+    fi
+
+    if [ -n "${ALGO_ROOT_DIR:-}" ] && [ -f "$(pwd)/algo_functions.sh" ] && [ "$(cd "$ALGO_ROOT_DIR" 2>/dev/null && pwd)" != "$(pwd)" ]; then
+        if type ui_warn >/dev/null 2>&1; then
+            ui_warn "현재 디렉터리와 로드 경로가 다릅니다. source ./algo_functions.sh 를 다시 실행하세요."
+        else
+            echo "[WARN] Loaded path differs from current repo. Run: source ./algo_functions.sh"
+        fi
+    fi
+
     if ! _check_service_status; then
         if type ui_error >/dev/null 2>&1; then
             ui_error "서비스 상태 확인에 실패했습니다."

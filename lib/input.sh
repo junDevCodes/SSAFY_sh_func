@@ -158,7 +158,7 @@ input_confirm() {
     local out_var="$1"
     local prompt="$2"
     local default_value="${3:-n}"
-    local answer=""
+    local input_value=""
     local normalized_default="n"
     local default_mark="N"
 
@@ -183,21 +183,21 @@ input_confirm() {
     fi
 
     while true; do
-        read -r -p "${prompt} (y/n, default=${default_mark}, q=cancel, b=back): " answer
-        answer="${answer//$'\r'/}"
+        read -r -p "${prompt} (y/n, default=${default_mark}, q=cancel, b=back): " input_value
+        input_value="${input_value//$'\r'/}"
 
-        _input_handle_nav_key "$answer"
+        _input_handle_nav_key "$input_value"
         case $? in
             "$INPUT_RC_BACK") return "$INPUT_RC_BACK" ;;
             "$INPUT_RC_CANCEL") return "$INPUT_RC_CANCEL" ;;
         esac
 
-        answer=$(_input_trim "$answer")
-        if [ -z "$answer" ]; then
-            answer="$normalized_default"
+        input_value=$(_input_trim "$input_value")
+        if [ -z "$input_value" ]; then
+            input_value="$normalized_default"
         fi
 
-        case "$answer" in
+        case "$input_value" in
             y|Y|yes|YES)
                 printf -v "$out_var" '%s' "yes"
                 return "$INPUT_RC_OK"
