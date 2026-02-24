@@ -170,6 +170,7 @@ Run-Suite 'commands integration suite' 'tests/test_commands_integration.sh'
 Run-Suite 'update flow suite' 'tests/test_update_flow.sh'
 Run-Suite 'install post-setup suite' 'tests/test_install_post_setup.sh'
 Run-Suite 'encoding smoke suite' 'tests/test_encoding_smoke.sh'
+Run-Suite 'input confirm scope suite' 'tests/test_input_confirm_scope.sh'
 
 Write-Host ""
 Write-Host "Tests: $passCount passed, $failCount failed"

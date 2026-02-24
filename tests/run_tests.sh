@@ -183,6 +183,7 @@ run_external_test "commands integration suite" "tests/test_commands_integration.
 run_external_test "update flow suite" "tests/test_update_flow.sh"
 run_external_test "install post-setup suite" "tests/test_install_post_setup.sh"
 run_external_test "encoding smoke suite" "tests/test_encoding_smoke.sh"
+run_external_test "input confirm scope suite" "tests/test_input_confirm_scope.sh"
 
 echo ""
 echo "Tests: $pass_count passed, $fail_count failed"
