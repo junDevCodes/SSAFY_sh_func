@@ -180,8 +180,8 @@ _ssafy_al_interactive_flow() {
                 esac
                 ;;
             7)
-                if type ui_header >/dev/null 2>&1; then
-                    ui_header "al" "실행 전 미리보기"
+                if type ui_panel_begin >/dev/null 2>&1; then
+                    ui_panel_begin "al" "실행 전 미리보기"
                     ui_info "site=$site_code"
                     ui_info "problem=$problem"
                     ui_info "language=$lang"
@@ -192,6 +192,7 @@ _ssafy_al_interactive_flow() {
                     else
                         ui_info "commit_msg=(auto)"
                     fi
+                    ui_panel_end
                 else
                     echo "[INFO] site=$site_code"
                     echo "[INFO] problem=$problem"
@@ -364,8 +365,8 @@ ssafy_al() {
     local cpp_file="$dir/${file_prefix}_${problem}.cpp"
     local file=""
 
-    if type ui_header >/dev/null 2>&1; then
-        ui_header "al" "문제 파일 생성 + 선택 흐름 실행"
+    if type ui_panel_begin >/dev/null 2>&1; then
+        ui_panel_begin "al" "문제 파일 생성 + 선택 흐름 실행"
         ui_info "사이트=$site_display"
         ui_info "문제번호=$problem"
         ui_info "언어=${lang}"
@@ -463,6 +464,9 @@ ssafy_al() {
 
     if type ui_ok >/dev/null 2>&1; then
         ui_ok "al 작업 완료"
+        if type ui_panel_end >/dev/null 2>&1; then
+            ui_panel_end
+        fi
     else
         echo "[OK] al completed."
     fi

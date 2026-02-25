@@ -127,8 +127,8 @@ ssafy_algo_doctor() {
         ui_panel_begin "algo-doctor" "환경 진단 리포트"
         panel_started=true
         ui_info "진단 범위=tools/config/network"
-    elif type ui_header >/dev/null 2>&1; then
-        ui_header "algo-doctor" "환경 진단 리포트"
+    elif type ui_panel_begin >/dev/null 2>&1; then
+        ui_panel_begin "algo-doctor" "환경 진단 리포트"
         ui_info "진단 범위=tools/config/network"
     else
         echo "=================================================="

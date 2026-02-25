@@ -422,8 +422,8 @@ ssafy_algo_update() {
     channel=$(_ssafy_resolve_update_channel "$script_dir")
     current_version=$(_ssafy_read_version_from_dir "$script_dir")
 
-    if type ui_header >/dev/null 2>&1; then
-        ui_header "algo-update" "Update execution plan"
+    if type ui_panel_begin >/dev/null 2>&1; then
+        ui_panel_begin "algo-update" "Update execution plan"
         ui_info "install_mode=$install_mode"
         ui_info "channel=$channel"
         ui_info "current_version=$current_version"
