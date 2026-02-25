@@ -64,7 +64,7 @@ New-Item -ItemType Directory -Path $homeDir | Out-Null
 
 $configPath = Join-Path $homeDir '.algo_config'
 $configLines = @(
-    'ALGO_BASE_DIR="$HOME/algos"',
+    'ALGO_BASE_DIR="$HOME/algo_workspace"',
     'GIT_DEFAULT_BRANCH="main"',
     'GIT_COMMIT_PREFIX="solve"',
     'GIT_AUTO_PUSH=false',
@@ -75,7 +75,7 @@ $configLines = @(
 $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
 [System.IO.File]::WriteAllLines($configPath, $configLines, $utf8NoBom)
 
-$algoBase = Join-Path $homeDir 'algos'
+$algoBase = Join-Path $homeDir 'algo_workspace'
 New-Item -ItemType Directory -Path $algoBase | Out-Null
 
 $homePosix = To-PosixPath $homeDir
