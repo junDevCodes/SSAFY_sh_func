@@ -226,6 +226,12 @@ _ssafy_al_interactive_flow() {
 ssafy_al() {
     init_algo_config
 
+    # 인자가 없으면 도움말 출력 (대화형 모드의 b=back/BOJ 충돌 방지)
+    if [ $# -eq 0 ]; then
+        _ssafy_al_print_usage
+        return 0
+    fi
+
     local site_code="${1:-}"
     local problem="${2:-}"
     local lang="py"
