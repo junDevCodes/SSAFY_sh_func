@@ -1,51 +1,51 @@
-# 알고리즘/실습 자동화 Shell 함수 (V8.2.4)
+﻿# ?뚭퀬由ъ쬁/?ㅼ뒿 ?먮룞??Shell ?⑥닔 (V8.2.5)
 
-이 저장소는 Bash 함수들을 제공하여 알고리즘 풀이와 SSAFY 실습 과제 제출을 자동화합니다.
-별도의 복잡한 설치 없이 스크립트 파일만 복사하여 즉시 사용할 수 있습니다.
+????μ냼??Bash ?⑥닔?ㅼ쓣 ?쒓났?섏뿬 ?뚭퀬由ъ쬁 ??댁? SSAFY ?ㅼ뒿 怨쇱젣 ?쒖텧???먮룞?뷀빀?덈떎.
+蹂꾨룄??蹂듭옟???ㅼ튂 ?놁씠 ?ㅽ겕由쏀듃 ?뚯씪留?蹂듭궗?섏뿬 利됱떆 ?ъ슜?????덉뒿?덈떎.
 
-## 📌 V8.2.4 주요 변경
-- **`gitup` 파일 선택 패널 UI**: 클론 후 파일 목록을 `ui_panel`로 통합 출력 (번호 선택으로 VSCode에서 파일 열기)
-- **`algo-update --force`**: 버전 일치 여부와 무관하게 강제 재설치
-- **`gitup` 새 창 방지**: 클론 후 VSCode 새 창이 열리지 않도록 수정 (`code -r -g <파일>` 방식)
-- **`al` 파일 열기 개선**: `VSCODE_WORKSPACE_FOLDER` 감지로 이미 열린 프로젝트 창 재활용
+## ?뱦 V8.2.5 二쇱슂 蹂寃?
+- **`gitup` ?뚯씪 ?좏깮 ?⑤꼸 UI**: ?대줎 ???뚯씪 紐⑸줉??`ui_panel`濡??듯빀 異쒕젰 (踰덊샇 ?좏깮?쇰줈 VSCode?먯꽌 ?뚯씪 ?닿린)
+- **`algo-update --force`**: 踰꾩쟾 ?쇱튂 ?щ?? 臾닿??섍쾶 媛뺤젣 ?ъ꽕移?
+- **`gitup` ??李?諛⑹?**: ?대줎 ??VSCode ??李쎌씠 ?대━吏 ?딅룄濡??섏젙 (`code -r -g <?뚯씪>` 諛⑹떇)
+- **`al` ?뚯씪 ?닿린 媛쒖꽑**: `VSCODE_WORKSPACE_FOLDER` 媛먯?濡??대? ?대┛ ?꾨줈?앺듃 李??ы솢??
 
 ---
 
-## 🛠 1. 설치 및 적용
+## ?썱 1. ?ㅼ튂 諛??곸슜
 
-### 🚀 빠른 설치 (Quick Start)
+### ?? 鍮좊Ⅸ ?ㅼ튂 (Quick Start)
 
-복잡한 명령어 입력이나 설정을 건너뛰고 싶으신가요?  
-아래 버튼을 눌러 **[설치 포털]**로 이동하면 **클릭 두 번**으로 모든 준비가 끝납니다!
+蹂듭옟??紐낅졊???낅젰?대굹 ?ㅼ젙??嫄대꼫?곌퀬 ?띠쑝?좉???  
+?꾨옒 踰꾪듉???뚮윭 **[?ㅼ튂 ?ы꽭]**濡??대룞?섎㈃ **?대┃ ??踰?*?쇰줈 紐⑤뱺 以鍮꾧? ?앸궔?덈떎!
 
 <br>
 
 <div align="center">
-  <h3>✨ 누구나 쉽게 시작하기</h3>
+  <h3>???꾧뎄???쎄쾶 ?쒖옉?섍린</h3>
   <a href="https://junDevCodes.github.io/SSAFY_sh_func/">
-    <img src="https://img.shields.io/badge/🚀_설치_및_설정_마법사_실행-Click_Here_to_Start-3b82f6?style=for-the-badge&logo=rocket&logoColor=white" height="60">
+    <img src="https://img.shields.io/badge/??_?ㅼ튂_諛??ㅼ젙_留덈쾿???ㅽ뻾-Click_Here_to_Start-3b82f6?style=for-the-badge&logo=rocket&logoColor=white" height="60">
   </a>
-  <p>👆 위 버튼을 클릭하면 <b>설치 포털</b>로 이동합니다.</p>
+  <p>?몘 ??踰꾪듉???대┃?섎㈃ <b>?ㅼ튂 ?ы꽭</b>濡??대룞?⑸땲??</p>
 </div>
 
 <br>
 
-> **수동 설치를 원하시나요?**  
-> 터미널에서 아래 명령어를 실행하세요:
+> **?섎룞 ?ㅼ튂瑜??먰븯?쒕굹??**  
+> ?곕??먯뿉???꾨옒 紐낅졊?대? ?ㅽ뻾?섏꽭??
 > ```bash
 > SSAFY_INSTALL_MODE=snapshot SSAFY_UPDATE_CHANNEL=stable bash <(curl -fsSL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)
 > ```
 
-설치가 끝나면 `source ~/.bashrc`를 실행하거나 터미널을 다시 열어주세요.
+?ㅼ튂媛 ?앸굹硫?`source ~/.bashrc`瑜??ㅽ뻾?섍굅???곕??먯쓣 ?ㅼ떆 ?댁뼱二쇱꽭??
 
-문제가 생기면 저장소 절대경로로 직접 로드해 현재 코드 기준으로 다시 시작할 수 있습니다.
+臾몄젣媛 ?앷린硫???μ냼 ?덈?寃쎈줈濡?吏곸젒 濡쒕뱶???꾩옱 肄붾뱶 湲곗??쇰줈 ?ㅼ떆 ?쒖옉?????덉뒿?덈떎.
 ```bash
-source /c/Users/<사용자명>/Desktop/workspace/python/projects/SSAFY_sh_func/algo_functions.sh
+source /c/Users/<?ъ슜?먮챸>/Desktop/workspace/python/projects/SSAFY_sh_func/algo_functions.sh
 ```
 
-### 방법 2: 수동 설치
+### 諛⑸쾿 2: ?섎룞 ?ㅼ튂
 ```bash
-# 1. 기본 설치 (snapshot)
+# 1. 湲곕낯 ?ㅼ튂 (snapshot)
 SSAFY_INSTALL_MODE=snapshot SSAFY_UPDATE_CHANNEL=stable bash <(curl -fsSL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)
 
 # 2. Git mode install (contributors)
@@ -54,131 +54,131 @@ SSAFY_INSTALL_MODE=git SSAFY_UPDATE_CHANNEL=main bash <(curl -fsSL https://raw.g
 
 ---
 
-## 🔐 2. 보안 안내 (Security Notice)
+## ?뵍 2. 蹂댁븞 ?덈궡 (Security Notice)
 
-**[중요] V7.7부터 SSAFY LMS 토큰을 파일에 저장하지 않습니다.**
+**[以묒슂] V7.7遺??SSAFY LMS ?좏겙???뚯씪????ν븯吏 ?딆뒿?덈떎.**
 
-이 도구는 **세션 전용(Session-Only)** 방식으로 토큰을 관리하여 보안성을 극대화합니다:
-- ✅ 토큰은 **현재 터미널 세션에서만 유효**합니다.
-- ✅ 터미널 종료 시 **자동으로 삭제**됩니다.
-- ✅ `~/.algo_config` 파일에 저장되지 않으므로 유출 위험이 없습니다.
+???꾧뎄??**?몄뀡 ?꾩슜(Session-Only)** 諛⑹떇?쇰줈 ?좏겙??愿由ы븯??蹂댁븞?깆쓣 洹밸??뷀빀?덈떎:
+- ???좏겙? **?꾩옱 ?곕????몄뀡?먯꽌留??좏슚**?⑸땲??
+- ???곕???醫낅즺 ??**?먮룞?쇰줈 ??젣**?⑸땲??
+- ??`~/.algo_config` ?뚯씪????λ릺吏 ?딆쑝誘濡??좎텧 ?꾪뿕???놁뒿?덈떎.
 
-`gitup` 등 토큰이 필요한 명령어 실행 시 자동으로 입력을 요청하며, 한 번 입력하면 세션이 유지되는 동안 재입력할 필요가 없습니다. (토큰 유효기간: 24시간)
+`gitup` ???좏겙???꾩슂??紐낅졊???ㅽ뻾 ???먮룞?쇰줈 ?낅젰???붿껌?섎ŉ, ??踰??낅젰?섎㈃ ?몄뀡???좎??섎뒗 ?숈븞 ?ъ엯?ν븷 ?꾩슂媛 ?놁뒿?덈떎. (?좏겙 ?좏슚湲곌컙: 24?쒓컙)
 
 ---
 
-## 🔄 3. 업데이트
+## ?봽 3. ?낅뜲?댄듃
 
-새로운 기능이 추가되면 아래 명령어로 간단히 업데이트할 수 있습니다.
+?덈줈??湲곕뒫??異붽??섎㈃ ?꾨옒 紐낅졊?대줈 媛꾨떒???낅뜲?댄듃?????덉뒿?덈떎.
 ```bash
-algo-update           # 일반 업데이트 (최신 버전이면 스킵)
-algo-update --force   # 버전 무관 강제 재설치
-algo-update --check   # 업데이트 가능 여부만 확인 (설치 X)
+algo-update           # ?쇰컲 ?낅뜲?댄듃 (理쒖떊 踰꾩쟾?대㈃ ?ㅽ궢)
+algo-update --force   # 踰꾩쟾 臾닿? 媛뺤젣 ?ъ꽕移?
+algo-update --check   # ?낅뜲?댄듃 媛???щ?留??뺤씤 (?ㅼ튂 X)
 ```
 
 
 ---
 
-## 🔑 3. 토큰 설정 (SSAFY 전용)
+## ?뵎 3. ?좏겙 ?ㅼ젙 (SSAFY ?꾩슜)
 
-`gitup`의 **실습실 일괄 자동 생성** 기능을 사용하려면 본인의 SSAFY 계정 권한(Token)이 필요합니다. 토큰은 약 24시간 동안 유효하며, 만료 시 스크립트가 자동으로 감지하여 재입력을 요청합니다.
+`gitup`??**?ㅼ뒿???쇨큵 ?먮룞 ?앹꽦** 湲곕뒫???ъ슜?섎젮硫?蹂몄씤??SSAFY 怨꾩젙 沅뚰븳(Token)???꾩슂?⑸땲?? ?좏겙? ??24?쒓컙 ?숈븞 ?좏슚?섎ŉ, 留뚮즺 ???ㅽ겕由쏀듃媛 ?먮룞?쇰줈 媛먯??섏뿬 ?ъ엯?μ쓣 ?붿껌?⑸땲??
 
-### 1. 북마크릿(Bookmarklet) 이용하기 (강력 권장) ⭐
-복잡한 개발자 도구(F12) 없이, 클릭 한 번으로 **URL과 토큰을 동시에 복사**합니다.
+### 1. 遺곷쭏?щ┸(Bookmarklet) ?댁슜?섍린 (媛뺣젰 沅뚯옣) 狩?
+蹂듭옟??媛쒕컻???꾧뎄(F12) ?놁씠, ?대┃ ??踰덉쑝濡?**URL怨??좏겙???숈떆??蹂듭궗**?⑸땲??
 
-1.  브라우저 북마크바에 새 북마크를 만듭니다. (이름: `SSAFY Smart Copy`)
-2.  URL 입력란에 아래 코드를 그대로 붙여넣습니다.
+1.  釉뚮씪?곗? 遺곷쭏?щ컮????遺곷쭏?щ? 留뚮벊?덈떎. (?대쫫: `SSAFY Smart Copy`)
+2.  URL ?낅젰????꾨옒 肄붾뱶瑜?洹몃?濡?遺숈뿬?ｌ뒿?덈떎.
     ```javascript
-    javascript:(function(){var t="";var r=/(eyJ[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+)/;function s(o){for(var i=0;i<o.length;i++){var k=o.key(i);var v=o.getItem(k);if(!v)continue;if(v.startsWith("Bearer ")){return v;}var m=v.match(r);if(m){return"Bearer "+m[1];}}return"";}t=s(localStorage)||s(sessionStorage);if(!t){alert("❌ 인증 토큰을 찾을 수 없습니다.\n\n로그인 상태를 확인하세요.");return;}try{var e=btoa(t);var res=window.location.href+"|"+e;navigator.clipboard.writeText(res).then(function(){alert("✅ 복사 완료!\n\ngitup을 인자 없이 실행하고 붙여넣으세요.");},function(){prompt("Ctrl+C로 복사:",res);});}catch(x){alert("오류: "+x.message);}})();
+    javascript:(function(){var t="";var r=/(eyJ[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+\.[a-zA-Z0-9\-_]+)/;function s(o){for(var i=0;i<o.length;i++){var k=o.key(i);var v=o.getItem(k);if(!v)continue;if(v.startsWith("Bearer ")){return v;}var m=v.match(r);if(m){return"Bearer "+m[1];}}return"";}t=s(localStorage)||s(sessionStorage);if(!t){alert("???몄쬆 ?좏겙??李얠쓣 ???놁뒿?덈떎.\n\n濡쒓렇???곹깭瑜??뺤씤?섏꽭??");return;}try{var e=btoa(t);var res=window.location.href+"|"+e;navigator.clipboard.writeText(res).then(function(){alert("??蹂듭궗 ?꾨즺!\n\ngitup???몄옄 ?놁씠 ?ㅽ뻾?섍퀬 遺숈뿬?ｌ쑝?몄슂.");},function(){prompt("Ctrl+C濡?蹂듭궗:",res);});}catch(x){alert("?ㅻ쪟: "+x.message);}})();
     ```
-3.  SSAFY 실습실 페이지에서 북마크를 클릭합니다.
-4.  "복사 완료!" 알림이 뜨면 터미널에서 `gitup`을 **인자 없이** 실행합니다.
-5.  **Secure Input 모드**가 뜨면 `Ctrl+V` (붙여넣기) 후 엔터를 칩니다. (화면에 보이지 않아 안전합니다!)
+3.  SSAFY ?ㅼ뒿???섏씠吏?먯꽌 遺곷쭏?щ? ?대┃?⑸땲??
+4.  "蹂듭궗 ?꾨즺!" ?뚮┝???⑤㈃ ?곕??먯뿉??`gitup`??**?몄옄 ?놁씠** ?ㅽ뻾?⑸땲??
+5.  **Secure Input 紐⑤뱶**媛 ?⑤㈃ `Ctrl+V` (遺숈뿬?ｊ린) ???뷀꽣瑜?移⑸땲?? (?붾㈃??蹂댁씠吏 ?딆븘 ?덉쟾?⑸땲??)
 
-### 2. 토큰 수동 설정
-- `gitup <URL>` 실행 시 토큰이 필요하면 입력창이 뜹니다.
-- 토큰은 **파일에 저장되지 않으며**, 현재 터미널 세션에서만 유지됩니다.
-- **[V7.7 Security]**: 세션 메타데이터(`.ssafy_session_meta`)에도 암호화가 적용되어 개인정보를 보호합니다.
-
----
-
-## ⚙️ 4. 설정 파일
-
-모든 사용자 설정은 `~/.algo_config`에 저장됩니다.
-
-- **명령어:**
-  - `algo-config show`: 현재 설정값 확인 (**Clean UI**)
-  - `algo-config edit`: **설정 마법사(GUI)** 실행 (폴더 선택 창 지원)
-  - `algo-config reset`: 설정을 초기 상태로 되돌리기
-  - `algo-doctor`: **(New)** 시스템 및 설정 상태 정밀 진단
-
-- **주요 설정항목:**
-  - `ALGO_BASE_DIR`: 알고리즘 문제 저장 경로
-  - `GIT_COMMIT_PREFIX`: 커밋 메시지 접두사 (기본값: `solve`)
-  - `GIT_DEFAULT_BRANCH`: 기본 푸시 브랜치 (기본값: `main`)
-  - `GIT_AUTO_PUSH`: `gitdown` 시 자동 push 여부
-  - `IDE_EDITOR`: 사용할 IDE 자동 감지 및 설정 (`code`, `pycharm`, `idea`, `cursor` 등)
-  - `SSAFY_USER_ID`: SSAFY GitLab 사용자명 (lab.ssafy.com/{여기} 부분)
-
-> 💡 **[V7.5.2]** `algo-config edit` 메뉴 5번에서 Git 설정(커밋 접두사, 기본 브랜치, 자동 푸시)을 변경할 수 있습니다.
+### 2. ?좏겙 ?섎룞 ?ㅼ젙
+- `gitup <URL>` ?ㅽ뻾 ???좏겙???꾩슂?섎㈃ ?낅젰李쎌씠 ?밸땲??
+- ?좏겙? **?뚯씪????λ릺吏 ?딆쑝硫?*, ?꾩옱 ?곕????몄뀡?먯꽌留??좎??⑸땲??
+- **[V7.7 Security]**: ?몄뀡 硫뷀??곗씠??`.ssafy_session_meta`)?먮룄 ?뷀샇?붽? ?곸슜?섏뼱 媛쒖씤?뺣낫瑜?蹂댄샇?⑸땲??
 
 ---
 
-## 🚀 주요 기능 요약
+## ?숋툘 4. ?ㅼ젙 ?뚯씪
 
-### [gitup] 실습실 일괄 생성 및 클론
-#### 1. 보안 모드 (권장 🔐)
-- **사용법:** `gitup` (인자 없이 엔터)
-- **설명:** 화면에 입력 내용이 보이지 않는 **Secure Input** 모드입니다.
-- **활용:** 북마크릿으로 복사한 `URL|Token`을 붙여넣을 때 안전합니다.
+紐⑤뱺 ?ъ슜???ㅼ젙? `~/.algo_config`????λ맗?덈떎.
 
-#### 2. 일반 모드 (빠른 실행 ⚡)
-- **사용법:** `gitup <URL>` 또는 `gitup <주제명>`
-- **설명:** 단순 `git clone`이나 이미 토큰이 설정된 상태에서 URL만 빠르게 입력할 때 유용합니다.
+- **紐낅졊??**
+  - `algo-config show`: ?꾩옱 ?ㅼ젙媛??뺤씤 (**Clean UI**)
+  - `algo-config edit`: **?ㅼ젙 留덈쾿??GUI)** ?ㅽ뻾 (?대뜑 ?좏깮 李?吏??
+  - `algo-config reset`: ?ㅼ젙??珥덇린 ?곹깭濡??섎룎由ш린
+  - `algo-doctor`: **(New)** ?쒖뒪??諛??ㅼ젙 ?곹깭 ?뺣? 吏꾨떒
 
-- **기능:** 실습실 링크를 넣으면 **1번~7번 문제 자동 생성 + 전체 클론 + 1번 IDE 열기**를 한 번에 수행합니다.
-- **자동 정렬:** 생성 시간을 기준으로 `ws` -> `hw` 순서로 정확하게 정렬합니다.
-- **파일 선택 UI:** 클론 완료 후 패널 형태로 파일 목록(최대 5개)을 표시하고 번호로 VSCode에서 바로 열기 지원.
+- **二쇱슂 ?ㅼ젙??ぉ:**
+  - `ALGO_BASE_DIR`: ?뚭퀬由ъ쬁 臾몄젣 ???寃쎈줈
+  - `GIT_COMMIT_PREFIX`: 而ㅻ컠 硫붿떆吏 ?묐몢??(湲곕낯媛? `solve`)
+  - `GIT_DEFAULT_BRANCH`: 湲곕낯 ?몄떆 釉뚮옖移?(湲곕낯媛? `main`)
+  - `GIT_AUTO_PUSH`: `gitdown` ???먮룞 push ?щ?
+  - `IDE_EDITOR`: ?ъ슜??IDE ?먮룞 媛먯? 諛??ㅼ젙 (`code`, `pycharm`, `idea`, `cursor` ??
+  - `SSAFY_USER_ID`: SSAFY GitLab ?ъ슜?먮챸 (lab.ssafy.com/{?ш린} 遺遺?
+
+> ?뮕 **[V7.5.2]** `algo-config edit` 硫붾돱 5踰덉뿉??Git ?ㅼ젙(而ㅻ컠 ?묐몢?? 湲곕낯 釉뚮옖移? ?먮룞 ?몄떆)??蹂寃쏀븷 ???덉뒿?덈떎.
+
+---
+
+## ?? 二쇱슂 湲곕뒫 ?붿빟
+
+### [gitup] ?ㅼ뒿???쇨큵 ?앹꽦 諛??대줎
+#### 1. 蹂댁븞 紐⑤뱶 (沅뚯옣 ?뵍)
+- **?ъ슜踰?** `gitup` (?몄옄 ?놁씠 ?뷀꽣)
+- **?ㅻ챸:** ?붾㈃???낅젰 ?댁슜??蹂댁씠吏 ?딅뒗 **Secure Input** 紐⑤뱶?낅땲??
+- **?쒖슜:** 遺곷쭏?щ┸?쇰줈 蹂듭궗??`URL|Token`??遺숈뿬?ｌ쓣 ???덉쟾?⑸땲??
+
+#### 2. ?쇰컲 紐⑤뱶 (鍮좊Ⅸ ?ㅽ뻾 ??
+- **?ъ슜踰?** `gitup <URL>` ?먮뒗 `gitup <二쇱젣紐?`
+- **?ㅻ챸:** ?⑥닚 `git clone`?대굹 ?대? ?좏겙???ㅼ젙???곹깭?먯꽌 URL留?鍮좊Ⅴ寃??낅젰?????좎슜?⑸땲??
+
+- **湲곕뒫:** ?ㅼ뒿??留곹겕瑜??ｌ쑝硫?**1踰?7踰?臾몄젣 ?먮룞 ?앹꽦 + ?꾩껜 ?대줎 + 1踰?IDE ?닿린**瑜???踰덉뿉 ?섑뻾?⑸땲??
+- **?먮룞 ?뺣젹:** ?앹꽦 ?쒓컙??湲곗??쇰줈 `ws` -> `hw` ?쒖꽌濡??뺥솗?섍쾶 ?뺣젹?⑸땲??
+- **?뚯씪 ?좏깮 UI:** ?대줎 ?꾨즺 ???⑤꼸 ?뺥깭濡??뚯씪 紐⑸줉(理쒕? 5媛????쒖떆?섍퀬 踰덊샇濡?VSCode?먯꽌 諛붾줈 ?닿린 吏??
   ```
   +--------------------------------------------+
-  | 🧩 gitup                                   |
+  | ?㎥ gitup                                   |
   | /path/to/repo                               |
   |............................................|
-  | 📌 [열 파일을 선택하세요]                   |
-  |   ℹ 1. skeleton/solution.py               |
-  |   ℹ 2. README.md                          |
-  |   💡 번호 입력: Enter=건너뜀 | q=취소      |
+  | ?뱦 [???뚯씪???좏깮?섏꽭??                   |
+  |   ??1. skeleton/solution.py               |
+  |   ??2. README.md                          |
+  |   ?뮕 踰덊샇 ?낅젰: Enter=嫄대꼫? | q=痍⑥냼      |
   +--------------------------------------------+
   ```
 
-### [gitdown] 과제 제출 및 다음 문제 이동
-- **사용법:**
-  - `gitdown`: 현재 폴더 제출 및 다음 문제 이동
-  - `gitdown --all`: **(New)** 세션 내 모든 실습실 일괄 제출
-- **스마트 기능:**
-  - **제출 바로가기:** 제출 완료 시 SSAFY 실습실 페이지 URL을 제공하며 브라우저 열기 옵션 지원
-  - **동적 Playlist:** 아직 풀지 않은 문제가 있으면 감지하여 해당 문제로 이동 제안
-  - **자동화:** `add` + `commit` + `push` 및 `gitdown --all` 시 성공/실패 결과 요약
-  - **Auto-Sync:** 이미 푼 문제의 완료 상태를 자동으로 동기화하여 중복 이동 방지
+### [gitdown] 怨쇱젣 ?쒖텧 諛??ㅼ쓬 臾몄젣 ?대룞
+- **?ъ슜踰?**
+  - `gitdown`: ?꾩옱 ?대뜑 ?쒖텧 諛??ㅼ쓬 臾몄젣 ?대룞
+  - `gitdown --all`: **(New)** ?몄뀡 ??紐⑤뱺 ?ㅼ뒿???쇨큵 ?쒖텧
+- **?ㅻ쭏??湲곕뒫:**
+  - **?쒖텧 諛붾줈媛湲?** ?쒖텧 ?꾨즺 ??SSAFY ?ㅼ뒿???섏씠吏 URL???쒓났?섎ŉ 釉뚮씪?곗? ?닿린 ?듭뀡 吏??
+  - **?숈쟻 Playlist:** ?꾩쭅 ?吏 ?딆? 臾몄젣媛 ?덉쑝硫?媛먯??섏뿬 ?대떦 臾몄젣濡??대룞 ?쒖븞
+  - **?먮룞??** `add` + `commit` + `push` 諛?`gitdown --all` ???깃났/?ㅽ뙣 寃곌낵 ?붿빟
+  - **Auto-Sync:** ?대? ??臾몄젣???꾨즺 ?곹깭瑜??먮룞?쇰줈 ?숆린?뷀븯??以묐났 ?대룞 諛⑹?
 
-### [al] 알고리즘 문제 풀이 보조
-- **사용법:** `al <site> <number> [py|cpp]`
-- **구조화:** 폴더 생성, 기본 코드 파일 생성, 샘플 입력 파일 생성, IDE 자동 실행까지 처리합니다.
-- **대상 사이트:** BOJ(b), SWEA(s), Programmers(p) 등
+### [al] ?뚭퀬由ъ쬁 臾몄젣 ???蹂댁“
+- **?ъ슜踰?** `al <site> <number> [py|cpp]`
+- **援ъ“??** ?대뜑 ?앹꽦, 湲곕낯 肄붾뱶 ?뚯씪 ?앹꽦, ?섑뵆 ?낅젰 ?뚯씪 ?앹꽦, IDE ?먮룞 ?ㅽ뻾源뚯? 泥섎━?⑸땲??
+- **????ъ씠??** BOJ(b), SWEA(s), Programmers(p) ??
 
 ---
 
-## 🧪 테스트 실행
+## ?㎦ ?뚯뒪???ㅽ뻾
 ```bash
-# Windows PowerShell 환경인 경우
+# Windows PowerShell ?섍꼍??寃쎌슦
 powershell -NoProfile -ExecutionPolicy Bypass -File tests/run_tests.ps1
 
-# Python 직접 실행 (결과 JSON 저장)
+# Python 吏곸젒 ?ㅽ뻾 (寃곌낵 JSON ???
 python tests/run_tests.py --out tests/test_results.json
 ```
 
 ```bash
-# 신규 안정화 검증 스위트
+# ?좉퇋 ?덉젙??寃利??ㅼ쐞??
 bash tests/test_update_flow.sh
 bash tests/test_install_post_setup.sh
 bash tests/test_encoding_smoke.sh
@@ -191,20 +191,20 @@ bash tests/test_encoding_smoke.sh
 - Default UI style:
   - `ALGO_UI_STYLE=panel` (fallback: `plain`)
   - `ALGO_UI_COLOR=auto|always|never`
-  - `ALGO_UI_RENDERER=auto|python|plain` (default: `auto`, renderer 실패 시 `plain` 자동 전환)
-  - `ALGO_UI_EMOJI_WIDTH=auto|narrow|wide` (default: `auto`, VS Code/Git Bash는 자동으로 `narrow`)
+  - `ALGO_UI_RENDERER=auto|python|plain` (default: `auto`, renderer ?ㅽ뙣 ??`plain` ?먮룞 ?꾪솚)
+  - `ALGO_UI_EMOJI_WIDTH=auto|narrow|wide` (default: `auto`, VS Code/Git Bash???먮룞?쇰줈 `narrow`)
 - Panel width behavior:
-  - `UI_PANEL_WIDTH`를 지정하면 고정폭으로 출력
-  - 미지정 시 `패널 전체폭 = 터미널 현재 폭 - ALGO_UI_PANEL_MARGIN`으로 자동 계산 (기본 `4`)
-  - 최소폭 `ALGO_UI_PANEL_MIN_WIDTH` (기본 `52`)
-  - 최대폭 `ALGO_UI_PANEL_MAX_WIDTH` (`0`이면 상한 없음)
-  - 패널 시작 시 폭을 1회 snapshot하여 같은 패널 내 border/line 폭을 고정
-  - 환경별 이모지 폭 차이로 우측 경계가 어긋나면 `ALGO_UI_EMOJI_WIDTH=narrow` 또는 `wide`로 강제 가능
+  - `UI_PANEL_WIDTH`瑜?吏?뺥븯硫?怨좎젙??쑝濡?異쒕젰
+  - 誘몄?????`?⑤꼸 ?꾩껜??= ?곕????꾩옱 ??- ALGO_UI_PANEL_MARGIN`?쇰줈 ?먮룞 怨꾩궛 (湲곕낯 `4`)
+  - 理쒖냼??`ALGO_UI_PANEL_MIN_WIDTH` (湲곕낯 `52`)
+  - 理쒕???`ALGO_UI_PANEL_MAX_WIDTH` (`0`?대㈃ ?곹븳 ?놁쓬)
+  - ?⑤꼸 ?쒖옉 ????쓣 1??snapshot?섏뿬 媛숈? ?⑤꼸 ??border/line ??쓣 怨좎젙
+  - ?섍꼍蹂??대え吏 ??李⑥씠濡??곗륫 寃쎄퀎媛 ?닿툔?섎㈃ `ALGO_UI_EMOJI_WIDTH=narrow` ?먮뒗 `wide`濡?媛뺤젣 媛??
 
-### V8.1.6 UI 정렬 가이드 (VS Code Git Bash)
-- 증상: `algo-config` 패널 우측 `|` 경계가 1칸 안쪽으로 들어가 보이는 현상
-- 기본 대응: `ALGO_UI_EMOJI_WIDTH=auto` (VS Code/Git Bash에서 자동 `narrow`)
-- 강제 보정:
+### V8.1.6 UI ?뺣젹 媛?대뱶 (VS Code Git Bash)
+- 利앹긽: `algo-config` ?⑤꼸 ?곗륫 `|` 寃쎄퀎媛 1移??덉そ?쇰줈 ?ㅼ뼱媛 蹂댁씠???꾩긽
+- 湲곕낯 ??? `ALGO_UI_EMOJI_WIDTH=auto` (VS Code/Git Bash?먯꽌 ?먮룞 `narrow`)
+- 媛뺤젣 蹂댁젙:
   - `export ALGO_UI_EMOJI_WIDTH=narrow`
   - `export ALGO_UI_EMOJI_WIDTH=wide`
 - Input profile variable:
@@ -221,3 +221,4 @@ bash tests/test_encoding_smoke.sh
 - `algo-config`: `show` panel view, `edit` with GUI or CLI mode, `reset` with two-step safety confirm
 - `algo-update`: update plan preview + confirmation; `--force` bypasses version-match check; `--check` prints version diff only
 - `algo-doctor`: panel summary + optional action (`Enter` exit / `r` rerun / `c` reprint report)
+
