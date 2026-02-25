@@ -337,24 +337,44 @@ _open_repo_file() {
     done < <(find . -maxdepth 3 -not -path '*/.*' -type f 2>/dev/null | head -n 5)
 
     local count=${#files[@]}
+
+    if type ui_panel_begin > /dev/null 2>&1; then
+        ui_panel_begin "gitup" "$abs_repo_dir"
+    fi
+
     if [ $count -eq 0 ]; then
-        if type ui_info > /dev/null 2>&1; then
-            ui_info "No files found in repository yet."
+        if type ui_warn > /dev/null 2>&1; then
+            ui_warn "No files found in repository yet."
         else
-            echo "[INFO] No files found in repository yet."
+            echo "[WARN] No files found in repository yet."
+        fi
+        if type ui_panel_end > /dev/null 2>&1; then
+            ui_panel_end
         fi
         return 0
     fi
 
     if type ui_section > /dev/null 2>&1; then
-        ui_section "Repository files"
+        ui_section "열 파일을 선택하세요"
     fi
 
     local idx=0
     for file in "${files[@]}"; do
-        echo "  $((idx + 1)). $file"
+        if type ui_info > /dev/null 2>&1; then
+            ui_info "$((idx + 1)). $file"
+        else
+            echo "  $((idx + 1)). $file"
+        fi
         idx=$((idx + 1))
     done
+
+    if type ui_hint > /dev/null 2>&1; then
+        ui_hint "번호 입력: Enter=건너뜀 | q=취소"
+    fi
+
+    if type ui_panel_end > /dev/null 2>&1; then
+        ui_panel_end
+    fi
 
     if _is_interactive && [ $count -gt 0 ] && [ -n "$ide_cmd" ] && [[ "$ide_cmd" == "code" || "$ide_cmd" == "cursor" ]]; then
         local choice=""
