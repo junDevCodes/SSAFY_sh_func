@@ -75,8 +75,17 @@ alias algo-config='ssafy_algo_config'
 init_algo_config
 _setup_ide_aliases
 
+# 업데이트 알림 파일 (background 체크 결과, 이전 source에서 기록됨)
+_ALGO_NOTIF_FILE="${ALGO_UPDATE_NOTIFICATION_FILE:-$HOME/.algo_update_notification}"
+_upd_msg=""
+if [ -f "$_ALGO_NOTIF_FILE" ]; then
+    _upd_cur=$(sed -n '1p' "$_ALGO_NOTIF_FILE" 2>/dev/null || true)
+    _upd_new=$(sed -n '2p' "$_ALGO_NOTIF_FILE" 2>/dev/null || true)
+    [ -n "$_upd_cur" ] && [ -n "$_upd_new" ] && _upd_msg="🆕 업데이트 가능: $_upd_cur → $_upd_new  |  'algo-update' 실행하세요."
+fi
+
+# background 체크 실행 (다음 source를 위해 파일 갱신)
 if [ -o monitor ]; then
-    # 백그라운드 업데이트 체크 시 job-control 노이즈를 억제한다.
     set +m
     _check_update
     set -m
@@ -89,12 +98,15 @@ if type ui_panel_begin > /dev/null 2>&1; then
     ui_info "Loaded from: ${ALGO_ROOT_DIR}"
     ui_ok "알고리즘 셸 함수 로드 완료!"
     ui_info "도움말: algo-help | 설정: algo-config edit"
+    [ -n "$_upd_msg" ] && ui_warn "$_upd_msg"
     ui_panel_end
 else
     echo "알고리즘 셸 함수 로드 완료! (${ALGO_FUNCTIONS_VERSION})"
     echo "Loaded from: ${ALGO_ROOT_DIR}"
     echo "도움말: algo-help"
+    [ -n "$_upd_msg" ] && echo "  ⚠ [WARN] $_upd_msg"
 fi
+unset _upd_msg _upd_cur _upd_new _ALGO_NOTIF_FILE
 
 if [ -f "$(pwd)/algo_functions.sh" ] && [ "$(pwd)" != "${ALGO_ROOT_DIR}" ]; then
     if type ui_warn >/dev/null 2>&1; then
@@ -104,21 +116,6 @@ if [ -f "$(pwd)/algo_functions.sh" ] && [ "$(pwd)" != "${ALGO_ROOT_DIR}" ]; then
     fi
 fi
 
-# 업데이트 알림 (배경 체크 결과, 파일로 전달됨)
-_ALGO_NOTIF_FILE="${ALGO_UPDATE_NOTIFICATION_FILE:-$HOME/.algo_update_notification}"
-if [ -f "$_ALGO_NOTIF_FILE" ]; then
-    _upd_cur=$(sed -n '1p' "$_ALGO_NOTIF_FILE" 2>/dev/null || true)
-    _upd_new=$(sed -n '2p' "$_ALGO_NOTIF_FILE" 2>/dev/null || true)
-    if [ -n "$_upd_cur" ] && [ -n "$_upd_new" ]; then
-        if type ui_warn >/dev/null 2>&1; then
-            ui_warn "🆕 업데이트 가능: $_upd_cur → $_upd_new  |  'algo-update' 실행하세요."
-        else
-            echo "  ⚠ [WARN] 업데이트 가능: $_upd_cur → $_upd_new  |  실행: algo-update"
-        fi
-    fi
-    unset _upd_cur _upd_new
-fi
-unset _ALGO_NOTIF_FILE
 
 # 안전한 별칭 생성
 _create_safe_alias() {
