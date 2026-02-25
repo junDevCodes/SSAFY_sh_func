@@ -164,6 +164,152 @@ def pick_folder_gui(initial_dir=None):
         # print(f"GUI Error: {e}") 
         return None
 
+def first_run_setup(config, is_first_run=False):
+    """첫 실행이거나 필수 설정이 비어있을 때 자동으로 필수 항목 입력을 받는다.
+    
+    조건:
+      - is_first_run=True (설정 파일이 없었던 경우)
+      - ALGO_BASE_DIR 이 비어있거나 기본값($HOME/algos)인 경우
+      - SSAFY_USER_ID 가 비어있는 경우
+    """
+    home = os.path.expanduser("~").replace("\\", "/")
+    default_algo_dir = home + "/algos"
+
+    current_algo_dir = config.get("ALGO_BASE_DIR", "").replace("\\", "/").rstrip("/")
+    current_user_id  = config.get("SSAFY_USER_ID", "")
+
+    needs_algo_dir  = not current_algo_dir or current_algo_dir == default_algo_dir
+    needs_user_id   = not current_user_id
+
+    if not is_first_run and not needs_algo_dir and not needs_user_id:
+        return config
+
+    clear_screen()
+    version = get_version()
+    print("==========================================")
+    if is_first_run:
+        print(f" ✨ 첫 설치를 환영합니다! ({version})")
+    else:
+        print(f" ⚠️  필수 설정이 비어있습니다. ({version})")
+    print(" 아래 항목을 설정해야 도구를 정상적으로 사용할 수 있습니다.")
+    print("==========================================")
+    print()
+
+    # ── ALGO_BASE_DIR ──────────────────────────────────────
+    if needs_algo_dir:
+        print("📁 [필수] 알고리즘 문제 풀이 파일을 저장할 경로를 설정합니다.")
+        print(f"   기본 경로: {default_algo_dir}")
+        print()
+        print("   📂 폴더 선택 창을 띄웁니다... (작업표시줄을 확인하세요)")
+        gui_path = pick_folder_gui(home)
+        if gui_path:
+            validated, error = sanitize_config_value(gui_path)
+            if not error:
+                config["ALGO_BASE_DIR"] = validated
+                print(f"   ✅ 경로 설정됨: {validated}")
+            else:
+                print(f"   ⚠️ 경로 오류: {error}")
+                gui_path = None
+        if not gui_path:
+            print("   ⚠️ GUI 선택이 취소되었거나 실패했습니다. 직접 입력해주세요.")
+            while True:
+                new_dir = input(f"   경로 입력 (기본값 Enter 시 '{default_algo_dir}'): ").strip()
+                if not new_dir:
+                    config["ALGO_BASE_DIR"] = default_algo_dir
+                    print(f"   ✅ 기본 경로 사용: {default_algo_dir}")
+                    break
+                validated, error = sanitize_config_value(new_dir)
+                if error:
+                    print(f"   ⚠️ {error}")
+                else:
+                    config["ALGO_BASE_DIR"] = validated
+                    print(f"   ✅ 경로 설정됨: {validated}")
+                    break
+        print()
+
+    # ── SSAFY_USER_ID ──────────────────────────────────────
+    if needs_user_id:
+        print("👤 [필수] SSAFY GitLab 사용자 ID를 입력합니다.")
+        print("   (lab.ssafy.com 접속 후 주소창: https://lab.ssafy.com/{여기가 ID})")
+        while True:
+            uid = input("   SSAFY ID 입력: ").strip()
+            validated, error = sanitize_config_value(uid)
+            if error:
+                print(f"   ⚠️ {error}")
+            elif not validated:
+                print("   ⚠️ ID는 반드시 입력해야 합니다.")
+            else:
+                config["SSAFY_USER_ID"] = validated
+                print(f"   ✅ SSAFY ID 설정됨: {validated}")
+                break
+        print()
+
+    # ── IDE 선택 (선택, 첫 실행 시에만) ────────────────────
+    if is_first_run:
+        print("💻 [선택] 사용할 IDE를 선택합니다.")
+        for k, v in IDE_POOL.items():
+            print(f"   {k}. {v[0]} ({v[1]})")
+        current_ide = config.get("IDE_EDITOR", "code")
+        ide_choice = input(f"   번호 선택 (Enter 시 현재값 '{current_ide}' 유지): ").strip()
+        if ide_choice in IDE_POOL:
+            config["IDE_EDITOR"] = IDE_POOL[ide_choice][1]
+            print(f"   ✅ IDE 설정됨: {IDE_POOL[ide_choice][0]}")
+        else:
+            print(f"   ✅ IDE 유지: {current_ide}")
+        print()
+
+        # ── Git 기본 설정 (선택, 첫 실행 시에만) ─────────────
+        print("🔀 [선택] Git 기본 설정을 합니다. (Enter 시 아래 괄호 기본값 사용)")
+        print()
+
+        # 기본 브랜치
+        cur_branch = config.get("GIT_DEFAULT_BRANCH", "main")
+        user_branch = input(f"   기본 브랜치 (현재: {cur_branch}): ").strip()
+        if user_branch:
+            validated, error = sanitize_config_value(user_branch)
+            if not error and validated:
+                config["GIT_DEFAULT_BRANCH"] = validated
+                print(f"   ✅ 기본 브랜치: {validated}")
+            else:
+                print(f"   ✅ 기본 브랜치 유지: {cur_branch}")
+        else:
+            print(f"   ✅ 기본 브랜치 유지: {cur_branch}")
+
+        # 커밋 접두사
+        cur_prefix = config.get("GIT_COMMIT_PREFIX", "solve")
+        user_prefix = input(f"   커밋 접두사 (현재: {cur_prefix}): ").strip()
+        if user_prefix:
+            validated, error = sanitize_config_value(user_prefix)
+            if not error and validated:
+                config["GIT_COMMIT_PREFIX"] = validated
+                print(f"   ✅ 커밋 접두사: {validated}")
+            else:
+                print(f"   ✅ 커밋 접두사 유지: {cur_prefix}")
+        else:
+            print(f"   ✅ 커밋 접두사 유지: {cur_prefix}")
+
+        # 자동 푸시
+        cur_push = config.get("GIT_AUTO_PUSH", "true").lower()
+        push_label = "Y" if cur_push == "true" else "N"
+        user_push = input(f"   자동 푸시 (현재: {push_label}) [Y/n]: ").strip().lower()
+        if user_push in ("n", "no"):
+            config["GIT_AUTO_PUSH"] = "false"
+            print("   ✅ 자동 푸시: OFF")
+        elif user_push in ("y", "yes", ""):
+            config["GIT_AUTO_PUSH"] = "true"
+            print("   ✅ 자동 푸시: ON")
+        else:
+            print(f"   ✅ 자동 푸시 유지: {push_label}")
+        print()
+
+    print("------------------------------------------")
+    print(" 초기 설정 완료! 추가 설정은 아래 메뉴에서 할 수 있습니다.")
+    print("------------------------------------------")
+    input(" 엔터키를 눌러 메인 메뉴로 이동...")
+    return config
+
+
+
 def main_menu(config):
     version = get_version()
     while True:
@@ -293,19 +439,36 @@ def main_menu(config):
                 input("엔터키를 눌러 계속...")
              
         elif choice == "0":
-            save_config(config)
-            print("✅ 설정이 저장되었습니다.")
-            break
-            
+            # 필수 항목 검증
+            home = os.path.expanduser("~").replace("\\", "/")
+            default_algo_dir = home + "/algos"
+            current_algo = config.get("ALGO_BASE_DIR", "").replace("\\", "/").rstrip("/")
+            current_uid  = config.get("SSAFY_USER_ID", "").strip()
+            missing = []
+            if not current_algo or current_algo == default_algo_dir:
+                missing.append("1. 📁 작업 경로 (ALGO_BASE_DIR)")
+            if not current_uid:
+                missing.append("4. 👤 SSAFY ID (SSAFY_USER_ID)")
+            if missing:
+                print("\n⛔ 저장할 수 없습니다. 다음 필수 항목을 먼저 설정해주세요:")
+                for m in missing:
+                    print(f"   - {m}")
+                input("엔터키를 눌러 계속...")
+            else:
+                save_config(config)
+                print("✅ 설정이 저장되었습니다.")
+                break
+
         elif choice.lower() == "q":
             print("취소되었습니다.")
             break
 
 if __name__ == "__main__":
-    if not os.path.exists(CONFIG_FILE):
-        print(f"설정 파일이 없습니다: {CONFIG_FILE}")
-        print("기본 설정을 생성합니다...")
+    is_first_run = not os.path.exists(CONFIG_FILE)
+    if is_first_run:
+        # 빈 설정으로 파일 생성 (기본값 아님 - wizard가 채움)
         save_config({})
-        
+
     cfg = load_config()
+    cfg = first_run_setup(cfg, is_first_run=is_first_run)
     main_menu(cfg)
