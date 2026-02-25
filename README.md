@@ -1,13 +1,13 @@
-# 알고리즘/실습 자동화 Shell 함수 (V8.1.9)
+# 알고리즘/실습 자동화 Shell 함수 (V8.2.0)
 
 이 저장소는 Bash 함수들을 제공하여 알고리즘 풀이와 SSAFY 실습 과제 제출을 자동화합니다.
 별도의 복잡한 설치 없이 스크립트 파일만 복사하여 즉시 사용할 수 있습니다.
 
-## 📌 V8.1.9 주요 변경
-- **초기 설정 마법사 개선**: 첫 실행 시 `ALGO_BASE_DIR`, `SSAFY_USER_ID`, IDE, Git 기본값을 순서대로 안내합니다.
-- **저장 전 필수 항목 검증**: `algo-config edit`에서 `0` 저장 시 필수 항목 미입력이면 저장을 차단합니다.
-- **명령어 실행 가드**: `al` 실행 시 `ALGO_BASE_DIR` 미설정, `gitup`/`gitdown` 실행 시 `SSAFY_USER_ID`, 커밋 접두사, 브랜치 미설정이면 경고 후 `algo-config edit` 안내를 출력합니다.
-- **`al` 에디터 열기 개선**: 파일만 열던 방식에서 `ALGO_BASE_DIR` 프로젝트 루트를 workspace로 열고 해당 파일을 포커싱합니다.
+## 📌 V8.2.0 주요 변경
+- **Python Shim 방지 강화**: `install.sh` Python 탐색 시 MS Store alias를 실행 검증으로 자동 제외 (`python3` → `python` 자동 fallback)
+- **`al` 단독 실행 → 도움말 출력**: 인자 없이 `al`만 실행하면 사용법 안내 출력 (기존 대화형 모드 진입 → b=back/BOJ 키 충돌 방지)
+- **`al` 경로 미설정 시 GUI 폴더 피커**: `ALGO_BASE_DIR` 미설정이면 차단 대신 tkinter 폴더 선택 창 → CLI fallback → 저장 후 계속 실행
+- **`gitup` 에디터 현재 창 재사용**: 클론 후 새 창이 열리던 문제 수정 (`code -r` 옵션으로 현재 VS Code 창 재사용)
 
 ---
 

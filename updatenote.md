@@ -1,5 +1,29 @@
 # 📋 업데이트 노트 (Release Notes)
 
+## V8.2.0 (2026-02-25) - Installer & UX Polish
+
+### ✅ Python Shim 방지 강화 (`install.sh`)
+- `command_exists`로만 탐색하던 방식에서 **실행 검증** (`"$_py" -c "exit(0)"`) 방식으로 교체
+- MS Store alias(`python3`)가 PATH에는 있지만 실행 시 에러 → 자동 제외
+- 탐색 순서: `SSAFY_PYTHON` 환경변수 → `python3` → `python` → `py`
+
+### ✅ `al` 단독 실행 → 도움말 출력 (`lib/templates.sh`)
+- 인자 없이 `al`만 실행하면 대화형 모드 진입 대신 `_ssafy_al_print_usage()` 출력
+- 기존 문제: 대화형 흐름에서 `b`=BOJ 사이트 선택 키와 `b`=back 키 충돌
+
+### ✅ `al` 경로 미설정 시 GUI 폴더 피커 (`lib/config.sh`)
+- `ALGO_BASE_DIR` 기본값/미설정 시 차단에서 **인라인 안내**로 변경
+- Python 있으면 tkinter 폴더 선택 창 → 취소/GUI 불가 시 CLI 텍스트 입력 fallback
+- Enter = `$HOME/algos` 기본 경로, 비대화형(CI)은 기본 경로 자동 적용
+
+### ✅ `gitup` 에디터 현재 창 재사용 (`lib/git.sh`)
+- `_open_repo_file()`: `code "$dir"` → `code -r "$dir"` (현재 창 재사용)
+- 파일 포커싱: `code -g "$file"` → `code -r -g "$file"` (동일 창 유지)
+
+### ✅ 테스트 수정 (`tests/test_commands_integration.sh`)
+- `al` 단독 실행 도움말 변경에 맞게 대화형 back 테스트 → `ssafy_al b` 인자 제공으로 수정
+- **전체 테스트 스위트: 15 passed, 0 failed**
+
 ## V8.1.9 (2026-02-25) - Config Guard & Wizard UX Improvement
 
 ### ✅ 초기 설정 마법사 개선 (`algo_config_wizard.py`)
