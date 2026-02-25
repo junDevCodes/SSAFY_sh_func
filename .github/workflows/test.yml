@@ -24,3 +24,16 @@ jobs:
         shell: powershell
         run: |
           powershell -NoProfile -ExecutionPolicy Bypass -File tests/run_tests.ps1
+
+  python-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run wizard first_run_setup tests
+        shell: bash
+        run: |
+          python3 tests/test_wizard_first_run.py

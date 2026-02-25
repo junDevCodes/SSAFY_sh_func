@@ -1,5 +1,30 @@
 # 📋 업데이트 노트 (Release Notes)
 
+## V8.1.9 (2026-02-25) - Config Guard & Wizard UX Improvement
+
+### ✅ 초기 설정 마법사 개선 (`algo_config_wizard.py`)
+- **`first_run_setup()` 추가**: 첫 실행이거나 필수 설정이 비어있을 때 자동으로 안내합니다.
+  - `ALGO_BASE_DIR`: 기본값(`$HOME/algos`) 또는 미설정 시 폴더 선택 창(GUI) → CLI fallback
+  - `SSAFY_USER_ID`: 빈 값이면 반드시 입력 (건너뛰기 불가)
+  - IDE 선택: 번호로 선택 (첫 실행 시에만)
+  - Git 기본값 설정: 브랜치, 커밋 접두사, 자동 푸시 (Enter로 현재값 유지)
+- **저장 시 필수 항목 검증**: `0` 저장 버튼 클릭 시 `ALGO_BASE_DIR`/`SSAFY_USER_ID` 미설정이면 저장을 거부하고 어떤 항목이 필요한지 안내합니다.
+
+### ✅ 명령어 실행 전 필수 설정 가드 (`lib/config.sh`, `lib/templates.sh`, `lib/git.sh`)
+- **`_ssafy_require_config()`** 공통 가드 함수 추가:
+  - `al` 실행 시 `ALGO_BASE_DIR`이 기본값/미설정이면 차단 및 `algo-config edit` 안내
+  - `gitup` / `gitdown` 실행 시 `SSAFY_USER_ID`, `GIT_COMMIT_PREFIX`, `GIT_DEFAULT_BRANCH` 미설정이면 차단
+
+### ✅ `al` 에디터 열기 개선 (`lib/templates.sh`)
+- 파일만 열던 방식에서 **`$ALGO_BASE_DIR` 프로젝트 루트를 workspace로 열고 해당 파일에 포커싱**하는 방식으로 변경합니다.
+- VS Code / Cursor: `code "$ALGO_BASE_DIR" -g "$file"` 형태로 실행
+
+### ✅ 테스트 추가
+- `tests/test_wizard_first_run.py`: wizard `first_run_setup()` 단위 테스트 7개
+- `tests/test_commands_integration.sh`: `al` 에디터 열기 검증 테스트 추가
+- `.github/workflows/test.yml`: `python-tests` job 추가 (Python 3.11)
+- **전체 테스트 스위트: 15 passed, 0 failed**
+
 ## V8.1.8 (2026-02-25) - Panel Batch Output & UX Polish
 
 ### ✅ 전체 패널 일괄 출력 (`ui_panel_begin/end` 전환)

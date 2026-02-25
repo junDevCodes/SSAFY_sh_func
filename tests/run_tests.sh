@@ -22,7 +22,7 @@ export HOME="$TEST_ROOT/home"
 mkdir -p "$HOME"
 
 cat > "$HOME/.algo_config" <<'EOF'
-ALGO_BASE_DIR="$HOME/algos"
+ALGO_BASE_DIR="$HOME/algo_workspace"
 GIT_DEFAULT_BRANCH="main"
 GIT_COMMIT_PREFIX="solve"
 GIT_AUTO_PUSH=false
@@ -184,6 +184,25 @@ run_external_test "update flow suite" "tests/test_update_flow.sh"
 run_external_test "install post-setup suite" "tests/test_install_post_setup.sh"
 run_external_test "encoding smoke suite" "tests/test_encoding_smoke.sh"
 run_external_test "input confirm scope suite" "tests/test_input_confirm_scope.sh"
+
+# wizard first_run_setup 단위 테스트 (Python)
+if command -v python3 >/dev/null 2>&1; then
+  PYTHON_CMD="python3"
+elif command -v python >/dev/null 2>&1; then
+  PYTHON_CMD="python"
+else
+  PYTHON_CMD=""
+fi
+
+if [ -n "$PYTHON_CMD" ]; then
+  if "$PYTHON_CMD" "$ROOT_DIR/tests/test_wizard_first_run.py"; then
+    pass "wizard first_run_setup suite"
+  else
+    fail "wizard first_run_setup suite"
+  fi
+else
+  echo "SKIP: wizard first_run_setup suite (python not found)"
+fi
 
 echo ""
 echo "Tests: $pass_count passed, $fail_count failed"
