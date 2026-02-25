@@ -208,7 +208,7 @@ test_al_interactive_with_back_and_confirm() {
     return 1
   }
 
-  ssafy_al >/dev/null 2>&1
+  ssafy_al b >/dev/null 2>&1
   assert_file_exists "$ALGO_BASE_DIR/boj/2002/boj_2002.cpp"
   assert_eq "$text_calls" "2"
 }
