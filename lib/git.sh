@@ -318,7 +318,7 @@ _open_repo_file() {
         fi
 
         if [[ "$ide_cmd" == "code" || "$ide_cmd" == "cursor" ]]; then
-            "$ide_cmd" "$abs_repo_dir"
+            "$ide_cmd" -r "$abs_repo_dir"
         else
             "$ide_cmd" "$abs_repo_dir" &
         fi
@@ -368,7 +368,7 @@ _open_repo_file() {
             10|20) return 0 ;;
         esac
         if [[ "$choice" =~ ^[0-9]+$ ]] && [ "$choice" -ge 1 ] && [ "$choice" -le "$count" ]; then
-            "$ide_cmd" -g "$abs_repo_dir/${files[$((choice - 1))]}"
+            "$ide_cmd" -r -g "$abs_repo_dir/${files[$((choice - 1))]}"
         fi
     fi
 }
