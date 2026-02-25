@@ -295,6 +295,11 @@ _ssafy_swap_with_backup() {
 
     backup_dir="${script_dir}.backup.$(date +%Y%m%d%H%M%S)"
 
+    # 기존 백업 제거 (최신 1개만 보존)
+    local parent_dir
+    parent_dir="$(dirname "$script_dir")"
+    local base_name
+    base_name="$(basename "$script_dir")"
     if [ -d "$script_dir" ]; then
         mv "$script_dir" "$backup_dir" || {
             echo "[error] Failed to back up current install."
@@ -310,6 +315,17 @@ _ssafy_swap_with_backup() {
         fi
         return 1
     }
+
+    # 최신 백업 1개만 남기고 과거 백업은 정리한다.
+    if [ -d "$backup_dir" ]; then
+        local old_backup=""
+        for old_backup in "$parent_dir/${base_name}.backup."*; do
+            [ -e "$old_backup" ] || continue
+            [ -d "$old_backup" ] || continue
+            [ "$old_backup" = "$backup_dir" ] && continue
+            rm -rf "$old_backup"
+        done
+    fi
 
     echo "[info] Backup path: $backup_dir"
     return 0
@@ -359,7 +375,6 @@ _ssafy_update_snapshot_install() {
     next_ref=$(_ssafy_read_meta_value "$staged_dir" "ref" 2>/dev/null || true)
 
     if [ "$force" != "true" ] && \
-       [ "$channel" = "stable" ] && \
        [ "$current_version" = "$next_version" ] && \
        [ "$current_ref" = "$next_ref" ]; then
         echo "Already up to date. (version: $current_version)"
