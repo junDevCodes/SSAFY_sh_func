@@ -1,5 +1,18 @@
 # 📋 업데이트 노트 (Release Notes)
 
+## V8.2.1 (2026-02-25) - Update Check & Auto Release CI
+
+### ✅ `algo-update --check` 버전 비교 전용 출력 (`lib/update.sh`)
+- `--check` 플래그 추가: 업데이트 프롬프트 없이 버전만 비교 후 종료
+  - 최신 버전: `✅ 최신 버전입니다.` 출력 (rc=0)
+  - 업데이트 가능: `⬆️ 업데이트 가능: V8.2.0 → V8.2.1` + `algo-update` 안내 (rc=1)
+  - 확인 불가: 네트워크 오류 안내 (rc=2)
+
+### ✅ GitHub Actions 자동 릴리즈 (`.github/workflows/auto-release.yml`)
+- `main` 브랜치에 `VERSION` 파일 변경 push 시 자동으로 git 태그 + GitHub Release 생성
+- `updatenote.md`의 해당 버전 섹션을 릴리즈 노트로 자동 첨부
+- `workflow_dispatch` 트리거 추가 → Actions 탭에서 수동 실행 지원
+
 ## V8.2.0 (2026-02-25) - Installer & UX Polish
 
 ### ✅ Python Shim 방지 강화 (`install.sh`)

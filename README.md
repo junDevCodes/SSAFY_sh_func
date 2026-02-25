@@ -1,13 +1,11 @@
-# 알고리즘/실습 자동화 Shell 함수 (V8.2.0)
+# 알고리즘/실습 자동화 Shell 함수 (V8.2.1)
 
 이 저장소는 Bash 함수들을 제공하여 알고리즘 풀이와 SSAFY 실습 과제 제출을 자동화합니다.
 별도의 복잡한 설치 없이 스크립트 파일만 복사하여 즉시 사용할 수 있습니다.
 
-## 📌 V8.2.0 주요 변경
-- **Python Shim 방지 강화**: `install.sh` Python 탐색 시 MS Store alias를 실행 검증으로 자동 제외 (`python3` → `python` 자동 fallback)
-- **`al` 단독 실행 → 도움말 출력**: 인자 없이 `al`만 실행하면 사용법 안내 출력 (기존 대화형 모드 진입 → b=back/BOJ 키 충돌 방지)
-- **`al` 경로 미설정 시 GUI 폴더 피커**: `ALGO_BASE_DIR` 미설정이면 차단 대신 tkinter 폴더 선택 창 → CLI fallback → 저장 후 계속 실행
-- **`gitup` 에디터 현재 창 재사용**: 클론 후 새 창이 열리던 문제 수정 (`code -r` 옵션으로 현재 VS Code 창 재사용)
+## 📌 V8.2.1 주요 변경
+- **`algo-update --check`**: 업데이트 여부만 조용히 확인 — 현재 버전 vs 최신 버전 비교 결과 출력 후 종료
+- **GitHub Actions 자동 릴리즈**: `VERSION` 파일 변경 push 시 자동으로 GitHub Release 생성 (`workflow_dispatch`로 수동 실행도 지원)
 
 ---
 
