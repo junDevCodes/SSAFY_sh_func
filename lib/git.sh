@@ -317,13 +317,13 @@ _open_repo_file() {
             echo "[STEP] Open repository in IDE: $ide_cmd"
         fi
 
-        if [[ "$ide_cmd" == "code" || "$ide_cmd" == "cursor" ]]; then
-            "$ide_cmd" -r "$abs_repo_dir"
-        else
+        if [[ "$ide_cmd" != "code" && "$ide_cmd" != "cursor" ]]; then
+            # 비-VSCode IDE: 디렉토리를 백그라운드로 오픈
             "$ide_cmd" "$abs_repo_dir" &
         fi
+        # code/cursor: workspace 교체 없이 파일만 열기 → 아래 파일 선택 로직에서 code -r -g 로 처리
     else
-        if type ui_warn >/dev/null 2>&1; then
+        if type ui_warn > /dev/null 2>&1; then
             ui_warn "No IDE command detected."
         else
             echo "[WARN] No IDE command detected."
@@ -1700,7 +1700,7 @@ ssafy_batch() {
              fi
              # [Fix V8.1] Sync status immediately (chk done)
              _sync_playlist_status "$ssafy_root"
-             _open_repo_file "$ssafy_root/$first_repo"
+             _open_repo_file "$first_repo"
          fi
     else
          if type ui_error >/dev/null 2>&1; then
