@@ -164,8 +164,8 @@ _ssafy_algo_config_show() {
         fi
         ui_hint "수정하려면: algo-config edit"
         ui_panel_end
-    elif type ui_header >/dev/null 2>&1; then
-        ui_header "algo-config" "설정 요약 (version=${ALGO_FUNCTIONS_VERSION:-unknown})"
+    elif type ui_panel_begin >/dev/null 2>&1; then
+        ui_panel_begin "algo-config" "설정 요약 (version=${ALGO_FUNCTIONS_VERSION:-unknown})"
         ui_section "기본"
         ui_info "ALGO_BASE_DIR=${ALGO_BASE_DIR:-unset}"
         ui_section "IDE"
@@ -311,8 +311,8 @@ _ssafy_algo_config_cli_edit() {
         return 0
     fi
 
-    if type ui_header >/dev/null 2>&1; then
-        ui_header "algo-config" "저장 전 변경 요약"
+    if type ui_panel_begin >/dev/null 2>&1; then
+        ui_panel_begin "algo-config" "저장 전 변경 요약"
     fi
     for i in "${!pending_keys[@]}"; do
         echo "  - ${pending_keys[$i]}=${pending_values[$i]}"

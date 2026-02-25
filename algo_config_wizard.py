@@ -82,38 +82,42 @@ def save_config(config):
         return
 
     try:
-        # 기존 파일 내용을 읽어서 주석은 유지하고 값만 교체하는 것이 베스트이나,
-        # 여기서는 간단하게 새로 쓴다 (순서 유지 노력).
-        # 단, 사용자가 기존에 주석을 많이 달아놨다면 보존하는 게 좋음.
-        # 일단 'sed'가 아니므로 전체 재작성 방식 사용.
-        
         lines = [
-            f'# 알고리즘 문제 풀이 디렉토리 설정',
+            '# SSAFY Algo Tools Config (UTF-8)',
+            '',
+            '# 알고리즘 문제 풀이 디렉토리',
             f'ALGO_BASE_DIR="{config.get("ALGO_BASE_DIR", "")}"',
             '',
-            f'# Git 설정',
+            '# Git 설정',
             f'GIT_DEFAULT_BRANCH="{config.get("GIT_DEFAULT_BRANCH", "main")}"',
             f'GIT_COMMIT_PREFIX="{config.get("GIT_COMMIT_PREFIX", "solve")}"',
             f'GIT_AUTO_PUSH="{config.get("GIT_AUTO_PUSH", "true")}"',
             '',
+            '# SSAFY 설정',
             f'SSAFY_BASE_URL="{config.get("SSAFY_BASE_URL", "https://lab.ssafy.com")}"',
             f'SSAFY_USER_ID="{config.get("SSAFY_USER_ID", "")}"',
-            # [Security V7.7] 토큰은 파일에 저장하지 않음 (세션 전용)
+            # [Security] 토큰은 파일에 저장하지 않음 (세션 전용)
             '',
-            f'# IDE 설정',
+            '# IDE 설정',
             f'IDE_EDITOR="{config.get("IDE_EDITOR", "code")}"',
+            '',
+            '# 업데이트 및 UI 설정',
+            f'SSAFY_UPDATE_CHANNEL="{config.get("SSAFY_UPDATE_CHANNEL", "stable")}"',
+            f'ALGO_UI_STYLE="{config.get("ALGO_UI_STYLE", "panel")}"',
+            f'ALGO_UI_COLOR="{config.get("ALGO_UI_COLOR", "auto")}"',
+            f'ALGO_INPUT_PROFILE="{config.get("ALGO_INPUT_PROFILE", "stable")}"',
             ''
         ]
-        
+
         with open(CONFIG_FILE, "w", encoding="utf-8") as f:
             f.write("\n".join(lines))
-        
+
         # 권한 설정 (600)
         try:
             os.chmod(CONFIG_FILE, 0o600)
-        except:
+        except Exception:
             pass
-            
+
     finally:
         lock.release()
 
@@ -224,14 +228,28 @@ def main_menu(config):
                 input("⚠️ 잘못된 번호입니다. 엔터키를 누르세요.")
                 
         elif choice == "3":
-            print("\n[🔐 SSAFY 토큰 안내]")
+            print("\n[🔐 SSAFY 토큰 설정]")
             print("")
-            print("  V7.7부터 토큰은 보안상 파일에 저장되지 않습니다.")
+            print("  보안상 토큰은 파일에 저장되지 않으며 현재 터미널 세션에서만 유지됩니다.")
+            print("  gitup 실행 시 SmartLink(URL|Token) 형식으로 자동 요청됩니다.")
+            print("  터미널 종료 시 토큰은 자동으로 삭제됩니다.")
             print("")
-            print("  • 토큰은 터미널 세션에서만 유지됩니다.")
-            print("  • gitup 실행 시 자동으로 입력을 요청합니다.")
-            print("  • 터미널 종료 시 토큰은 자동 삭제됩니다.")
+            current_token = os.environ.get("SSAFY_AUTH_TOKEN", "")
+            if current_token:
+                print("  현재 상태: ✅ 세션에 토큰이 설정되어 있습니다.")
+            else:
+                print("  현재 상태: ❌ 세션에 토큰이 없습니다.")
             print("")
+            try:
+                token_input = getpass.getpass("  지금 세션에 토큰을 설정하려면 입력하세요 (건너뛰려면 Enter): ").strip()
+                if token_input:
+                    os.environ["SSAFY_AUTH_TOKEN"] = token_input
+                    print("  ✅ 세션에 토큰이 설정되었습니다. (터미널 종료 시 삭제)")
+                else:
+                    print("  ℹ️  건너뜁니다. gitup 실행 시 입력을 요청합니다.")
+            except (EOFError, KeyboardInterrupt):
+                print("")
+                print("  ℹ️  취소되었습니다.")
             input("엔터키를 눌러 계속...")
                 
         elif choice == "4":
