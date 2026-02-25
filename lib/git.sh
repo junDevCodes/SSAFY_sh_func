@@ -834,6 +834,9 @@ _ssafy_gitup_prompt_flow() {
 ssafy_gitdown() {
     init_algo_config
 
+    # 필수 설정 가드: SSAFY_USER_ID, 커밋 접두사, 브랜치 미설정 시 차단
+    _ssafy_require_config ssafy_user_id git_prefix git_branch || return 1
+
     local run_all=false
     local ssafy_mode=false
     local commit_msg=""
@@ -1390,6 +1393,9 @@ _gitup_ssafy() {
 
 ssafy_gitup() {
     init_algo_config
+
+    # 필수 설정 가드: SSAFY_USER_ID, 커밋 접두사, 브랜치 미설정 시 차단
+    _ssafy_require_config ssafy_user_id git_prefix git_branch || return 1
 
     local session_root=""
     session_root=$(_find_ssafy_session_root "$(pwd)" 2>/dev/null || true)
