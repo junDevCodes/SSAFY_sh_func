@@ -1,5 +1,28 @@
 # 📋 업데이트 노트 (Release Notes)
 
+## V8.2.5 (2026-02-25) - gitdown Panel Flush & Backup Retention Hardening
+
+### ✅ `gitdown` 패널 flush 동작 보정 (`lib/git.sh`)
+- `ssafy_gitdown()`의 초기 상태 출력을 `git status --short` raw 출력에서 `ui_info` 라인 출력으로 정리
+- 입력 프롬프트 전에 `ui_panel_end`를 호출해 패널 버퍼를 먼저 flush하도록 수정
+- `Final confirmation` 패널도 `input_confirm` 전에 `ui_panel_end`로 닫도록 보정
+- commit/push 단계 이후 결과를 별도 패널(`Execution result`)로 출력하도록 추가
+
+### ✅ 업데이트 백업 보존 정책 보정 (`lib/update.sh`)
+- `_ssafy_swap_with_backup()`의 기존 백업 정리 시점을 swap 성공 이후로 이동
+- 실패 경로에서는 기존 백업을 유지해 복구 가능성을 보존
+- 정리 루프에서 현재 생성한 `backup_dir`는 제외하고, 글롭 미매칭 안전 처리(`-e` 체크) 적용
+
+### ✅ 회귀 테스트 강화 (`tests/test_update_flow.sh`, `tests/test_commands_integration.sh`)
+- `test_update_flow.sh`
+  - `--force`가 동일 버전에서도 swap 경로를 타는지 검증
+  - swap 성공 시 최신 백업 1개만 남기는지 검증
+  - swap 실패 시 기존 백업을 보존하는지 검증
+- `test_commands_integration.sh`
+  - 세션 루트 기본 `gitdown` 실행이 batch 모드로 진입하는지 검증
+  - `GIT_AUTO_PUSH=false`에서도 follow-up이 실행되는지 검증
+  - `gitdown` 패널 begin/end 짝이 유지되는지 검증
+
 ## V8.2.4 (2026-02-25) - File Selection Panel UI & Force Update
 
 ### ✅ `gitup` 파일 선택 UI 패널화 (`lib/git.sh`)
