@@ -1,8 +1,19 @@
-﻿# ?뱥 ?낅뜲?댄듃 ?명듃 (Release Notes)
+# 📋 업데이트 노트 (Release Notes)
+
+## V8.2.6 (2026-02-26) - Non-Interactive Blocking Fix
+
+### ✅ `algo-update` 비대화형 환경 blocking 버그 수정 (`lib/update.sh`)
+- `ssafy_algo_update()` 종료 직전 재시작 confirm 분기에서 `_is_interactive` 체크 없는 `else` 분기에 `read -r -p`가 포함되어 CI/테스트 환경에서 blocking되던 버그 수정
+- `else` → `elif _is_interactive` 변경으로 비대화형 환경에서는 재시작 프롬프트 생략
+
+### ✅ 회귀 테스트 전체 통과
+- `test_update_flow.sh`: **6/6 PASS** (이전 3번 테스트 blocking 수정 완료)
+- `test_commands_integration.sh`: **12/12 PASS**
+- `test_gitup_flow.sh`: **7/7 PASS**
 
 ## V8.2.5 (2026-02-25) - gitdown Panel Flush & Backup Retention Hardening
 
-### ✅ gitdown 패널 flush 동작 보정 (`lib/git.sh`)
+### ✅ `gitdown` 패널 flush 동작 보정 (`lib/git.sh`)
 - `ssafy_gitdown()`의 초기 상태 출력을 `git status --short` raw 출력에서 `ui_info` 라인 출력으로 정리
 - 입력 프롬프트 전에 `ui_panel_end`를 호출해 패널 버퍼를 먼저 flush하도록 수정
 - `Final confirmation` 패널도 `input_confirm` 전에 `ui_panel_end`로 닫도록 보정
@@ -22,537 +33,538 @@
   - 세션 루트 기본 `gitdown` 실행이 batch 모드로 진입하는지 검증
   - `GIT_AUTO_PUSH=false`에서도 follow-up이 실행되는지 검증
   - `gitdown` 패널 begin/end 짝이 유지되는지 검증
+
 ## V8.2.4 (2026-02-25) - File Selection Panel UI & Force Update
 
-### ??`gitup` ?뚯씪 ?좏깮 UI ?⑤꼸??(`lib/git.sh`)
-- `_open_repo_file()`: ?뚯씪 紐⑸줉 諛??좏깮 ?덈궡瑜?`ui_panel_begin/end` ?⑤꼸濡??듯빀 異쒕젰
-  - ?ㅻ뜑: `ui_panel_begin "gitup" <repo_path>`
-  - ?뚯씪 紐⑸줉: `ui_info "N. filename"` (踰덊샇 ?ы븿)
-  - 議곗옉 ?덈궡: `ui_hint "踰덊샇 ?낅젰: Enter=嫄대꼫? | q=痍⑥냼"`
-  - ?⑤꼸 醫낅즺(`ui_panel_end`) ??`input_text`濡??낅젰 諛쏆쓬 (踰꾪띁 flush 蹂댁옣)
-- ?뚯씪 ?녿뒗 寃쎌슦???⑤꼸 ?덉뿉??`ui_warn`?쇰줈 泥섎━
+### ✅ `gitup` 파일 선택 UI 패널화 (`lib/git.sh`)
+- `_open_repo_file()`: 파일 목록 및 선택 안내를 `ui_panel_begin/end` 패널로 통합 출력
+  - 헤더: `ui_panel_begin "gitup" <repo_path>`
+  - 파일 목록: `ui_info "N. filename"` (번호 포함)
+  - 조작 안내: `ui_hint "번호 입력: Enter=건너뜀 | q=취소"`
+  - 패널 종료(`ui_panel_end`) 후 `input_text`로 입력 받음 (버퍼 flush 보장)
+- 파일 없는 경우도 패널 안에서 `ui_warn`으로 처리
 
-### ??`algo-update --force` ?듭뀡 異붽? (`lib/update.sh`)
-- 踰꾩쟾 ?쇱튂 ?щ?? 臾닿??섍쾶 媛뺤젣濡?理쒖떊 ?ㅻ깄?룹쓣 ?ㅼ떆 ?대젮諛쏆븘 ?ㅼ튂
-- ?ъ슜: `algo-update --force`
-- ??뷀삎 紐⑤뱶: ?뺤씤 ?꾨＼?꾪듃??`[--force]` ?쒖떆濡?媛뺤젣 ?ъ꽕移섏엫???덈궡
-- ?⑤꼸??`ui_warn "--force: 踰꾩쟾 ?쇱튂 ?щ?? 臾닿??섍쾶 媛뺤젣 ?낅뜲?댄듃"` ?쒖떆
-- ?꾨즺 硫붿떆吏??`[force]` ?묐몢??異붽?濡?媛뺤젣 ?ㅽ뻾 ?щ? 援щ텇
+### ✅ `algo-update --force` 옵션 추가 (`lib/update.sh`)
+- 버전 일치 여부와 무관하게 강제로 최신 스냅샷을 다시 내려받아 설치
+- 사용: `algo-update --force`
+- 대화형 모드: 확인 프롬프트에 `[--force]` 표시로 강제 재설치임을 안내
+- 패널에 `ui_warn "--force: 버전 일치 여부와 무관하게 강제 업데이트"` 표시
+- 완료 메시지에 `[force]` 접두사 추가로 강제 실행 여부 구분
 
 ## V8.2.3 (2026-02-25) - File Open Logic Fix
 
-### ??`gitup` ?뚯씪 ?닿린 諛⑹떇 ?섏젙 (`lib/git.sh`)
-- **臾몄젣**: ?대줎 ?꾨즺 ??`_open_repo_file()`??`code -r "$dir"` (?붾젆?좊━)瑜?VSCode???꾨떖?? ?꾩옱 workspace? ?ㅻⅨ 寃쎈줈濡??몄떇?섏뼱 **??李?*???대━??踰꾧렇 ?섏젙
-- **?섏젙**: `code`/`cursor`??????붾젆?좊━ ?닿린 ?몄텧 ?쒓굅 ??湲곗〈 ?뚯씪 紐⑸줉 ?쒖떆 + 踰덊샇 ?좏깮 + `code -r -g <?뚯씪>` ?먮쫫留??ъ슜 (?꾩옱 李쎌뿉???뚯씪 ?닿린)
-- **`ssafy_batch`**: `_open_repo_file "$ssafy_root/$first_repo"` ??`_open_repo_file "$first_repo"` (?대? `cd "$ssafy_root"` ?곹깭?대?濡??덈?寃쎈줈 遺덊븘??
+### ✅ `gitup` 파일 열기 방식 수정 (`lib/git.sh`)
+- **문제**: 클론 완료 후 `_open_repo_file()`이 `code -r "$dir"` (디렉토리)를 VSCode에 전달해, 현재 workspace와 다른 경로로 인식되어 **새 창**이 열리던 버그 수정
+- **수정**: `code`/`cursor`에 대한 디렉토리 열기 호출 제거 → 기존 파일 목록 표시 + 번호 선택 + `code -r -g <파일>` 흐름만 사용 (현재 창에서 파일 열기)
+- **`ssafy_batch`**: `_open_repo_file "$ssafy_root/$first_repo"` → `_open_repo_file "$first_repo"` (이미 `cd "$ssafy_root"` 상태이므로 절대경로 불필요)
 
-### ??`al` ?뚯씪 ?닿린 諛⑹떇 媛쒖꽑 (`lib/templates.sh`)
-- **臾몄젣**: `code "$ALGO_BASE_DIR" -g "$file"` 諛⑹떇?쇰줈 ??긽 `ALGO_BASE_DIR`??workspace 援먯껜 ?쒕룄 ???대? ?대젮?덉뼱????李쎌씠 ?앷만 ???덉쓬
-- **?섏젙**: `$VSCODE_WORKSPACE_FOLDER` ?섍꼍蹂?섎줈 ?꾩옱 李쎌쓽 workspace瑜?媛먯?
-  - VSCode ?듯빀 ?곕???+ `ALGO_BASE_DIR` ?대? ?대젮?덉쓬 ??`code -r -g "$file"` (?뚯씪留??꾩옱 李쎌뿉??
-  - ?몃? ?곕????먮뒗 ?ㅻⅨ ?꾨줈?앺듃 ??`code -r "$ALGO_BASE_DIR" -g "$file"` (?꾨줈?앺듃 援먯껜 ???뚯씪 ?ъ빱??
+### ✅ `al` 파일 열기 방식 개선 (`lib/templates.sh`)
+- **문제**: `code "$ALGO_BASE_DIR" -g "$file"` 방식으로 항상 `ALGO_BASE_DIR`을 workspace 교체 시도 → 이미 열려있어도 새 창이 생길 수 있음
+- **수정**: `$VSCODE_WORKSPACE_FOLDER` 환경변수로 현재 창의 workspace를 감지
+  - VSCode 통합 터미널 + `ALGO_BASE_DIR` 이미 열려있음 → `code -r -g "$file"` (파일만 현재 창에서)
+  - 외부 터미널 또는 다른 프로젝트 → `code -r "$ALGO_BASE_DIR" -g "$file"` (프로젝트 교체 후 파일 포커싱)
 
 ## V8.2.2 (2026-02-25) - Update Banner Integration
 
-### ???낅뜲?댄듃 ?뚮┝ 諛곕꼫 ?듯빀 (`algo_functions.sh`)
-- ?낅뜲?댄듃 媛????濡쒕뱶 諛곕꼫 **?덉뿉** `ui_warn` ?ㅽ??쇰줈 ?뚮┝ ?쒖떆
-- 湲곗〈: source ??諛곕꼫 ?꾩뿉 ?됰Ц `[Update]` ?띿뒪??(??대컢 遺덉븞??
-- 蹂寃? ?댁쟾 background 泥댄겕 寃곌낵 ?뚯씪???쎌뼱 諛곕꼫 ??WARN 以꾨줈 ?쒖떆
-- 諛곕꼫 異쒕젰 ??background 泥댄겕 媛깆떊 ???ㅼ쓬 source??諛섏쁺
+### ✅ 업데이트 알림 배너 통합 (`algo_functions.sh`)
+- 업데이트 가능 시 로드 배너 **안에** `ui_warn` 스타일로 알림 표시
+- 기존: source 시 배너 위에 평문 `[Update]` 텍스트 (타이밍 불안정)
+- 변경: 이전 background 체크 결과 파일을 읽어 배너 안 WARN 줄로 표시
+- 배너 출력 후 background 체크 갱신 → 다음 source에 반영
 
 ```
 +-------------------------------+
-| ?㎞ SSAFY Algo Tools           |
+| 🧰 SSAFY Algo Tools           |
 | Version V8.2.1                |
-|   ??Loaded from: ~/.ssafy-..  |
-|   ???뚭퀬由ъ쬁 ???⑥닔 濡쒕뱶 ?꾨즺! |
-|   ???꾩?留? algo-help | ...   |
-|   ???넅 ?낅뜲?댄듃 媛?? V8.2.1 ??V8.2.2 | 'algo-update' ?ㅽ뻾?섏꽭?? |
+|   ℹ Loaded from: ~/.ssafy-..  |
+|   ✅ 알고리즘 셸 함수 로드 완료! |
+|   ℹ 도움말: algo-help | ...   |
+|   ⚠ 🆕 업데이트 가능: V8.2.1 → V8.2.2 | 'algo-update' 실행하세요. |
 +-------------------------------+
 ```
 
 ## V8.2.1 (2026-02-25) - Update Check & Auto Release CI
 
-### ??`algo-update --check` 踰꾩쟾 鍮꾧탳 ?꾩슜 異쒕젰 (`lib/update.sh`)
-- `--check` ?뚮옒洹?異붽?: ?낅뜲?댄듃 ?꾨＼?꾪듃 ?놁씠 踰꾩쟾留?鍮꾧탳 ??醫낅즺
-  - 理쒖떊 踰꾩쟾: `??理쒖떊 踰꾩쟾?낅땲??` 異쒕젰 (rc=0)
-  - ?낅뜲?댄듃 媛?? `燧놅툘 ?낅뜲?댄듃 媛?? V8.2.0 ??V8.2.1` + `algo-update` ?덈궡 (rc=1)
-  - ?뺤씤 遺덇?: ?ㅽ듃?뚰겕 ?ㅻ쪟 ?덈궡 (rc=2)
+### ✅ `algo-update --check` 버전 비교 전용 출력 (`lib/update.sh`)
+- `--check` 플래그 추가: 업데이트 프롬프트 없이 버전만 비교 후 종료
+  - 최신 버전: `✅ 최신 버전입니다.` 출력 (rc=0)
+  - 업데이트 가능: `⬆️ 업데이트 가능: V8.2.0 → V8.2.1` + `algo-update` 안내 (rc=1)
+  - 확인 불가: 네트워크 오류 안내 (rc=2)
 
-### ??GitHub Actions ?먮룞 由대━利?(`.github/workflows/auto-release.yml`)
-- `main` 釉뚮옖移섏뿉 `VERSION` ?뚯씪 蹂寃?push ???먮룞?쇰줈 git ?쒓렇 + GitHub Release ?앹꽦
-- `updatenote.md`???대떦 踰꾩쟾 ?뱀뀡??由대━利??명듃濡??먮룞 泥⑤?
-- `workflow_dispatch` ?몃━嫄?異붽? ??Actions ??뿉???섎룞 ?ㅽ뻾 吏??
+### ✅ GitHub Actions 자동 릴리즈 (`.github/workflows/auto-release.yml`)
+- `main` 브랜치에 `VERSION` 파일 변경 push 시 자동으로 git 태그 + GitHub Release 생성
+- `updatenote.md`의 해당 버전 섹션을 릴리즈 노트로 자동 첨부
+- `workflow_dispatch` 트리거 추가 → Actions 탭에서 수동 실행 지원
 
 ## V8.2.0 (2026-02-25) - Installer & UX Polish
 
-### ??Python Shim 諛⑹? 媛뺥솕 (`install.sh`)
-- `command_exists`濡쒕쭔 ?먯깋?섎뜕 諛⑹떇?먯꽌 **?ㅽ뻾 寃利?* (`"$_py" -c "exit(0)"`) 諛⑹떇?쇰줈 援먯껜
-- MS Store alias(`python3`)媛 PATH?먮뒗 ?덉?留??ㅽ뻾 ???먮윭 ???먮룞 ?쒖쇅
-- ?먯깋 ?쒖꽌: `SSAFY_PYTHON` ?섍꼍蹂????`python3` ??`python` ??`py`
+### ✅ Python Shim 방지 강화 (`install.sh`)
+- `command_exists`로만 탐색하던 방식에서 **실행 검증** (`"$_py" -c "exit(0)"`) 방식으로 교체
+- MS Store alias(`python3`)가 PATH에는 있지만 실행 시 에러 → 자동 제외
+- 탐색 순서: `SSAFY_PYTHON` 환경변수 → `python3` → `python` → `py`
 
-### ??`al` ?⑤룆 ?ㅽ뻾 ???꾩?留?異쒕젰 (`lib/templates.sh`)
-- ?몄옄 ?놁씠 `al`留??ㅽ뻾?섎㈃ ??뷀삎 紐⑤뱶 吏꾩엯 ???`_ssafy_al_print_usage()` 異쒕젰
-- 湲곗〈 臾몄젣: ??뷀삎 ?먮쫫?먯꽌 `b`=BOJ ?ъ씠???좏깮 ?ㅼ? `b`=back ??異⑸룎
+### ✅ `al` 단독 실행 → 도움말 출력 (`lib/templates.sh`)
+- 인자 없이 `al`만 실행하면 대화형 모드 진입 대신 `_ssafy_al_print_usage()` 출력
+- 기존 문제: 대화형 흐름에서 `b`=BOJ 사이트 선택 키와 `b`=back 키 충돌
 
-### ??`al` 寃쎈줈 誘몄꽕????GUI ?대뜑 ?쇱빱 (`lib/config.sh`)
-- `ALGO_BASE_DIR` 湲곕낯媛?誘몄꽕????李⑤떒?먯꽌 **?몃씪???덈궡**濡?蹂寃?
-- Python ?덉쑝硫?tkinter ?대뜑 ?좏깮 李???痍⑥냼/GUI 遺덇? ??CLI ?띿뒪???낅젰 fallback
-- Enter = `$HOME/algos` 湲곕낯 寃쎈줈, 鍮꾨??뷀삎(CI)? 湲곕낯 寃쎈줈 ?먮룞 ?곸슜
+### ✅ `al` 경로 미설정 시 GUI 폴더 피커 (`lib/config.sh`)
+- `ALGO_BASE_DIR` 기본값/미설정 시 차단에서 **인라인 안내**로 변경
+- Python 있으면 tkinter 폴더 선택 창 → 취소/GUI 불가 시 CLI 텍스트 입력 fallback
+- Enter = `$HOME/algos` 기본 경로, 비대화형(CI)은 기본 경로 자동 적용
 
-### ??`gitup` ?먮뵒???꾩옱 李??ъ궗??(`lib/git.sh`)
-- `_open_repo_file()`: `code "$dir"` ??`code -r "$dir"` (?꾩옱 李??ъ궗??
-- ?뚯씪 ?ъ빱?? `code -g "$file"` ??`code -r -g "$file"` (?숈씪 李??좎?)
+### ✅ `gitup` 에디터 현재 창 재사용 (`lib/git.sh`)
+- `_open_repo_file()`: `code "$dir"` → `code -r "$dir"` (현재 창 재사용)
+- 파일 포커싱: `code -g "$file"` → `code -r -g "$file"` (동일 창 유지)
 
-### ???뚯뒪???섏젙 (`tests/test_commands_integration.sh`)
-- `al` ?⑤룆 ?ㅽ뻾 ?꾩?留?蹂寃쎌뿉 留욊쾶 ??뷀삎 back ?뚯뒪????`ssafy_al b` ?몄옄 ?쒓났?쇰줈 ?섏젙
-- **?꾩껜 ?뚯뒪???ㅼ쐞?? 15 passed, 0 failed**
+### ✅ 테스트 수정 (`tests/test_commands_integration.sh`)
+- `al` 단독 실행 도움말 변경에 맞게 대화형 back 테스트 → `ssafy_al b` 인자 제공으로 수정
+- **전체 테스트 스위트: 15 passed, 0 failed**
 
 ## V8.1.9 (2026-02-25) - Config Guard & Wizard UX Improvement
 
-### ??珥덇린 ?ㅼ젙 留덈쾿??媛쒖꽑 (`algo_config_wizard.py`)
-- **`first_run_setup()` 異붽?**: 泥??ㅽ뻾?닿굅???꾩닔 ?ㅼ젙??鍮꾩뼱?덉쓣 ???먮룞?쇰줈 ?덈궡?⑸땲??
-  - `ALGO_BASE_DIR`: 湲곕낯媛?`$HOME/algos`) ?먮뒗 誘몄꽕?????대뜑 ?좏깮 李?GUI) ??CLI fallback
-  - `SSAFY_USER_ID`: 鍮?媛믪씠硫?諛섎뱶???낅젰 (嫄대꼫?곌린 遺덇?)
-  - IDE ?좏깮: 踰덊샇濡??좏깮 (泥??ㅽ뻾 ?쒖뿉留?
-  - Git 湲곕낯媛??ㅼ젙: 釉뚮옖移? 而ㅻ컠 ?묐몢?? ?먮룞 ?몄떆 (Enter濡??꾩옱媛??좎?)
-- **??????꾩닔 ??ぉ 寃利?*: `0` ???踰꾪듉 ?대┃ ??`ALGO_BASE_DIR`/`SSAFY_USER_ID` 誘몄꽕?뺤씠硫???μ쓣 嫄곕??섍퀬 ?대뼡 ??ぉ???꾩슂?쒖? ?덈궡?⑸땲??
+### ✅ 초기 설정 마법사 개선 (`algo_config_wizard.py`)
+- **`first_run_setup()` 추가**: 첫 실행이거나 필수 설정이 비어있을 때 자동으로 안내합니다.
+  - `ALGO_BASE_DIR`: 기본값(`$HOME/algos`) 또는 미설정 시 폴더 선택 창(GUI) → CLI fallback
+  - `SSAFY_USER_ID`: 빈 값이면 반드시 입력 (건너뛰기 불가)
+  - IDE 선택: 번호로 선택 (첫 실행 시에만)
+  - Git 기본값 설정: 브랜치, 커밋 접두사, 자동 푸시 (Enter로 현재값 유지)
+- **저장 시 필수 항목 검증**: `0` 저장 버튼 클릭 시 `ALGO_BASE_DIR`/`SSAFY_USER_ID` 미설정이면 저장을 거부하고 어떤 항목이 필요한지 안내합니다.
 
-### ??紐낅졊???ㅽ뻾 ???꾩닔 ?ㅼ젙 媛??(`lib/config.sh`, `lib/templates.sh`, `lib/git.sh`)
-- **`_ssafy_require_config()`** 怨듯넻 媛???⑥닔 異붽?:
-  - `al` ?ㅽ뻾 ??`ALGO_BASE_DIR`??湲곕낯媛?誘몄꽕?뺤씠硫?李⑤떒 諛?`algo-config edit` ?덈궡
-  - `gitup` / `gitdown` ?ㅽ뻾 ??`SSAFY_USER_ID`, `GIT_COMMIT_PREFIX`, `GIT_DEFAULT_BRANCH` 誘몄꽕?뺤씠硫?李⑤떒
+### ✅ 명령어 실행 전 필수 설정 가드 (`lib/config.sh`, `lib/templates.sh`, `lib/git.sh`)
+- **`_ssafy_require_config()`** 공통 가드 함수 추가:
+  - `al` 실행 시 `ALGO_BASE_DIR`이 기본값/미설정이면 차단 및 `algo-config edit` 안내
+  - `gitup` / `gitdown` 실행 시 `SSAFY_USER_ID`, `GIT_COMMIT_PREFIX`, `GIT_DEFAULT_BRANCH` 미설정이면 차단
 
-### ??`al` ?먮뵒???닿린 媛쒖꽑 (`lib/templates.sh`)
-- ?뚯씪留??대뜕 諛⑹떇?먯꽌 **`$ALGO_BASE_DIR` ?꾨줈?앺듃 猷⑦듃瑜?workspace濡??닿퀬 ?대떦 ?뚯씪???ъ빱??*?섎뒗 諛⑹떇?쇰줈 蹂寃쏀빀?덈떎.
-- VS Code / Cursor: `code "$ALGO_BASE_DIR" -g "$file"` ?뺥깭濡??ㅽ뻾
+### ✅ `al` 에디터 열기 개선 (`lib/templates.sh`)
+- 파일만 열던 방식에서 **`$ALGO_BASE_DIR` 프로젝트 루트를 workspace로 열고 해당 파일에 포커싱**하는 방식으로 변경합니다.
+- VS Code / Cursor: `code "$ALGO_BASE_DIR" -g "$file"` 형태로 실행
 
-### ???뚯뒪??異붽?
-- `tests/test_wizard_first_run.py`: wizard `first_run_setup()` ?⑥쐞 ?뚯뒪??7媛?
-- `tests/test_commands_integration.sh`: `al` ?먮뵒???닿린 寃利??뚯뒪??異붽?
-- `.github/workflows/test.yml`: `python-tests` job 異붽? (Python 3.11)
-- **?꾩껜 ?뚯뒪???ㅼ쐞?? 15 passed, 0 failed**
+### ✅ 테스트 추가
+- `tests/test_wizard_first_run.py`: wizard `first_run_setup()` 단위 테스트 7개
+- `tests/test_commands_integration.sh`: `al` 에디터 열기 검증 테스트 추가
+- `.github/workflows/test.yml`: `python-tests` job 추가 (Python 3.11)
+- **전체 테스트 스위트: 15 passed, 0 failed**
 
 ## V8.1.8 (2026-02-25) - Panel Batch Output & UX Polish
 
-### ???꾩껜 ?⑤꼸 ?쇨큵 異쒕젰 (`ui_panel_begin/end` ?꾪솚)
-- `al`, `gitdown`, `gitup`, `algo-config`, `algo-update`, `algo-doctor` ??**紐⑤뱺 紐낅졊???⑤꼸**???댁슜??踰꾪띁???댁븘 ??踰덉뿉 異쒕젰?⑸땲??
-- 湲곗〈 `ui_header()` (?ㅻ뜑留?異쒕젰 ???댁슜 以꾨컮轅? 諛⑹떇??紐⑤뱺 ?몄텧??`ui_panel_begin/end` 諛⑹떇?쇰줈 ?꾪솚?덉뒿?덈떎.
-- ?곗륫 ?⑤꼸 寃쎄퀎(`|`)媛 紐⑤뱺 以꾩뿉???뺥솗?섍쾶 ?뺣젹?⑸땲??
+### ✅ 전체 패널 일괄 출력 (`ui_panel_begin/end` 전환)
+- `al`, `gitdown`, `gitup`, `algo-config`, `algo-update`, `algo-doctor` 등 **모든 명령어 패널**이 내용을 버퍼에 담아 한 번에 출력됩니다.
+- 기존 `ui_header()` (헤더만 출력 후 내용 줄바꿈) 방식의 모든 호출을 `ui_panel_begin/end` 방식으로 전환했습니다.
+- 우측 패널 경계(`|`)가 모든 줄에서 정확하게 정렬됩니다.
 
-### ??濡쒕뱶 諛곕꼫 媛꾩냼??
-- `source ~/.bashrc` ??異쒕젰?섎뒗 濡쒕뱶 諛곕꼫瑜?3以꾨줈 以꾩??듬땲??
+### ✅ 로드 배너 간소화
+- `source ~/.bashrc` 시 출력되는 로드 배너를 3줄로 줄였습니다.
   ```
-  | ??[INFO] Loaded from: /c/Users/.../  |
-  | ??[OK] ?뚭퀬由ъ쬁 ???⑥닔 濡쒕뱶 ?꾨즺! |
-  | ??[INFO] ?꾩?留? algo-help | ...     |
+  | ℹ [INFO] Loaded from: /c/Users/.../  |
+  | ✅ [OK] 알고리즘 셸 함수 로드 완료! |
+  | ℹ [INFO] 도움말: algo-help | ...     |
   ```
-- 湲곗〈 `Verify load`, `Verify function`, 踰꾩쟾 以묐났 ?쇱씤 ??遺덊븘?뷀븳 ?덈궡臾??쒓굅.
+- 기존 `Verify load`, `Verify function`, 버전 중복 라인 등 불필요한 안내문 제거.
 
-### ??algo-help ?꾩?留?蹂닿컯 (`lib/help.sh`)
-- 媛?紐낅졊?대퀎 ?듭뀡, ?덉떆, 湲곕낯 ?숈옉???곸꽭 ?꾩?留??뺥깭濡??뺣━.
-- `algo-help gitdown`, `algo-help al` ??媛쒕퀎 紐낅졊???곸꽭 議고쉶 吏??
+### ✅ algo-help 도움말 보강 (`lib/help.sh`)
+- 각 명령어별 옵션, 예시, 기본 동작을 상세 도움말 형태로 정리.
+- `algo-help gitdown`, `algo-help al` 등 개별 명령어 상세 조회 지원.
 
-### ??algo-config wizard ?꾨씫 ??異붽? (`algo_config_wizard.py`, `lib/config.sh`)
-- `SSAFY_BASE_URL`, `SSAFY_USER_ID` ???꾨씫???ㅼ젙 ?ㅺ? wizard?먯꽌 ?쒖떆 諛??섏젙?⑸땲??
-- SSAFY ?좏겙 ?몄뀡 ?ㅼ젙 ?덈궡 異붽?.
+### ✅ algo-config wizard 누락 키 추가 (`algo_config_wizard.py`, `lib/config.sh`)
+- `SSAFY_BASE_URL`, `SSAFY_USER_ID` 등 누락된 설정 키가 wizard에서 표시 및 수정됩니다.
+- SSAFY 토큰 세션 설정 안내 추가.
 
-### ??Windows Git Bash UTF-8 ?덉젙??(`algo_functions.sh`)
-- `LANG=ko_KR.UTF-8`, `PYTHONIOENCODING=utf-8` ???섍꼍蹂?섎? ?먮룞 ?ㅼ젙?⑸땲??
-- ?쒓? 異쒕젰 源⑥쭚(紐⑥?諛붿?) ?덈갑 泥섎━ 媛뺥솕.
+### ✅ Windows Git Bash UTF-8 안정화 (`algo_functions.sh`)
+- `LANG=ko_KR.UTF-8`, `PYTHONIOENCODING=utf-8` 등 환경변수를 자동 설정합니다.
+- 한글 출력 깨짐(모지바케) 예방 처리 강화.
 
-### ???뚯뒪???덉젙??(`tests/test_gitup_flow.sh`)
-- `ui_panel_begin` mock 異붽?濡?`gitup step3 preview text is readable` ?뚯뒪??蹂듦뎄.
-- ?꾩껜 ?뚯뒪???ㅼ쐞?? **14 passed, 0 failed**.
+### ✅ 테스트 안정화 (`tests/test_gitup_flow.sh`)
+- `ui_panel_begin` mock 추가로 `gitup step3 preview text is readable` 테스트 복구.
+- 전체 테스트 스위트: **14 passed, 0 failed**.
 
 ## V8.1.7 (2026-02-24) - Stability Hotfix
 
-### ??algo-update ?낅젰 ?먮쫫 踰꾧렇 ?섏젙
-- ?먯씤: `input_confirm` ?몄텧 ??異쒕젰 蹂??`answer`) 諛섏쁺???꾨씫?????덈뒗 蹂???ㅼ퐫??異⑸룎.
-- 利앹긽: `algo-update`?먯꽌 `y`瑜??낅젰?대룄 利됱떆 醫낅즺?섎뒗 耳?댁뒪 諛쒖깮.
-- ?섏젙: `input_confirm` ?대? ?낅젰 ?꾩떆 蹂?섎챸??遺꾨━?섏뿬 ?몄텧??蹂??諛섏쁺 蹂댁옣.
+### ✅ algo-update 입력 흐름 버그 수정
+- 원인: `input_confirm` 호출 시 출력 변수(`answer`) 반영이 누락될 수 있는 변수 스코프 충돌.
+- 증상: `algo-update`에서 `y`를 입력해도 즉시 종료되는 케이스 발생.
+- 수정: `input_confirm` 내부 입력 임시 변수명을 분리하여 호출자 변수 반영 보장.
 
-### ???ㅼ튂/?낅뜲?댄듃 ?덉젙??媛뺥솕
-- snapshot ?낅뜲?댄듃 ???곸슜 硫뷀?(`mode/channel/ref/version`) ?뺤씤 寃쎈줈 媛뺥솕.
-- ?ㅼ튂 ???ㅼ젙 ?뚮줈?곕뒗 GUI ?곗꽑, ?ㅽ뙣 ??CLI fallback ?뺤콉 ?좎?.
+### ✅ 설치/업데이트 안정성 강화
+- snapshot 업데이트 후 적용 메타(`mode/channel/ref/version`) 확인 경로 강화.
+- 설치 후 설정 플로우는 GUI 우선, 실패 시 CLI fallback 정책 유지.
 
-### ???뚭? 諛⑹? ?뚯뒪??異붽?
-- `tests/test_input_confirm_scope.sh` 異붽?.
-- `tests/run_tests.sh`, `tests/run_tests.ps1`???ㅼ쐞???곕룞.
+### ✅ 회귀 방지 테스트 추가
+- `tests/test_input_confirm_scope.sh` 추가.
+- `tests/run_tests.sh`, `tests/run_tests.ps1`에 스위트 연동.
 
 ## V8.1.7 (2026-02-24) - Gitup Flow Stabilization & Setup/Help Update
 
-### ??gitup guided flow ?덉젙??
-- `Step 4 confirm`?먯꽌 `b=back` ?낅젰 ??痍⑥냼 醫낅즺?섏? ?딄퀬 `Step 2`濡?蹂듦??섎룄濡??먮쫫???덉젙?뷀뻽?듬땲??
-- `Step 4` 湲곕낯媛?泥섎━(`Enter => yes`)? ?뺤씤 遺꾧린(`yes/no/cancel/back`)瑜?紐낇솗???뺣━?덉뒿?덈떎.
-- `SSAFY_DEBUG_FLOW=1` ?붾쾭洹?濡쒓렇瑜??듯빐 step/rc/answer/flow_rc 異붿쟻??媛?ν븯?꾨줉 蹂닿컯?덉뒿?덈떎.
+### ✅ gitup guided flow 안정화
+- `Step 4 confirm`에서 `b=back` 입력 시 취소 종료되지 않고 `Step 2`로 복귀하도록 흐름을 안정화했습니다.
+- `Step 4` 기본값 처리(`Enter => yes`)와 확인 분기(`yes/no/cancel/back`)를 명확히 정리했습니다.
+- `SSAFY_DEBUG_FLOW=1` 디버그 로그를 통해 step/rc/answer/flow_rc 추적이 가능하도록 보강했습니다.
 
-### ??SmartLink ?좏겙 泥섎━ 媛쒖꽑
-- SmartLink(`URL|Token`) ?낅젰 寃쎈줈?먯꽌 ?좏겙 ?뚯떛/?곸슜 寃쎈줈瑜??먭??섍퀬 ?덈궡瑜?蹂닿컯?덉뒿?덈떎.
-- `URL|Token` ?뺤떇 ?ㅻ쪟 ???덉떆 以묒떖 ?덈궡瑜??쒓났???ъ엯???쇱꽑??以꾩??듬땲??
+### ✅ SmartLink 토큰 처리 개선
+- SmartLink(`URL|Token`) 입력 경로에서 토큰 파싱/적용 경로를 점검하고 안내를 보강했습니다.
+- `URL|Token` 형식 오류 시 예시 중심 안내를 제공해 재입력 혼선을 줄였습니다.
 
-### ???ㅼ튂 ???ㅼ젙 ?뚮줈???꾩?留??뺤콉 諛섏쁺
-- ?ㅼ튂 ?꾨즺 ??蹂꾨룄 ?ㅼ젙 ?뚮줈?곌? ?댁뼱吏?꾨줉 ?뺤콉???뺣━?덉뒿?덈떎.
-- ?꾩?留?吏꾩엯?먯쓣 `algo-help` 以묒떖?쇰줈 ?쇱썝?뷀븯怨? `hint`???꾩옱 ?숈옉怨??곌퀎?섎뒗 理쒖냼 ?덈궡留??좎??⑸땲??
+### ✅ 설치 후 설정 플로우/도움말 정책 반영
+- 설치 완료 후 별도 설정 플로우가 이어지도록 정책을 정리했습니다.
+- 도움말 진입점을 `algo-help` 중심으로 일원화하고, `hint`는 현재 동작과 연계되는 최소 안내만 유지합니다.
 
-### ??臾몄꽌/踰꾩쟾 ?숆린??
-- `VERSION`??`V8.1.7`濡?媛깆떊?덉뒿?덈떎.
-- `README.md`??`V8.1.7` 湲곗? ?꾩닔 怨듭?/?댁쁺 ?덈궡瑜?諛섏쁺?덉뒿?덈떎.
+### ✅ 문서/버전 동기화
+- `VERSION`을 `V8.1.7`로 갱신했습니다.
+- `README.md`에 `V8.1.7` 기준 필수 공지/운영 안내를 반영했습니다.
 
 ## V8.1.6 (2026-02-20) - Emoji Width Profile Stabilization
 
-### ?㎥ VS Code Git Bash ?곗륫 寃쎄퀎 1移??ㅼ감 ?섏젙
-- ?먯씤: ?쇰? ?대え吏(?? `?썱`)???쒖떆??씠 ?곕????고듃 ?섍꼍???곕씪 1移??먮뒗 2移몄쑝濡??ㅻⅤ寃??뚮뜑留곷릺???곗륫 寃쎄퀎 ?뺣젹???닿툔?섎뒗 臾몄젣
-- ?닿껐: ?⑤꼸 ?뚮뜑?ъ뿉 ?대え吏 ??蹂댁젙 ?꾨줈?뚯씪???꾩엯???섍꼍蹂??몄감瑜??≪닔
+### 🧩 VS Code Git Bash 우측 경계 1칸 오차 수정
+- 원인: 일부 이모지(예: `🛠`)의 표시폭이 터미널/폰트 환경에 따라 1칸 또는 2칸으로 다르게 렌더링되어 우측 경계 정렬이 어긋나는 문제
+- 해결: 패널 렌더러에 이모지 폭 보정 프로파일을 도입해 환경별 편차를 흡수
 
-### ?숋툘 ?좉퇋 UI ?섍꼍蹂??
-- `ALGO_UI_EMOJI_WIDTH=auto|narrow|wide` (湲곕낯: `auto`)
-- `auto` ?숈옉:
-  - VS Code + Git Bash(msys) 怨꾩뿴: `narrow`
-  - 洹????섍꼍: `wide`
-- ?꾩슂 ???ъ슜?먭? `narrow`/`wide`瑜?吏곸젒 媛뺤젣??利됱떆 蹂댁젙 媛??
+### ⚙️ 신규 UI 환경변수
+- `ALGO_UI_EMOJI_WIDTH=auto|narrow|wide` (기본: `auto`)
+- `auto` 동작:
+  - VS Code + Git Bash(msys) 계열: `narrow`
+  - 그 외 환경: `wide`
+- 필요 시 사용자가 `narrow`/`wide`를 직접 강제해 즉시 보정 가능
 
-### ?뱴 臾몄꽌/踰꾩쟾 ?숆린??
-- `VERSION`, `ALGO_FUNCTIONS_VERSION_DEFAULT`, `README.md` 踰꾩쟾??`V8.1.6`?쇰줈 ?숆린??
-- README??VS Code Git Bash ?뺣젹 ?댁뒋 ???媛?대뱶 異붽?
+### 📚 문서/버전 동기화
+- `VERSION`, `ALGO_FUNCTIONS_VERSION_DEFAULT`, `README.md` 버전을 `V8.1.6`으로 동기화
+- README에 VS Code Git Bash 정렬 이슈 대응 가이드 추가
 
 ## V8.1.5 (2026-02-20) - CMD Panel Alignment Hotfix
 
-### ?㎟ Panel UI ?뺣젹 ?덉젙??(`algo-config`, `algo-doctor`)
-- ?⑥씪 ?⑤꼸 ?뚮뜑留?援ъ“(`ui_panel_begin`/`ui_panel_end`)瑜??꾩엯?섏뿬 ?뱀뀡/?곹깭 ?쇱씤??諛뺤뒪 諛뽰쑝濡???대굹?ㅻ뜕 臾몄젣瑜??섏젙?덉뒿?덈떎.
-- `ui_section`, `ui_info`, `ui_ok`, `ui_warn`, `ui_error`, `ui_hint`媛 ?⑤꼸 ?대┛ ?곹깭?먯꽌 ?쇨????⑤꼸 ?쇱씤?쇰줈 異쒕젰?섎룄濡?媛쒖꽑?덉뒿?덈떎.
-- border/line 怨꾩궛 湲곗????듭씪?섏뿬 ?곗륫 寃쎄퀎媛 2移??닿툔?섎뜕 臾몄젣瑜??섏젙?덉뒿?덈떎.
-- ?대え吏 ??蹂댁젙 ?꾨줈?뚯씪(`ALGO_UI_EMOJI_WIDTH=auto|narrow|wide`)??異붽???`algo-config` ?곗륫 寃쎄퀎 1移??ㅼ감瑜??닿껐?덉뒿?덈떎.
+### 🧱 Panel UI 정렬 안정화 (`algo-config`, `algo-doctor`)
+- 단일 패널 렌더링 구조(`ui_panel_begin`/`ui_panel_end`)를 도입하여 섹션/상태 라인이 박스 밖으로 튀어나오던 문제를 수정했습니다.
+- `ui_section`, `ui_info`, `ui_ok`, `ui_warn`, `ui_error`, `ui_hint`가 패널 열린 상태에서 일관된 패널 라인으로 출력되도록 개선했습니다.
+- border/line 계산 기준을 통일하여 우측 경계가 2칸 어긋나던 문제를 수정했습니다.
+- 이모지 폭 보정 프로파일(`ALGO_UI_EMOJI_WIDTH=auto|narrow|wide`)을 추가해 `algo-config` 우측 경계 1칸 오차를 해결했습니다.
 
-### ?뱪 李??ш린 ?곕룞 ?⑤꼸 ??怨꾩궛
-- `UI_PANEL_WIDTH` 誘몄꽕?????곕????꾩옱 ??쓣 湲곗??쇰줈 ?⑤꼸 ?꾩껜??쓣 ?먮룞 怨꾩궛?⑸땲??
-- `ALGO_UI_PANEL_MARGIN`(湲곕낯 `4`), `ALGO_UI_PANEL_MIN_WIDTH`(湲곕낯 `52`), `ALGO_UI_PANEL_MAX_WIDTH`(湲곕낯 `0`, 臾댁젣??濡????뺤콉???쒖뼱?????덉뒿?덈떎.
-- ?⑤꼸 ?쒖옉 ????쓣 snapshot(`UI_PANEL_FRAME_WIDTH`)?섏뿬 媛숈? ?⑤꼸 ?댁뿉?쒕뒗 李??ш린 蹂?붽? ?덉뼱????씠 ?붾뱾由ъ? ?딅룄濡??덉뒿?덈떎.
+### 📐 창 크기 연동 패널 폭 계산
+- `UI_PANEL_WIDTH` 미설정 시 터미널 현재 폭을 기준으로 패널 전체폭을 자동 계산합니다.
+- `ALGO_UI_PANEL_MARGIN`(기본 `4`), `ALGO_UI_PANEL_MIN_WIDTH`(기본 `52`), `ALGO_UI_PANEL_MAX_WIDTH`(기본 `0`, 무제한)로 폭 정책을 제어할 수 있습니다.
+- 패널 시작 시 폭을 snapshot(`UI_PANEL_FRAME_WIDTH`)하여 같은 패널 내에서는 창 크기 변화가 있어도 폭이 흔들리지 않도록 했습니다.
 
-### ?릫 ?뚮뜑???좏깮 諛??대갚 媛쒖꽑
-- ?좉퇋 ?섍꼍蹂??`ALGO_UI_RENDERER=auto|python|plain`瑜?異붽??덉뒿?덈떎. 湲곕낯媛믪? `auto`?낅땲??
-- ?⑤꼸 ?뚮뜑?ш? ?덉젙?곸쑝濡??숈옉?섏? ?딅뒗 ?섍꼍?먯꽌??媛뺤젣濡?源⑥쭊 ?⑤꼸??異쒕젰?섏? ?딄퀬 `plain`?쇰줈 ?먮룞 ?꾪솚?⑸땲??
-- Python ??怨꾩궛 ?뚮뜑???낅젰 ?꾨떖 諛⑹떇??媛쒖꽑?섏뿬 ?쒓?/?대え吏媛 ?ы븿???쇱씤???곗륫 寃쎄퀎 ?뺣젹 ?뺥솗?꾨? ?믪??듬땲??
+### 🐍 렌더러 선택 및 폴백 개선
+- 신규 환경변수 `ALGO_UI_RENDERER=auto|python|plain`를 추가했습니다. 기본값은 `auto`입니다.
+- 패널 렌더러가 안정적으로 동작하지 않는 환경에서는 강제로 깨진 패널을 출력하지 않고 `plain`으로 자동 전환합니다.
+- Python 폭 계산 렌더러 입력 전달 방식을 개선하여 한글/이모지가 포함된 라인의 우측 경계 정렬 정확도를 높였습니다.
 
-### ?㈉ Doctor 異쒕젰 ?쇨???媛쒖꽑
-- 吏꾨떒 由ы룷??援щ텇?좎쓣 `ui_divider "="`濡??듭씪?덉뒿?덈떎.
-- ?섎떒 ?숈옉 ?덈궡瑜?`ui_hint` ?ㅽ??쇰줈 異쒕젰?섏뿬 寃쎄퀬 硫붿떆吏? ?섎?瑜?遺꾨━?덉뒿?덈떎.
+### 🩺 Doctor 출력 일관성 개선
+- 진단 리포트 구분선을 `ui_divider "="`로 통일했습니다.
+- 하단 동작 안내를 `ui_hint` 스타일로 출력하여 경고 메시지와 의미를 분리했습니다.
 
 ## V8.1.5 (2026-02-19) - Snapshot Installer & Hybrid Update Strategy
 
-### ?뵏 ?먰겢由??ㅼ튂 蹂댁븞/?댁쁺 媛쒖꽑
-- 湲곕낯 ?ㅼ튂 諛⑹떇??`git clone`?먯꽌 `snapshot tarball`濡??꾪솚?덉뒿?덈떎.
-- ?ㅼ튂 ??`.git` ?붾젆?곕━媛 ?⑥? ?딅룄濡?媛뺤젣 ?뺣━?섏뿬 ?먭꺽 二쇱냼 蹂듭궗 臾몄젣瑜?李⑤떒?덉뒿?덈떎.
-- ?ㅼ튂 硫뷀? ?뚯씪(`.install_meta`)???ㅼ튂 紐⑤뱶/梨꾨꼸/ref/踰꾩쟾??湲곕줉?⑸땲??
+### 🔒 원클릭 설치 보안/운영 개선
+- 기본 설치 방식을 `git clone`에서 `snapshot tarball`로 전환했습니다.
+- 설치 후 `.git` 디렉터리가 남지 않도록 강제 정리하여 원격 주소 복사 문제를 차단했습니다.
+- 설치 메타 파일(`.install_meta`)에 설치 모드/채널/ref/버전을 기록합니다.
 
-### ?봽 ?낅뜲?댄듃 泥닿퀎 ?댁썝??(`algo-update`)
-- `snapshot` 紐⑤뱶: ?먭꺽 踰꾩쟾 ?뺤씤 ??snapshot 援먯껜 ?낅뜲?댄듃瑜??섑뻾?⑸땲??
-- `git` 紐⑤뱶: 湲곗〈 `git fetch --all && git reset --hard origin/main` ?먮쫫???좎??⑸땲??
-- ?낅뜲?댄듃 ?ㅽ뙣 ??諛깆뾽 ?붾젆?곕━瑜?湲곕컲?쇰줈 濡ㅻ갚?????덈룄濡??덉쟾?μ튂瑜?異붽??덉뒿?덈떎.
+### 🔄 업데이트 체계 이원화 (`algo-update`)
+- `snapshot` 모드: 원격 버전 확인 후 snapshot 교체 업데이트를 수행합니다.
+- `git` 모드: 기존 `git fetch --all && git reset --hard origin/main` 흐름을 유지합니다.
+- 업데이트 실패 시 백업 디렉터리를 기반으로 롤백할 수 있도록 안전장치를 추가했습니다.
 
-### ?삼툘 湲곗〈 ?ㅼ튂???먮룞 留덉씠洹몃젅?댁뀡
-- 湲곗〈 git 湲곕컲 ?ㅼ튂(`.git` 議댁옱) ?ъ슜?먭? `algo-update`瑜??ㅽ뻾?섎㈃ snapshot 諛⑹떇?쇰줈 ?먮룞 ?꾪솚?⑸땲??
-- ?꾪솚 ?덉감: 諛깆뾽 -> ??snapshot 諛곗튂 -> ?ㅻえ??寃利?-> 援먯껜.
+### ♻️ 기존 설치자 자동 마이그레이션
+- 기존 git 기반 설치(`.git` 존재) 사용자가 `algo-update`를 실행하면 snapshot 방식으로 자동 전환됩니다.
+- 전환 절차: 백업 -> 새 snapshot 배치 -> 스모크 검증 -> 교체.
 
-### ?숋툘 ?좉퇋 ?명꽣?섏씠??
-- `SSAFY_INSTALL_MODE=snapshot|git` (湲곕낯: `snapshot`)
-- `SSAFY_UPDATE_CHANNEL=stable|main|edge` (湲곕낯: `stable`)
-
----
-
-## V8.1.4 (2026-02-02) - IDE & UX Improvements ??
-
-### ?㎛ `al` 紐낅졊??媛쒖꽑 (File Open)
-- **?꾩옱 李쎌뿉???닿린**: VS Code/Cursor ?ъ슜 ?? `al` 紐낅졊???ㅽ뻾 ????李쎌씠 ?꾨땶 **?꾩옱 李쎌쓽 ??*?쇰줈 ?뚯씪???대━?꾨줉 媛쒖꽑 (`-g` ?듭뀡 ?곸슜).
-
-### ?썱 ?ㅼ젙 留덈쾿??媛쒖꽑 (Config Wizard)
-- **踰꾩쟾 ?쒖떆**: ?섎뱶肄붾뵫??踰꾩쟾 臾몄옄?????`VERSION` ?뚯씪???쎌뼱 ?숈쟻?쇰줈 ?쒖떆?섎룄濡?蹂寃?
-- **GUI 寃쎈줈 ?좏깮**: `algo-config`?먯꽌 ?묒뾽 寃쎈줈 蹂寃????먯깋湲?GUI)瑜??듯빐 ?대뜑瑜??좏깮?????덈룄濡?媛쒖꽑.
-
-### ?뮲 IDE 吏??異붽?
-- **Antigravity**: ?ㅼ젙 硫붾돱 諛??먮룞 ?먯깋 紐⑸줉??`Antigravity` IDE 異붽?.
+### ⚙️ 신규 인터페이스
+- `SSAFY_INSTALL_MODE=snapshot|git` (기본: `snapshot`)
+- `SSAFY_UPDATE_CHANNEL=stable|main|edge` (기본: `stable`)
 
 ---
 
-## V8.1.3 (2026-01-28) - Version SSOT & Release Guard ?뵔
+## V8.1.4 (2026-02-02) - IDE & UX Improvements ✨
 
-### ?㎨ 踰꾩쟾 愿由??쇱썝??(SSOT)
-- **猷⑦듃 `VERSION` ?뚯씪 ?꾩엯**: 踰꾩쟾 臾몄옄?댁쓣 ??怨녹뿉??愿由ы븯?꾨줉 ?듯빀
-- **踰꾩쟾 濡쒕뱶 ?덉젙??*: Windows(Git Bash) ?섍꼍??CRLF(`\r`) 諛?怨듬갚 ?쒓굅濡?異쒕젰 源⑥쭚 諛⑹?
-- **?ㅼ튂 ?꾨즺 硫붿떆吏??踰꾩쟾 ?쒖떆**: ?ㅼ튂????μ냼??`VERSION`???쎌뼱 ?ㅼ튂 寃곌낵???쒓린
+### 🧭 `al` 명령어 개선 (File Open)
+- **현재 창에서 열기**: VS Code/Cursor 사용 시, `al` 명령어 실행 후 새 창이 아닌 **현재 창의 탭**으로 파일이 열리도록 개선 (`-g` 옵션 적용).
 
-### ?㎝ ?ㅼ튂 ?ㅽ뙣 UX 媛쒖꽑 (Install Fail UX)
-- `git clone` ?ㅽ뙣 ??**紐낇솗???ㅽ뙣 硫붿떆吏**瑜?異쒕젰?섍퀬 ?뺤긽?곸쑝濡?醫낅즺?섎룄濡?媛쒖꽑
+### 🛠 설정 마법사 개선 (Config Wizard)
+- **버전 표시**: 하드코딩된 버전 문자열 대신 `VERSION` 파일을 읽어 동적으로 표시하도록 변경.
+- **GUI 경로 선택**: `algo-config`에서 작업 경로 변경 시 탐색기(GUI)를 통해 폴더를 선택할 수 있도록 개선.
 
-### ??由대━利??덉쟾?μ튂 (CI)
-- `V*` ?쒓렇 ?몄떆 ??**?쒓렇紐낃낵 `VERSION` 媛?遺덉씪移?*瑜?CI?먯꽌 媛먯??섏뿬 由대━利덈? 李⑤떒
-
-### ?㈉ 吏꾨떒 由ы룷??怨듭쑀 UX (algo-doctor)
-- ?댁뒋 ?몃옒而ㅼ뿉 洹몃?濡?遺숈뿬?ｊ린 醫뗭? **蹂듭궗??Markdown 吏꾨떒 由ы룷??釉붾줉**??異쒕젰
-- ?좏겙/?ㅼ젙 ?댁슜 ??**誘쇨컧?뺣낫??異쒕젰?섏? ?딅룄濡?* 踰붿쐞瑜??쒗븳
+### 💻 IDE 지원 추가
+- **Antigravity**: 설정 메뉴 및 자동 탐색 목록에 `Antigravity` IDE 추가.
 
 ---
 
-## V8.1.2 (2026-01-28) - Submission Link Fix & UX Improvements ?㎥
+## V8.1.3 (2026-01-28) - Version SSOT & Release Guard 🔖
 
-### ?뵕 ?쒖텧 留곹겕 ?덉젙??(Submission Link)
-- **?쒖텧 URL 寃쎈줈 ?섏젙**: `practiceroom` 寃쎈줈濡??쒖텧 留곹겕 ?앹꽦?섎룄濡??섏젙
-- **course_id ?붿퐫??蹂닿컯**: `.ssafy_session_meta`??`course_id`(base64) ?붿퐫??諛?CRLF/怨듬갚 ?쒓굅 泥섎━
-- **PR/PA ?붿퐫??怨듯넻??*: base64 ?붿퐫??濡쒖쭅??怨듯넻 ?⑥닔濡??듭씪?섏뿬 OS ?명솚??媛뺥솕
+### 🧾 버전 관리 일원화 (SSOT)
+- **루트 `VERSION` 파일 도입**: 버전 문자열을 한 곳에서 관리하도록 통합
+- **버전 로드 안정화**: Windows(Git Bash) 환경의 CRLF(`\r`) 및 공백 제거로 출력 깨짐 방지
+- **설치 완료 메시지에 버전 표시**: 설치된 저장소의 `VERSION`을 읽어 설치 결과에 표기
 
-### ?㎛ gitup UX 媛쒖꽑 (IDE/File Open)
-- **VS Code/Cursor ?뚯씪 ?ㅽ뵂 洹쒖튃 媛쒖꽑**:
-  - ?뚯씪 1媛쒕㈃ 諛붾줈 ?닿린
-  - ?뚯씪 5媛??댄븯硫?紐⑸줉 異쒕젰 + 踰덊샇 ?좏깮?쇰줈 ?닿린
-  - ?뚯씪 5媛?珥덇낵硫?`skeleton/` ?곗꽑 ?ы븿???곸쐞 5媛?紐⑸줉 + 踰덊샇 ?좏깮
-- **?대뜑 ?ㅽ뵂 諛⑹?**: ?뚯씪???놁쓣 ?뚮뒗 ?뚰겕?ㅽ럹?댁뒪 ?ㅼ뿼??留됯린 ?꾪빐 ?대뜑瑜??댁? ?딅룄濡?蹂寃?
+### 🧯 설치 실패 UX 개선 (Install Fail UX)
+- `git clone` 실패 시 **명확한 실패 메시지**를 출력하고 정상적으로 종료하도록 개선
 
-### ??吏꾪뻾?곹깭 愿由?媛쒖꽑 (Progress)
-- `.ssafy_progress`瑜?**append媛 ?꾨땶 update 諛⑹떇**?쇰줈 媛깆떊?섏뿬 以묐났 ??ぉ ?꾩쟻 諛⑹?
+### ✅ 릴리즈 안전장치 (CI)
+- `V*` 태그 푸시 시 **태그명과 `VERSION` 값 불일치**를 CI에서 감지하여 릴리즈를 차단
 
-### ?뵍 蹂댁븞/吏?띿꽦 (Security & Persistence)
-- **?좏겙 ???媛??*: `SSAFY_AUTH_TOKEN`? ?ㅼ젙 ?뚯씪????ν븯吏 ?딄퀬 ?몄뀡?먯꽌留??좎??섎룄濡?李⑤떒
-- **status 罹먯떆 ?꾩튂 蹂寃?*: `/tmp` ??`$HOME/.algo_status_cache`濡?蹂寃쏀븯???щ????꾩뿉??罹먯떆 ?좎?
+### 🩺 진단 리포트 공유 UX (algo-doctor)
+- 이슈 트래커에 그대로 붙여넣기 좋은 **복사용 Markdown 진단 리포트 블록**을 출력
+- 토큰/설정 내용 등 **민감정보는 출력하지 않도록** 범위를 제한
 
 ---
 
-## V8.1.1 (2026-01-27) - Code Quality & Bug Fix ?뵩
+## V8.1.2 (2026-01-28) - Submission Link Fix & UX Improvements 🧩
 
-### ?맀 踰꾧렇 ?섏젙 (Critical Bug Fix)
-- **IDE ?닿린 濡쒖쭅 ?섏젙**: `_open_in_editor` ?⑥닔 ?몄텧 ???몄옄 ?꾨씫?쇰줈 ?뚯씪???대━吏 ?딅뜕 臾몄젣 ?섏젙
-- **?ㅼ젙 ?뚯씪 寃쎈줈 ?듭씪**: `~/.algo_config`濡?寃쎈줈 ?쇱썝??(湲곗〈 `.ssafy_algo_config` ?쇱슜 臾몄젣 ?닿껐)
-- **Python 硫붾돱 踰덊샇 以묐났**: `algo_config_wizard.py`??4踰?硫붾돱 以묐났 ?쒖떆 臾몄젣 ?섏젙
-- **import 以묐났 ?쒓굅**: `ssafy_batch_create.py`??`import os` 以묐났 ?쒓굅
+### 🔗 제출 링크 안정화 (Submission Link)
+- **제출 URL 경로 수정**: `practiceroom` 경로로 제출 링크 생성하도록 수정
+- **course_id 디코딩 보강**: `.ssafy_session_meta`의 `course_id`(base64) 디코딩 및 CRLF/공백 제거 처리
+- **PR/PA 디코딩 공통화**: base64 디코딩 로직을 공통 함수로 통일하여 OS 호환성 강화
 
-### ???깅뒫 媛쒖꽑 (Performance)
-- **?뚯씪 ?먯깋 理쒖쟻??*: `_open_repo_file` ?⑥닔?먯꽌 以묐났 `find` 紐낅졊???쒓굅
-- **?쒕퉬???곹깭 罹먯떛**: `_check_service_status`??24?쒓컙 罹먯떛 ?곸슜 (?곕???濡쒕뵫 ?띾룄 媛쒖꽑)
+### 🧭 gitup UX 개선 (IDE/File Open)
+- **VS Code/Cursor 파일 오픈 규칙 개선**:
+  - 파일 1개면 바로 열기
+  - 파일 5개 이하면 목록 출력 + 번호 선택으로 열기
+  - 파일 5개 초과면 `skeleton/` 우선 포함한 상위 5개 목록 + 번호 선택
+- **폴더 오픈 방지**: 파일이 없을 때는 워크스페이스 오염을 막기 위해 폴더를 열지 않도록 변경
 
-### ?룛截??꾪궎?띿쿂 媛쒖꽑 (Architecture)
-- **ALGO_ROOT_DIR ?꾩뿭 蹂???꾩엯**: 紐⑤뱺 紐⑤뱢?먯꽌 ?쇨???寃쎈줈 李몄“ 媛??
-- **sed 怨듯넻 ?⑥닔 異붿텧**: `_sed_inplace()` ?⑥닔濡?macOS/Linux ?명솚???뺣낫
-- **IDE 蹂???듭씪**: `IDE_EDITOR` ?ъ슜 沅뚯옣, `IDE_PRIORITY` ?섏쐞 ?명솚???좎?
+### ✅ 진행상태 관리 개선 (Progress)
+- `.ssafy_progress`를 **append가 아닌 update 방식**으로 갱신하여 중복 항목 누적 방지
 
-### ?뱷 肄붾뱶 ?덉쭏 (Code Quality)
-- **蹂???ㅼ퐫???섏젙**: `_check_service_status`??`json` 蹂???꾩뿭 ?ㅼ뿼 諛⑹?
-- **IDE ?닿린 濡쒖쭅 媛쒖꽑**: 鍮?VSCode IDE?먯꽌 以묐났 李??대┝ 臾몄젣 ?섏젙
-- **紐⑤뱢 援ъ“ 臾몄꽌??*: `algo_functions.sh`??紐⑤뱢蹂???븷 二쇱꽍 異붽?
+### 🔐 보안/지속성 (Security & Persistence)
+- **토큰 저장 가드**: `SSAFY_AUTH_TOKEN`은 설정 파일에 저장하지 않고 세션에서만 유지하도록 차단
+- **status 캐시 위치 변경**: `/tmp` → `$HOME/.algo_status_cache`로 변경하여 재부팅 후에도 캐시 유지
 
-### ?뱤 ?듦퀎
-- 28媛??댁뒋 以?27媛??섏젙 ?꾨즺 (96.4%)
-- ?붿뿬 ?댁뒋: H-01 (諛고룷???⑥씪 ?뚯씪 鍮뚮뱶 - 誘몃옒 怨쇱젣)
+---
+
+## V8.1.1 (2026-01-27) - Code Quality & Bug Fix 🔧
+
+### 🐛 버그 수정 (Critical Bug Fix)
+- **IDE 열기 로직 수정**: `_open_in_editor` 함수 호출 시 인자 누락으로 파일이 열리지 않던 문제 수정
+- **설정 파일 경로 통일**: `~/.algo_config`로 경로 일원화 (기존 `.ssafy_algo_config` 혼용 문제 해결)
+- **Python 메뉴 번호 중복**: `algo_config_wizard.py`의 4번 메뉴 중복 표시 문제 수정
+- **import 중복 제거**: `ssafy_batch_create.py`의 `import os` 중복 제거
+
+### ⚡ 성능 개선 (Performance)
+- **파일 탐색 최적화**: `_open_repo_file` 함수에서 중복 `find` 명령어 제거
+- **서비스 상태 캐싱**: `_check_service_status`에 24시간 캐싱 적용 (터미널 로딩 속도 개선)
+
+### 🏗️ 아키텍처 개선 (Architecture)
+- **ALGO_ROOT_DIR 전역 변수 도입**: 모든 모듈에서 일관된 경로 참조 가능
+- **sed 공통 함수 추출**: `_sed_inplace()` 함수로 macOS/Linux 호환성 확보
+- **IDE 변수 통일**: `IDE_EDITOR` 사용 권장, `IDE_PRIORITY` 하위 호환성 유지
+
+### 📝 코드 품질 (Code Quality)
+- **변수 스코프 수정**: `_check_service_status`의 `json` 변수 전역 오염 방지
+- **IDE 열기 로직 개선**: 비-VSCode IDE에서 중복 창 열림 문제 수정
+- **모듈 구조 문서화**: `algo_functions.sh`에 모듈별 역할 주석 추가
+
+### 📊 통계
+- 28개 이슈 중 27개 수정 완료 (96.4%)
+- 잔여 이슈: H-01 (배포용 단일 파일 빌드 - 미래 과제)
 
 ---
 
 
-## V8.1.0 (2026-01-26) - Modular Architecture & Kill Switch ?썳截?
+## V8.1.0 (2026-01-26) - Modular Architecture & Kill Switch 🛡️
 
-### ?룛截?紐⑤뱢??由ы뙥?좊쭅 (Modular Refactoring)
-- **Codebase Modularization**: 嫄곕???`algo_functions.sh` ?⑥씪 ?뚯씪??`lib/` ?붾젆?좊━ ?섏쐞??湲곕뒫蹂?紐⑤뱢(`config.sh`, `utils.sh`, `auth.sh`, `git.sh`, `ide.sh`, `doctor.sh` ??濡?遺꾨━?덉뒿?덈떎.
-  - ?좎?蹂댁닔?깃낵 ?뺤옣?깆씠 ????μ긽?섏뿀?듬땲??
-  - ?ъ슜?먮뒗 湲곗〈怨??숈씪?섍쾶 `source algo_functions.sh`留??섎㈃ ?대??곸쑝濡??꾩슂??紐⑤뱢??濡쒕뱶?⑸땲??
+### 🏗️ 모듈화 리팩토링 (Modular Refactoring)
+- **Codebase Modularization**: 거대한 `algo_functions.sh` 단일 파일을 `lib/` 디렉토리 하위의 기능별 모듈(`config.sh`, `utils.sh`, `auth.sh`, `git.sh`, `ide.sh`, `doctor.sh` 등)로 분리했습니다.
+  - 유지보수성과 확장성이 대폭 향상되었습니다.
+  - 사용자는 기존과 동일하게 `source algo_functions.sh`만 하면 내부적으로 필요한 모듈을 로드합니다.
 
-### ?슗 ???ㅼ쐞移?(Kill Switch) ?꾩엯
-- **?먭꺽 ?쒖뼱 ?쒖뒪??*: 移섎챸?곸씤 踰꾧렇??蹂댁븞 ?댁뒋 諛쒖깮 ?? ?먭꺽??`status.json`???듯빐 ?꾧뎄 ?ъ슜???쒗븳?섍굅??寃쎄퀬 硫붿떆吏瑜?蹂대궪 ???덉뒿?덈떎.
-  - **Active**: ?뺤긽 ?묐룞
-  - **Maintenance**: 寃쎄퀬 硫붿떆吏 異쒕젰 ???뺤긽 ?묐룞
-  - **Outage**: ?ъ슜 李⑤떒 (湲닿툒 ?먭?)
-- **Fail-Open ?뺤콉**: ?ㅽ듃?뚰겕 臾몄젣 ?깆쑝濡??곹깭 ?뺤씤 ?ㅽ뙣 ?? ?ъ슜??寃쏀뿕???꾪빐 **?뺤긽(Active)** ?곹깭濡?媛꾩＜?섏뿬 ?ㅽ뻾??李⑤떒?섏? ?딆뒿?덈떎.
+### 🚦 킬 스위치 (Kill Switch) 도입
+- **원격 제어 시스템**: 치명적인 버그나 보안 이슈 발생 시, 원격의 `status.json`을 통해 도구 사용을 제한하거나 경고 메시지를 보낼 수 있습니다.
+  - **Active**: 정상 작동
+  - **Maintenance**: 경고 메시지 출력 후 정상 작동
+  - **Outage**: 사용 차단 (긴급 점검)
+- **Fail-Open 정책**: 네트워크 문제 등으로 상태 확인 실패 시, 사용자 경험을 위해 **정상(Active)** 상태로 간주하여 실행을 차단하지 않습니다.
 
-### ?뵍 蹂댁븞 諛??덉젙??媛뺥솕
-- **Session-Only Token**: V7.7??蹂댁븞 ?뺤콉???붿슧 媛뺥솕?섏뿬, ?좏겙 泥섎━ 濡쒖쭅???꾩쟾???몄뀡 硫붾え由?湲곕컲?쇰줈 ?ш?利앺뻽?듬땲??
-- **Fail-Safe**: `curl` ??꾩븘?? JSON ?뚯떛 ?ㅻ쪟 ?깆뿉 ???諛⑹뼱 濡쒖쭅??異붽??섏뿬 ?ㅽ듃?뚰겕 遺덉븞???곹솴?먯꽌???ㅽ겕由쏀듃媛 硫덉텛吏 ?딆뒿?덈떎.
-
----
-
-## V8.0.0 (2026-01-26) - Lazy Runtime Resolution Architecture ?룛截?
-
-### ?봽 ?꾪궎?띿쿂 蹂寃?(Major Architectural Change)
-- **吏?곕맂 ?고????뺤젙 (Lazy Runtime Resolution)**: V7.8??"?ㅼ튂 ?쒖젏 怨좎젙" 諛⑹떇???섍꼍 蹂?붿뿉 痍⑥빟?섎떎???쇰뱶諛깆쓣 ?섏슜?섏뿬, **?꾩슂???쒓컙??理쒖쟻???꾧뎄瑜?李얜뒗 諛⑹떇**?쇰줈 ?ㅺ퀎瑜??꾩쟾??蹂寃쏀뻽?듬땲??
-  - ???쒖옉 ?쒖젏(`source`)?먮뒗 ?꾨Т???먯깋???섏? ?딆뒿?덈떎. (遺??0)
-  - `gitup` ???ㅼ젣 Python???꾩슂??紐낅졊???ㅽ뻾?????쒖뒪?쒖쓣 ?먯깋?섏뿬 `python3` -> `python`(Shim ?쒖쇅) -> `py` ?쒖쑝濡??좏슚???명꽣?꾨━?곕? 李얠뒿?덈떎.
-  - ??踰?李얠? 寃쎈줈???몄뀡 ?숈븞 罹먯떛?섏뼱 ?깅뒫 ??섍? ?놁뒿?덈떎.
-- **?ㅼ튂 ?ㅽ겕由쏀듃 蹂듦뎄**: `install.sh`媛 ???댁긽 ?ъ슜?먯쓽 `~/.bashrc`???섍꼍蹂?섎굹 蹂꾩묶??媛뺤젣 二쇱엯?섏? ?딆뒿?덈떎. (Clean Install)
-
-## V7.8.0 (2026-01-26) - Permanent Python Path Binding ?뵕
-
-### ??洹쇰낯?곸씤 ?닿껐 (Fundamental Solution)
-- **?ㅼ튂 ?쒖젏 Python 怨좎젙**: ???댁긽 留ㅻ쾲 ?ㅽ뻾???뚮쭏??Python??李얠븘 ?ㅻℓ吏 ?딆뒿?덈떎.
-  - `install.sh` ?ㅽ뻾 ???쒖뒪?쒖뿉??媛???곹빀??Python(`python3`, `py`, `python`)??李얠븘, ?ъ슜?먯쓽 ???꾨줈??`~/.bashrc`)??**?곴뎄?곸쑝濡??깅줉**?⑸땲??
-  - ?깅줉??蹂꾩묶(`alias python=...`)???듯빐, ?곕??먯뿉??`python` ?낅젰 ??臾댁“嫄??щ컮瑜??명꽣?꾨━?곌? ?ㅽ뻾?섎룄濡?蹂댁옣?⑸땲??
-  - **?④낵**: Windows Store Shim(媛吏??뚯씠?? 臾몄젣 ?먯쿇 李⑤떒 諛??ㅽ뻾 ?띾룄 ?뚰룺 ?μ긽
-
-
-### ?맀 ?ㅽ뻾 ?ㅻ쪟 理쒖쥌 ?섏젙 (Final Fix)
-- **`py` ?곗쿂 吏??*: `python`?대굹 `python3` 紐낅졊?닿? ?놁뼱?? Windows??湲곕낯 ?ㅼ튂?섎뒗 **Python Launcher (`py`)**瑜?媛먯??섏뿬 ?ㅽ뻾?섎룄濡?媛쒖꽑?덉뒿?덈떎.
-  - V7.5?먯꽌 ?뺤긽 ?숈옉?덈뜕 ?먯씤??諛붾줈 ??`py` ?곗쿂???媛?μ꽦???믪쑝硫? ?대쾲 ?⑥튂濡??꾨꼍?섍쾶 ?명솚?⑸땲??
-- **紐낆떆???먮윭 硫붿떆吏**: 留뚯빟 ?쒖뒪?쒖뿉???좏슚??Python???꾪? 李얠쓣 ???녿뒗 寃쎌슦, ?????녿뒗 ?ㅻ쪟 ???**"Python??李얠쓣 ???놁뒿?덈떎"**?쇰뒗 紐낇솗???먯씤??異쒕젰?섍퀬 ?ㅽ뻾??以묐떒?⑸땲??
-
-
-
-### ?맀 踰꾧렇 ?섏젙 (Critial Bug Fix)
-- **Python Windows Store Shim 媛먯? ?고쉶**: `python` 紐낅졊?닿? 議댁옱?섎뜑?쇰룄 ?ㅽ뻾 ??Microsoft Store濡??곌껐?섎뒗(Shim) 寃쎌슦瑜?媛먯??섏뿬, ?좏슚??Python ?명꽣?꾨━?곕쭔 ?ъ슜?섎룄濡?媛쒖꽑?덉뒿?덈떎.
-  - ?댁젣 `gitup` ?ㅽ뻾 ??"Python was not found" ?ㅻ쪟媛 ???댁긽 諛쒖깮?섏? ?딆뒿?덈떎.
-- **?ㅼ튂 ?ㅽ겕由쏀듃 以묐났 濡쒕뱶 ?닿껐**: `install.sh` ?ㅽ뻾 ??`.bash_profile`怨?`.bashrc`??以묐났?쇰줈 ?ㅼ젙??異붽??섏뼱 "?뚭퀬由ъ쬁 ???⑥닔 濡쒕뱶 ?꾨즺!" 硫붿떆吏媛 ??踰??⑤뜕 臾몄젣瑜??섏젙?덉뒿?덈떎.
-  - `.bash_profile`? ?댁젣 `.bashrc`瑜?濡쒕뱶?섎룄濡앸쭔 ?ㅼ젙?섎ŉ, ?ㅼ젣 ?꾧뎄 濡쒕뵫? `.bashrc`?먯꽌 ??踰덈쭔 ?섑뻾?⑸땲??
-
-## V7.7.2 (2026-01-26) - Hotfix: Critical Install Fix ?쉻
-
-### ?맀 ?ㅼ튂 ?ㅽ겕由쏀듃 ?섏젙 (Critical Fix)
-- **?ㅼ젙 ?뚯씪 誘몄깮???ㅻ쪟 ?닿껐**: V7.7.1?먯꽌 蹂닿퀬??臾몄젣濡? ?ъ슜?먯쓽 PC??`.bashrc`??`.bash_profile`??議댁옱?섏? ?딅뒗 寃쎌슦(珥덇린 ?섍꼍) ?ㅼ튂 ?ㅽ겕由쏀듃媛 ?ㅼ젙??異붽??섏? ?딄퀬 嫄대꼫?곕뜕 臾몄젣瑜??섏젙?덉뒿?덈떎.
-  - 媛쒖꽑 ?? ?ㅼ젙 ?뚯씪???놁쑝硫??먮룞?쇰줈 ?앹꽦?섍퀬, ?뱁엳 Windows Git Bash ?섍꼍?먯꽌??`.bash_profile`???앹꽦?섏뿬 濡쒓렇?????명솚?깆쓣 蹂댁옣?⑸땲??
-
-
-## V7.7.0 (2026-01-25) - Security Hardening ?뵍
-
-### ?뵍 蹂댁븞 媛뺥솕 (Breaking Change)
-- **?좏겙 ?몄뀡??*: `~/.algo_config`???좏겙?????댁긽 ??ν븯吏 ?딆뒿?덈떎.
-  - ?좏겙? ?섍꼍蹂??`$SSAFY_AUTH_TOKEN`)濡쒕쭔 ?좎?
-  - **?곕???醫낅즺 ???먮룞 ??젣** (?뚯씪 ?좎텧 ?꾪뿕 ?쒓굅)
-
-### ??蹂寃??ы빆
-- `_ensure_token()`: ?몄뀡???좏겙 ?놁쓣 ???낅젰 ?붿껌?섎뒗 ???⑥닔
-- `ssafy_batch_create.py`: ?뚯씪 ????⑥닔 ?쒓굅
-- `algo_config_wizard.py`: ?좏겙 硫붾돱 ???몄뀡 ?꾩슜 ?덈궡濡?蹂寃?
-- `algo-doctor`: "?몄뀡 ?꾩슜" ?곹깭 ?쒖떆
+### 🔐 보안 및 안정성 강화
+- **Session-Only Token**: V7.7의 보안 정책을 더욱 강화하여, 토큰 처리 로직을 완전히 세션 메모리 기반으로 재검증했습니다.
+- **Fail-Safe**: `curl` 타임아웃, JSON 파싱 오류 등에 대한 방어 로직을 추가하여 네트워크 불안정 상황에서도 스크립트가 멈추지 않습니다.
 
 ---
 
-## V7.5.2 (2026-01-23) - Documentation & Config Enhancement ?뱰
+## V8.0.0 (2026-01-26) - Lazy Runtime Resolution Architecture 🏗️
 
-### ???덈줈??湲곕뒫
-- **Git ?ㅼ젙 硫붾돱 異붽?**: `algo-config edit`?먯꽌 硫붾돱 5踰덉쑝濡?Git ?ㅼ젙(而ㅻ컠 ?묐몢?? 湲곕낯 釉뚮옖移? ?먮룞 ?몄떆)??蹂寃쏀븷 ???덉뒿?덈떎.
-- **Playlist ?꾨즺 留곹겕**: 紐⑤뱺 臾몄젣 ?꾨즺 ???꾩껜 ?쒖텧 ?섏씠吏 留곹겕媛 異쒕젰?⑸땲??
+### 🔄 아키텍처 변경 (Major Architectural Change)
+- **지연된 런타임 확정 (Lazy Runtime Resolution)**: V7.8의 "설치 시점 고정" 방식이 환경 변화에 취약하다는 피드백을 수용하여, **필요한 순간에 최적의 도구를 찾는 방식**으로 설계를 완전히 변경했습니다.
+  - 쉘 시작 시점(`source`)에는 아무런 탐색도 하지 않습니다. (부하 0)
+  - `gitup` 등 실제 Python이 필요한 명령을 실행할 때 시스템을 탐색하여 `python3` -> `python`(Shim 제외) -> `py` 순으로 유효한 인터프리터를 찾습니다.
+  - 한 번 찾은 경로는 세션 동안 캐싱되어 성능 저하가 없습니다.
+- **설치 스크립트 복구**: `install.sh`가 더 이상 사용자의 `~/.bashrc`에 환경변수나 별칭을 강제 주입하지 않습니다. (Clean Install)
 
-### ?뱰 臾몄꽌 媛쒖꽑
-- **?ㅻ뜑 紐낅졊??媛뺤“**: `gitup`, `gitdown`, `al` 肄붾뱶媛 ?ㅻ뜑?먯꽌 ????蹂댁씠?꾨줉 ?ㅽ???異붽?
-- **Smart Batch 怨꾩링??*: gitup ?섏쐞 湲곕뒫?쇰줈 ?쒖떆?섎룄濡?援ъ“ 蹂寃?
-- **gitdown Prefix ?ㅻ챸**: 而ㅻ컠 ?묐몢?ъ뿉 ?곕씪 硫붿떆吏媛 ?앹꽦?⑥쓣 紐낆떆
-- **?뚯씪 ?몃━ 援ъ“**: `al` 紐낅졊?쇰줈 ?앹꽦?섎뒗 ?대뜑 援ъ“ ?쒓컖??
-- **al ?ъ궗???뚰겕?뚮줈??*: 媛숈? 臾몄젣瑜??щ윭 踰??ㅽ뻾?덉쓣 ???숈옉 ?ㅻ챸
+## V7.8.0 (2026-01-26) - Permanent Python Path Binding 🔗
 
----
+### ✨ 근본적인 해결 (Fundamental Solution)
+- **설치 시점 Python 고정**: 더 이상 매번 실행할 때마다 Python을 찾아 헤매지 않습니다.
+  - `install.sh` 실행 시 시스템에서 가장 적합한 Python(`python3`, `py`, `python`)을 찾아, 사용자의 쉘 프로필(`~/.bashrc`)에 **영구적으로 등록**합니다.
+  - 등록된 별칭(`alias python=...`)을 통해, 터미널에서 `python` 입력 시 무조건 올바른 인터프리터가 실행되도록 보장합니다.
+  - **효과**: Windows Store Shim(가짜 파이썬) 문제 원천 차단 및 실행 속도 소폭 향상
 
-## V7.4.5 (2026-01-23) - Masked Input Critical Fix ?쉻
 
-### ?맀 踰꾧렇 ?섏젙 (Critial Bug Fix)
-- **Masked Input ?낅젰 ?ㅻ쪟 ?닿껐**: V7.4.4?먯꽌 ?꾩엯??Masked Input 湲곕뒫 ?ъ슜 ?? ?꾨＼?꾪듃 臾몄옄??`?몛 Paste Here...`)???낅젰媛믪뿉 ?④퍡 ?ы븿?섏뼱 ?몄쬆 諛??대줎 ?ㅽ뙣瑜??좊컻?섎뜕 移섎챸?곸씤 ?ㅻ쪟瑜??섏젙?덉뒿?덈떎.
-  - ?댁젣 ?꾨＼?꾪듃? 蹂꾪몴(`*`) 異쒕젰???뺤긽?곸쑝濡?遺꾨━?섏뼱, ?ㅼ쭅 ?ъ슜?먭? ?낅젰???좏겙/URL 媛믩쭔 ?뺥솗?섍쾶 ?몄떇?⑸땲??
+### 🐛 실행 오류 최종 수정 (Final Fix)
+- **`py` 런처 지원**: `python`이나 `python3` 명령어가 없어도, Windows에 기본 설치되는 **Python Launcher (`py`)**를 감지하여 실행하도록 개선했습니다.
+  - V7.5에서 정상 동작했던 원인이 바로 이 `py` 런처였을 가능성이 높으며, 이번 패치로 완벽하게 호환됩니다.
+- **명시적 에러 메시지**: 만약 시스템에서 유효한 Python을 전혀 찾을 수 없는 경우, 알 수 없는 오류 대신 **"Python을 찾을 수 없습니다"**라는 명확한 원인을 출력하고 실행을 중단합니다.
 
----
 
-## V7.4.4 (2026-01-23) - Masked Input Re-implementation ?렚
 
-### ??媛쒖꽑 ?ы빆
-- **Masked Input 蹂듦뎄 諛?媛쒖꽑**: `gitup`??Secure Input 紐⑤뱶?먯꽌 ?ㅼ떆 **Asterisk(*)** ?낅젰??吏?먰빀?덈떎.
-  - 媛쒖꽑?ы빆: ?낅젰 ?꾨즺 硫붿떆吏(`Input Received`)瑜??쒓굅?섏뿬, 蹂꾪몴(`****`)留??뺤씤?섍퀬 利됱떆 ?ㅼ쓬 ?④퀎(?좏겙 ?낅뜲?댄듃)濡??섏뼱媛?꾨줉 異쒕젰 諛⑹떇??媛꾩냼?뷀뻽?듬땲??
+### 🐛 버그 수정 (Critial Bug Fix)
+- **Python Windows Store Shim 감지 우회**: `python` 명령어가 존재하더라도 실행 시 Microsoft Store로 연결되는(Shim) 경우를 감지하여, 유효한 Python 인터프리터만 사용하도록 개선했습니다.
+  - 이제 `gitup` 실행 시 "Python was not found" 오류가 더 이상 발생하지 않습니다.
+- **설치 스크립트 중복 로드 해결**: `install.sh` 실행 시 `.bash_profile`과 `.bashrc`에 중복으로 설정이 추가되어 "알고리즘 셸 함수 로드 완료!" 메시지가 두 번 뜨던 문제를 수정했습니다.
+  - `.bash_profile`은 이제 `.bashrc`를 로드하도록만 설정되며, 실제 도구 로딩은 `.bashrc`에서 한 번만 수행됩니다.
 
----
+## V7.7.2 (2026-01-26) - Hotfix: Critical Install Fix 🚑
 
-## V7.4.3 (2026-01-23) - Hotfix: Revert Masked Input (Rollback) ?⑼툘
+### 🐛 설치 스크립트 수정 (Critical Fix)
+- **설정 파일 미생성 오류 해결**: V7.7.1에서 보고된 문제로, 사용자의 PC에 `.bashrc`나 `.bash_profile`이 존재하지 않는 경우(초기 환경) 설치 스크립트가 설정을 추가하지 않고 건너뛰던 문제를 수정했습니다.
+  - 개선 후: 설정 파일이 없으면 자동으로 생성하고, 특히 Windows Git Bash 환경에서는 `.bash_profile`을 생성하여 로그인 셸 호환성을 보장합니다.
 
-### ?좑툘 蹂寃??ы빆 (Corrections)
-- **Secure Input 濡ㅻ갚**: V7.4.2?먯꽌 ?꾩엯??Asterisk(*) ?낅젰 ?쒖떆 湲곕뒫???쇰? ?섍꼍?먯꽌 ?낅젰 吏???ㅻ쪟瑜??좊컻?섏뿬, **湲곗〈???④? ?낅젰 諛⑹떇(V7.4.1)**?쇰줈 蹂듦뎄?덉뒿?덈떎.
-- **?덉젙???좎?**: ?낅뜲?댄듃 ?몄쓽?깆쓣 ?꾪븳 `algo-update` 媛뺤젣 ?숆린??濡쒖쭅? 洹몃?濡??좎??⑸땲??
 
----
+## V7.7.0 (2026-01-25) - Security Hardening 🔐
 
-## V7.4.2 (2026-01-23) - Masked Input Support ?렚
+### 🔐 보안 강화 (Breaking Change)
+- **토큰 세션화**: `~/.algo_config`에 토큰을 더 이상 저장하지 않습니다.
+  - 토큰은 환경변수(`$SSAFY_AUTH_TOKEN`)로만 유지
+  - **터미널 종료 시 자동 삭제** (파일 유출 위험 제거)
 
-### ??媛쒖꽑 ?ы빆
-- **Secure Input ?쒓컖??*: `gitup`?먯꽌 ?좏겙/URL 遺숈뿬?ｊ린 ?? 湲곗〈?먮뒗 ?꾨Т寃껊룄 蹂댁씠吏 ?딆븯?쇰굹 ?댁젣 **Asterisk(*)** 臾몄옄濡??낅젰???댁슜???쒓컖?곸쑝濡??뺤씤?????덉뒿?덈떎.
-- **?낅뜲?댄듃 ?덉젙??媛뺥솕**: `algo-update` ??媛뺤젣 ?숆린??`git reset --hard`) 濡쒖쭅??異붽??섏뿬 ?낅뜲?댄듃 ?ㅽ뙣?⑥쓣 理쒖냼?뷀뻽?듬땲??
-
----
-
-## V7.4.1 (2026-01-23) - Feedback & UX Improvements ?뱽
-
-### ??媛쒖꽑 ?ы빆 (Improvements)
-- **?ㅼ뒿???ㅽ뵂 怨쇱젙 媛?쒗솕**: `gitup` ?ㅻ쭏??諛곗튂 紐⑤뱶 ?ㅽ뻾 ?? 諛깃렇?쇱슫?쒖뿉???섑뻾?섎뒗 怨쇱젙(濡쒓렇?? ?앹꽦 ?????붾㈃???ㅼ떆媛꾩쑝濡??쒖떆
-- **蹂댁븞 ?낅젰 ?쇰뱶諛?異붽?**: Secure Input 紐⑤뱶?먯꽌 遺숈뿬?ｊ린 ??"?낅젰 ?섏떊 ?꾨즺(湲?먯닔)" 硫붿떆吏 ?쒖떆濡??낅젰 ?щ? ?뺤씤 媛??
-- **吏꾪뻾 ?곹솴 珥덇린??*: `gitup` 吏곹썑 `.ssafy_progress` ?뚯씪??`init` ?곹깭濡?珥덇린?뷀븯??諛붾줈 紐⑸줉 ?뺤씤 媛??
-
-## V7.4 (2026-01-23) - Security & Stability Update ?뵍
-
-### ??二쇱슂 蹂寃??ы빆 (Major Changes)
-- **?몄뀡 硫뷀??곗씠???뷀샇??*: `.ssafy_session_meta` ?뚯씪 ??誘쇨컧 ?뺣낫(Course/Practice/PA ID)瑜?**Base64**濡??뷀샇?뷀븯?????
-- **?좏겙 ?낅젰 蹂댁븞 (Secure Input)**: `gitup` ?ㅽ뻾 ???몄옄媛 ?놁쑝硫??좏겙/URL???붾㈃??蹂댁씠吏 ?딄쾶 ?낅젰 (`read -s`)
-- **?ㅼ젙 ?뚯씪 蹂댄샇**: ?좏겙 ?낅뜲?댄듃 ???곗씠???먯긽 諛⑹? 濡쒖쭅 ?곸슜 (`_set_config_value`)
-
-### ?썱 湲곕뒫 媛쒖꽑 (Improvements)
-- **Gitup Auto-Sync**: `gitup` ?ㅽ뻾 ???대? ??臾몄젣??吏꾪뻾 ?곹솴???먮룞?쇰줈 ?숆린??
-- **?ㅼ튂 ?ㅽ겕由쏀듃 媛쒖꽑**: `install.sh`???뺣━(Cleanup) 濡쒖쭅???뺢탳?뷀븯??湲곗〈 ?ㅼ젙 ?좎?
+### ✨ 변경 사항
+- `_ensure_token()`: 세션에 토큰 없을 때 입력 요청하는 새 함수
+- `ssafy_batch_create.py`: 파일 저장 함수 제거
+- `algo_config_wizard.py`: 토큰 메뉴 → 세션 전용 안내로 변경
+- `algo-doctor`: "세션 전용" 상태 표시
 
 ---
 
-## V7.3 (2026-01-22) - IDE Automation & Cursor Support ?⑨툘
+## V7.5.2 (2026-01-23) - Documentation & Config Enhancement 📖
 
-### ??二쇱슂 蹂寃??ы빆
-- **IDE ?먮룞 ?먯깋**: `pycharm`, `idea`, `cursor` 紐낅졊?닿? ?놁뼱???ㅼ튂 寃쎈줈瑜??먮룞 ?ㅼ틪?섏뿬 ?곌껐 (`_setup_ide_aliases`)
-- **吏??IDE 紐⑸줉 理쒖쟻??*:
-  - **Cursor** ?뺤떇 吏??異붽?
-  - VS Code, PyCharm, IntelliJ, Sublime Text ??5???泥댁젣 ?뺣┰
-  - "Custom" ?낅젰 ?쒓굅 (?덉젙??媛뺥솕)
-- **UI 媛쒖꽑**: `algo-config show` 異쒕젰??`algo-doctor` ?ㅽ??쇰줈 源붾걫?섍쾶 ?뺣━
-- **踰꾩쟾 ?듯빀**: 紐⑤뱺 ?꾧뎄 諛??ㅽ겕由쏀듃 踰꾩쟾??**V7.3**?쇰줈 ?숆린??
+### ✨ 새로운 기능
+- **Git 설정 메뉴 추가**: `algo-config edit`에서 메뉴 5번으로 Git 설정(커밋 접두사, 기본 브랜치, 자동 푸시)을 변경할 수 있습니다.
+- **Playlist 완료 링크**: 모든 문제 완료 시 전체 제출 페이지 링크가 출력됩니다.
 
----
-
-## V7.0b (Beta) (2026-01-22) - Maximum Security & UX ?뵦
-
-### ?썳截?蹂댁븞 媛뺥솕 (Security)
-- **?ㅼ젙 ?뚯씪 ?뷀샇??*: `.algo_config` ??誘쇨컧?뺣낫(?좏겙)瑜?**Base64**濡??뷀샇?뷀븯?????
-- **沅뚰븳 媛뺤젣**: ?ㅼ젙 ?뚯씪 沅뚰븳??`600` (????묎렐 遺덇?)?쇰줈 ?먮룞 ?ㅼ젙
-
-### ??UX/?몄쓽??(Usability)
-- **?ㅼ젙 留덈쾿??(`algo_config_wizard.py`)**: `algo-config edit` ??吏곴??곸씤 GUI(TUI) ?쒓났
-- **Smart Copy**: 釉뚮씪?곗? 遺곷쭏?щ┸???듯빐 `URL|Token` ?듯빀 蹂듭궗 吏???곗씠???щ㎎ 泥섎━
-- **Secure Input**: `gitup`???몄옄 ?놁씠 ?ㅽ뻾 ??**蹂댁븞 ?낅젰 紐⑤뱶**濡?吏꾩엯 (?좏겙 ?붾㈃ ?몄텧 諛⑹?)
-- **?쒖뒪??吏꾨떒**: `algo-doctor` 紐낅쟻?대줈 ?ㅼ젙 ?곹깭 諛??ㅻ쪟 ?먯씤 ?먮룞 遺꾩꽍
+### 📖 문서 개선
+- **헤더 명령어 강조**: `gitup`, `gitdown`, `al` 코드가 헤더에서 더 잘 보이도록 스타일 추가
+- **Smart Batch 계층화**: gitup 하위 기능으로 표시되도록 구조 변경
+- **gitdown Prefix 설명**: 커밋 접두사에 따라 메시지가 생성됨을 명시
+- **파일 트리 구조**: `al` 명령으로 생성되는 폴더 구조 시각화
+- **al 재사용 워크플로우**: 같은 문제를 여러 번 실행했을 때 동작 설명
 
 ---
 
-## V6.1 (2026-01-21) - User Experience Upgrade ??
+## V7.4.5 (2026-01-23) - Masked Input Critical Fix 🚑
 
-### ??二쇱슂 湲곕뒫
-- **IDE ?ㅼ젙 ??뷀삎 吏??*: ?ㅼ튂 諛??낅뜲?댄듃 ??**??뷀삎 硫붾돱**瑜??듯빐 ?좏샇?섎뒗 IDE(VS Code, PyCharm, IntelliJ)瑜?媛꾪렪?섍쾶 ?좏깮
-- **IDE ?ㅼ젙 ?⑥닚??*: ?꾨줈?몄뒪 媛먯? 諛⑹떇 ????ㅼ젙 ?뚯씪(`~/.algo_config`)?먯꽌 ?⑥씪 IDE 吏??(`IDE_EDITOR="code"`)
-- **?쇨큵 Push (`gitdown --all`)**: SSAFY ?몄뀡 猷⑦듃?먯꽌 ?섏쐞 紐⑤뱺 ?ㅼ뒿?ㅼ쓣 ??踰덉뿉 add -> commit -> push
-- **?쒖텧 諛붾줈媛湲?*: `gitdown` ?꾨즺 ???대떦 臾몄젣???쒖텧 ?섏씠吏 URL 異쒕젰 諛?釉뚮씪?곗? ?닿린 ?듭뀡 ?쒓났
-- **?숈쟻 Playlist**: ?꾩쭅 ?吏 ?딆? 臾몄젣(Git 而ㅻ컠???녿뒗 ?대뜑)瑜??먮룞 媛먯??섏뿬 ?대룞 ?쒖븞
-
-### ?뱷 媛쒖꽑 ?ы빆
-- `ssafy_batch_create.py` ?뚯씠?꾨씪???곗씠???щ㎎ 蹂寃쎌쑝濡?硫뷀??곗씠???곕룞 媛뺥솕
+### 🐛 버그 수정 (Critial Bug Fix)
+- **Masked Input 입력 오류 해결**: V7.4.4에서 도입된 Masked Input 기능 사용 시, 프롬프트 문자열(`👉 Paste Here...`)이 입력값에 함께 포함되어 인증 및 클론 실패를 유발하던 치명적인 오류를 수정했습니다.
+  - 이제 프롬프트와 별표(`*`) 출력이 정상적으로 분리되어, 오직 사용자가 입력한 토큰/URL 값만 정확하게 인식됩니다.
 
 ---
 
-## V6 (2026-01-20) - One-liner Installer ??
+## V7.4.4 (2026-01-23) - Masked Input Re-implementation 🎭
 
-### ??二쇱슂 湲곕뒫
-- **?먮씪?대꼫 ?ㅼ튂**: ?곕??먯뿉 ??以꾨쭔 ?낅젰?섎㈃ ?먮룞 ?ㅼ튂 諛??ㅼ젙
+### ✨ 개선 사항
+- **Masked Input 복구 및 개선**: `gitup`의 Secure Input 모드에서 다시 **Asterisk(*)** 입력을 지원합니다.
+  - 개선사항: 입력 완료 메시지(`Input Received`)를 제거하여, 별표(`****`)만 확인하고 즉시 다음 단계(토큰 업데이트)로 넘어가도록 출력 방식을 간소화했습니다.
+
+---
+
+## V7.4.3 (2026-01-23) - Hotfix: Revert Masked Input (Rollback) ↩️
+
+### ⚠️ 변경 사항 (Corrections)
+- **Secure Input 롤백**: V7.4.2에서 도입한 Asterisk(*) 입력 표시 기능이 일부 환경에서 입력 지연/오류를 유발하여, **기존의 숨김 입력 방식(V7.4.1)**으로 복구했습니다.
+- **안정성 유지**: 업데이트 편의성을 위한 `algo-update` 강제 동기화 로직은 그대로 유지됩니다.
+
+---
+
+## V7.4.2 (2026-01-23) - Masked Input Support 🎭
+
+### ✨ 개선 사항
+- **Secure Input 시각화**: `gitup`에서 토큰/URL 붙여넣기 시, 기존에는 아무것도 보이지 않았으나 이제 **Asterisk(*)** 문자로 입력된 내용을 시각적으로 확인할 수 있습니다.
+- **업데이트 안정성 강화**: `algo-update` 시 강제 동기화(`git reset --hard`) 로직을 추가하여 업데이트 실패율을 최소화했습니다.
+
+---
+
+## V7.4.1 (2026-01-23) - Feedback & UX Improvements 📣
+
+### ✨ 개선 사항 (Improvements)
+- **실습실 오픈 과정 가시화**: `gitup` 스마트 배치 모드 실행 시, 백그라운드에서 수행되는 과정(로그인, 생성 등)을 화면에 실시간으로 표시
+- **보안 입력 피드백 추가**: Secure Input 모드에서 붙여넣기 시 "입력 수신 완료(글자수)" 메시지 표시로 입력 여부 확인 가능
+- **진행 상황 초기화**: `gitup` 직후 `.ssafy_progress` 파일을 `init` 상태로 초기화하여 바로 목록 확인 가능
+
+## V7.4 (2026-01-23) - Security & Stability Update 🔐
+
+### ✨ 주요 변경 사항 (Major Changes)
+- **세션 메타데이터 암호화**: `.ssafy_session_meta` 파일 내 민감 정보(Course/Practice/PA ID)를 **Base64**로 암호화하여 저장
+- **토큰 입력 보안 (Secure Input)**: `gitup` 실행 시 인자가 없으면 토큰/URL을 화면에 보이지 않게 입력 (`read -s`)
+- **설정 파일 보호**: 토큰 업데이트 시 데이터 손상 방지 로직 적용 (`_set_config_value`)
+
+### 🛠 기능 개선 (Improvements)
+- **Gitup Auto-Sync**: `gitup` 실행 시 이미 푼 문제의 진행 상황을 자동으로 동기화
+- **설치 스크립트 개선**: `install.sh`의 정리(Cleanup) 로직을 정교화하여 기존 설정 유지
+
+---
+
+## V7.3 (2026-01-22) - IDE Automation & Cursor Support ⌨️
+
+### ✨ 주요 변경 사항
+- **IDE 자동 탐색**: `pycharm`, `idea`, `cursor` 명령어가 없어도 설치 경로를 자동 스캔하여 연결 (`_setup_ide_aliases`)
+- **지원 IDE 목록 최적화**:
+  - **Cursor** 정식 지원 추가
+  - VS Code, PyCharm, IntelliJ, Sublime Text 등 5대장 체제 확립
+  - "Custom" 입력 제거 (안정성 강화)
+- **UI 개선**: `algo-config show` 출력을 `algo-doctor` 스타일로 깔끔하게 정리
+- **버전 통합**: 모든 도구 및 스크립트 버전을 **V7.3**으로 동기화
+
+---
+
+## V7.0b (Beta) (2026-01-22) - Maximum Security & UX 🔥
+
+### 🛡️ 보안 강화 (Security)
+- **설정 파일 암호화**: `.algo_config` 내 민감정보(토큰)를 **Base64**로 암호화하여 저장
+- **권한 강제**: 설정 파일 권한을 `600` (타인 접근 불가)으로 자동 설정
+
+### ✨ UX/편의성 (Usability)
+- **설정 마법사 (`algo_config_wizard.py`)**: `algo-config edit` 시 직관적인 GUI(TUI) 제공
+- **Smart Copy**: 브라우저 북마크릿을 통해 `URL|Token` 통합 복사 지원 데이터 포맷 처리
+- **Secure Input**: `gitup`을 인자 없이 실행 시 **보안 입력 모드**로 진입 (토큰 화면 노출 방지)
+- **시스템 진단**: `algo-doctor` 명렁어로 설정 상태 및 오류 원인 자동 분석
+
+---
+
+## V6.1 (2026-01-21) - User Experience Upgrade ✨
+
+### ✨ 주요 기능
+- **IDE 설정 대화형 지원**: 설치 및 업데이트 시 **대화형 메뉴**를 통해 선호하는 IDE(VS Code, PyCharm, IntelliJ)를 간편하게 선택
+- **IDE 설정 단순화**: 프로세스 감지 방식 대신 설정 파일(`~/.algo_config`)에서 단일 IDE 지정 (`IDE_EDITOR="code"`)
+- **일괄 Push (`gitdown --all`)**: SSAFY 세션 루트에서 하위 모든 실습실을 한 번에 add -> commit -> push
+- **제출 바로가기**: `gitdown` 완료 시 해당 문제의 제출 페이지 URL 출력 및 브라우저 열기 옵션 제공
+- **동적 Playlist**: 아직 풀지 않은 문제(Git 커밋이 없는 폴더)를 자동 감지하여 이동 제안
+
+### 📝 개선 사항
+- `ssafy_batch_create.py` 파이프라인 데이터 포맷 변경으로 메타데이터 연동 강화
+
+---
+
+## V6 (2026-01-20) - One-liner Installer 🚀
+
+### ✨ 주요 기능
+- **원라이너 설치**: 터미널에 한 줄만 입력하면 자동 설치 및 설정
   ```bash
   bash <(curl -sL https://raw.githubusercontent.com/junDevCodes/SSAFY_sh_func/main/install.sh)
   ```
-- **?숈쟻 寃쎈줈 吏??*: ?섎뱶肄붾뵫??寃쎈줈 ?쒓굅濡??대뵒???ㅼ튂?대룄 ?뺤긽 ?숈옉
-- **?ㅼ튂 ???먮룞 ?ㅼ젙**: ?ㅼ튂 以?SSAFY GitLab ?ъ슜?먮챸 ?낅젰 諛??먮룞 ?곸슜
-- **algo-update 紐낅졊??*: `algo-update`濡?媛꾪렪?섍쾶 理쒖떊 踰꾩쟾 ?낅뜲?댄듃
-- **?먮룞 ?낅뜲?댄듃 ?뚮┝**: ?섎（ 1??諛깃렇?쇱슫?쒖뿉????踰꾩쟾 泥댄겕 ???뚮┝
+- **동적 경로 지원**: 하드코딩된 경로 제거로 어디에 설치해도 정상 동작
+- **설치 시 자동 설정**: 설치 중 SSAFY GitLab 사용자명 입력 및 자동 적용
+- **algo-update 명령어**: `algo-update`로 간편하게 최신 버전 업데이트
+- **자동 업데이트 알림**: 하루 1회 백그라운드에서 새 버전 체크 후 알림
 
-### ?맀 踰꾧렇 ?섏젙
-- Python 3.6 ?섏쐞 踰꾩쟾 ?명솚??異붽?
+### 🐛 버그 수정
+- Python 3.6 하위 버전 호환성 추가
 
-### ?뱚 ?좉퇋 ?뚯씪
-- `install.sh` - ?먮룞 ?ㅼ튂 ?ㅽ겕由쏀듃
-- `updatenote.md` - 踰꾩쟾蹂?蹂寃쎌궗??臾몄꽌
+### 📁 신규 파일
+- `install.sh` - 자동 설치 스크립트
+- `updatenote.md` - 버전별 변경사항 문서
 
-### ?썱截?異붽? ?낅뜲?댄듃 (Hotfixes)
-- **macOS ?ㅼ튂 吏??*: `install.sh`??`sed` ?명솚??臾몄젣 ?닿껐 (紐⑤뱺 OS 吏??
-- **CI/CD 援ъ텞**: GitHub Actions瑜??듯븳 ?먮룞 ?뚯뒪???섍꼍 援ъ꽦 (`tests/` ?대뜑 ?몃옒??
-- **?덉젙??媛쒖꽑**: `timeout` 紐낅졊???명솚???뺣낫 (Git Bash), ?대え吏 源⑥쭚 ?섏젙
-- **湲곕뒫 ?뺤옣**: `ex` ???SSAFY ?꾨줈?앺듃 ?몄떇 異붽?
-- **肄붾뱶 ?대┛??*: 遺덊븘?뷀븳 荑좏궎/以묐났 肄붾뱶 ?쒓굅
+### 🛠️ 추가 업데이트 (Hotfixes)
+- **macOS 설치 지원**: `install.sh`의 `sed` 호환성 문제 해결 (모든 OS 지원)
+- **CI/CD 구축**: GitHub Actions를 통한 자동 테스트 환경 구성 (`tests/` 폴더 트래킹)
+- **안정성 개선**: `timeout` 명령어 호환성 확보 (Git Bash), 이모지 깨짐 수정
+- **기능 확장**: `ex` 타입 SSAFY 프로젝트 인식 추가
+- **코드 클린업**: 불필요한 쿠키/중복 코드 제거
 
-### 而ㅻ컠 濡쒓렇
+### 커밋 로그
 - `61923f0` Feat: Add install.sh & fixes
 - `51e0825` fix: resolve critical issues (func dup, mac compat, regex, timeout)
 - `3ee5822` feat: setup CI and remove cookie
@@ -562,28 +574,28 @@
 
 ## V5 (2026-01-13 ~ 2026-01-14) - SSAFY Smart Batch
 
-### ??二쇱슂 湲곕뒫
-- **SSAFY ?ㅼ뒿???쇨큵 ?앹꽦**: `gitup <?ㅼ뒿?짾RL>`濡??대떦 二쇱감 ?꾩껜 臾몄젣 ?먮룞 ?앹꽦 諛??대줎
-- **硫뷀??곗씠??媛??*: 李⑥떆(Round) 移⑤쾾 諛⑹? - 怨쇰ぉ/?덈꺼 蹂寃??먮룞 媛먯?
-- **?좏겙 留뚮즺 ?먮룞 媛먯?**: JWT??`exp` ?대젅?꾩쓣 ?뺤씤?섏뿬 24?쒓컙 留뚮즺 ???ъ엯???덈궡
-- **Bookmarklet ?좏겙 蹂듭궗**: 媛쒕컻???꾧뎄(F12) ?놁씠 遺곷쭏???대┃?쇰줈 ?좏겙 ?띾뱷
-- **?ㅻ쭏???뺣젹 & ?뚮젅?대━?ㅽ듃**: ws ??hw ?쒖꽌 ?먮룞 ?뺣젹, `.ssafy_playlist` ?뚯씪 ?앹꽦
-- **?먮룞 ?낅뜲?댄듃 泥댄겕**: ?섎（ 1???먭꺽 ??μ냼? 踰꾩쟾 鍮꾧탳
+### ✨ 주요 기능
+- **SSAFY 실습실 일괄 생성**: `gitup <실습실URL>`로 해당 주차 전체 문제 자동 생성 및 클론
+- **메타데이터 가드**: 차시(Round) 침범 방지 - 과목/레벨 변경 자동 감지
+- **토큰 만료 자동 감지**: JWT의 `exp` 클레임을 확인하여 24시간 만료 시 재입력 안내
+- **Bookmarklet 토큰 복사**: 개발자 도구(F12) 없이 북마크 클릭으로 토큰 획득
+- **스마트 정렬 & 플레이리스트**: ws → hw 순서 자동 정렬, `.ssafy_playlist` 파일 생성
+- **자동 업데이트 체크**: 하루 1회 원격 저장소와 버전 비교
 
-### ?맀 踰꾧렇 ?섏젙
-- SSAFY ?쒕쾭 ?덊룷 ?앹꽦 吏????URL ?꾨씫 臾몄젣 (?ъ떆??濡쒖쭅 媛뺥솕)
-- Windows ?섍꼍 `UnicodeEncodeError` ?닿껐
-- `requests` ?쇱씠釉뚮윭由??섏〈???쒓굅 (`urllib` ?ъ슜)
+### 🐛 버그 수정
+- SSAFY 서버 레포 생성 지연 시 URL 누락 문제 (재시도 로직 강화)
+- Windows 환경 `UnicodeEncodeError` 해결
+- `requests` 라이브러리 의존성 제거 (`urllib` 사용)
 
-### 而ㅻ컠 濡쒓렇
+### 커밋 로그
 - `4e74e09` Feat: V5 Update - SSAFY Batch & Update Notification
 - `febe006` docs: image posting
-- `87f14fb` feat: 李⑥떆 媛먯? 臾몄젣 諛?紐⑸줉 ?붾뵫 媛먯? 媛쒖꽑
+- `87f14fb` feat: 차시 감지 문제 및 목록 엔딩 감지 개선
 - `0396c81` docs: how to add token setting
 - `bc2d4a4` feat: not to tracking other files
 - `7430678` docs: token with bookmarklet
 - `5d75f0a` feat: use bearer token to personalize
-- `47ca9f0` fix: request ?쇱씠釉뚮윭由??섏〈??臾몄젣 ?닿껐
+- `47ca9f0` fix: request 라이브러리 의존성 문제 해결
 - `cf5dceb` update V5: automated workflow
 - `40d3514` docs: Update README and remove debug scripts
 - `f5d8577` Enhance gitup/down with smart sorting, playlist, and UI improvements
@@ -598,68 +610,68 @@
 
 ## V4 (2026-01-06 ~ 2026-01-09) - Commit Message & Branch Fix
 
-### ??二쇱슂 湲곕뒫
-- **而ㅻ컠 硫붿떆吏 而ㅼ뒪?**: `al b 1000 "fix: typo"` ?뺤떇?쇰줈 硫붿떆吏 吏곸젒 吏??
-- **C++ ?뚯씪 吏??*: `al b 1000 cpp`?쇰줈 C++ ?쒗뵆由??앹꽦
-- **釉뚮옖移??먮룞 媛먯?**: ?ㅼ젙??釉뚮옖移섎줈 ?몄떆 ?ㅽ뙣 ???꾩옱 釉뚮옖移섎줈 ?ъ떆??
-- **IDE ?곗꽑?쒖쐞 ?ㅼ젙**: `algo-config edit`濡?VS Code, PyCharm ???쒖꽌 吏??
+### ✨ 주요 기능
+- **커밋 메시지 커스텀**: `al b 1000 "fix: typo"` 형식으로 메시지 직접 지정
+- **C++ 파일 지원**: `al b 1000 cpp`으로 C++ 템플릿 생성
+- **브랜치 자동 감지**: 설정된 브랜치로 푸시 실패 시 현재 브랜치로 재시도
+- **IDE 우선순위 설정**: `algo-config edit`로 VS Code, PyCharm 등 순서 지정
 
-### ?맀 踰꾧렇 ?섏젙
-- ?섎せ??釉뚮옖移섎챸?쇰줈 ?몄떆 ?ㅽ뙣?섎뜕 臾몄젣
-- 而ㅻ컠 硫붿떆吏 ?뺤씤 ?놁씠 諛붾줈 ?몄떆?섎뜕 臾몄젣
+### 🐛 버그 수정
+- 잘못된 브랜치명으로 푸시 실패하던 문제
+- 커밋 메시지 확인 없이 바로 푸시되던 문제
 
-### 而ㅻ컠 濡쒓렇
-- `9bef9ba` update V4: gitdown default branch ?ㅻ쪟 ?닿껐 諛?釉뚮옖移??좏깮 ???ъ슜??寃쏀뿕 媛쒖꽑
-- `49abc81` docs: 理쒖쥌 踰꾩쟾??留욎텣 ?ъ슜踰?諛??ㅼ튂, ?낅뜲?댄듃 湲곕뒫 ?뺣━
-- `1440f50` test: ?뚯뒪???뚯씪 ?앹꽦
+### 커밋 로그
+- `9bef9ba` update V4: gitdown default branch 오류 해결 및 브랜치 선택 등 사용자 경험 개선
+- `49abc81` docs: 최종 버전에 맞춘 사용법 및 설치, 업데이트 기능 정리
+- `1440f50` test: 테스트 파일 생성
 - `3505f48` docs: README.md
-- `b4e3c7d` docs: al 紐낅졊???ㅽ뻾 ??cpp ?뚯씪???앹꽦?섎룄濡?蹂寃?
-- `5a704fb` feat: al 紐낅졊???ㅽ뻾 ??cpp ?뚯씪???앹꽦?섎룄濡?蹂寃?
-- `8ea64cb` docs: al, gitdown commit msg ?명똿 ?덈궡 異붽?
-- `83464bf` feat: gitdown, al 紐낅졊???ъ슜 ??commit msg ?낅젰/寃利?媛?ν븯?꾨줉 湲곕뒫 援ы쁽
+- `b4e3c7d` docs: al 명령어 실행 시 cpp 파일도 생성하도록 변경
+- `5a704fb` feat: al 명령어 실행 시 cpp 파일도 생성하도록 변경
+- `8ea64cb` docs: al, gitdown commit msg 세팅 안내 추가
+- `83464bf` feat: gitdown, al 명령어 사용 시 commit msg 입력/검증 가능하도록 기능 구현
 
 ---
 
 ## V3 (2025-11-16) - Branch & Commit Fix
 
-### ??二쇱슂 湲곕뒫
-- **釉뚮옖移??몄떆 ?곗꽑?쒖쐞**: master ??main ?쒖꽌濡??먮룞 ?쒕룄
-- **?ъ슜??釉뚮옖移??좏깮**: ????釉뚮옖移??놁쓣 ???좏깮吏 ?쒓났
+### ✨ 주요 기능
+- **브랜치 푸시 우선순위**: master → main 순서로 자동 시도
+- **사용자 브랜치 선택**: 위 두 브랜치 없을 시 선택지 제공
 
-### ?맀 踰꾧렇 ?섏젙
-- gitdown 而ㅻ컠 硫붿떆吏 ?묒꽦 ?ㅻ쪟
-- default 釉뚮옖移?push ?ㅻ쪟
+### 🐛 버그 수정
+- gitdown 커밋 메시지 작성 오류
+- default 브랜치 push 오류
 
-### 而ㅻ컠 濡쒓렇
-- `94a6a7b` update V3: gitdown commit msg ?묒꽦 ?ㅻ쪟 諛?default 釉뚮옖移?push ?ㅻ쪟 媛쒖꽑
-- `374f248` fix: gitdown ?⑥닔 push ?곗꽑?쒖쐞 ?ㅼ젙
+### 커밋 로그
+- `94a6a7b` update V3: gitdown commit msg 작성 오류 및 default 브랜치 push 오류 개선
+- `374f248` fix: gitdown 함수 push 우선순위 설정
 
 ---
 
 ## V2 (2025-11-16) - Windows Support & Improvements
 
-### ??二쇱슂 湲곕뒫
-- **釉뚮옖移??먮룞 媛먯?** (main/master ?먮룞 泥섎━)
-- **而ㅻ컠 硫붿떆吏 洹쒖튃 媛쒖꽑** (?대뜑紐낅룄 prefix ?ъ슜)
-- **check_ide Windows ?섍꼍 吏??媛뺥솕**
-- **_handle_git_commit ?붾젆?좊━ 蹂듭썝 濡쒖쭅 異붽?**
+### ✨ 주요 기능
+- **브랜치 자동 감지** (main/master 자동 처리)
+- **커밋 메시지 규칙 개선** (폴더명도 prefix 사용)
+- **check_ide Windows 환경 지원 강화**
+- **_handle_git_commit 디렉토리 복원 로직 추가**
 
-### 而ㅻ컠 濡쒓렇
-- `e7adfee` update V2: ?뚭퀬由ъ쬁 ???⑥닔 媛쒖꽑 諛?README ?낅뜲?댄듃
+### 커밋 로그
+- `e7adfee` update V2: 알고리즘 셸 함수 개선 및 README 업데이트
 
 ---
 
 ## V1 (2025-11-12 ~ 2025-12-02) - Initial Release
 
-### ??二쇱슂 湲곕뒫
-- `al` - ?뚭퀬由ъ쬁 臾몄젣 ?섍꼍 ?먮룞 ?앹꽦 (BOJ/SWEA/Programmers)
-- `gitdown` - Git add/commit/push ?먮룞??
-- `gitup` - Git clone + IDE ?먮룞 ?닿린
-- IDE ?먮룞 媛먯? (VS Code, PyCharm, IntelliJ IDEA)
-- `sample_input.txt` ?먮룞 ?앹꽦
+### ✨ 주요 기능
+- `al` - 알고리즘 문제 환경 자동 생성 (BOJ/SWEA/Programmers)
+- `gitdown` - Git add/commit/push 자동화
+- `gitup` - Git clone + IDE 자동 열기
+- IDE 자동 감지 (VS Code, PyCharm, IntelliJ IDEA)
+- `sample_input.txt` 자동 생성
 
-### 而ㅻ컠 濡쒓렇
-- `df99a0f` feat: 湲곗〈 bash shell ?⑥닔? 異⑸룎 諛⑹?瑜??꾪븳 ?泥?諛⑹떇?쇰줈 蹂寃?
+### 커밋 로그
+- `df99a0f` feat: 기존 bash shell 함수와 충돌 방지를 위한 대체 방식으로 변경
 - `eb7737e` docs: README
 - `8b72d2c` first commit
 
@@ -677,4 +689,3 @@
 - `algo-config`: GUI/CLI edit mode selection + CLI fallback and safer reset
 - `algo-update`: execution plan display + explicit migration warning and confirmation
 - `algo-doctor`: panel summary and optional post-action (`Enter`/`r`/`c`)
-

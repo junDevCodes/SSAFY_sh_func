@@ -590,7 +590,7 @@ ssafy_algo_update() {
         if [ "$answer" = "yes" ]; then
             exec bash
         fi
-    else
+    elif _is_interactive; then
         read -r -p "Restart shell now? (y/n, default=N): " restart_choice
         case "$restart_choice" in
             y|Y|yes|YES) exec bash ;;
