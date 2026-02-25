@@ -211,13 +211,13 @@ def first_run_setup(config, is_first_run=False):
                 print(f"   ⚠️ 경로 오류: {error}")
                 gui_path = None
         if not gui_path:
-            print("   ⚠️ GUI 선택이 취소되었거나 실패했습니다. 직접 입력해주세요.")
+            print("   ⚠️ GUI 선택이 취소되었거나 실패했습니다.")
+            print(f"   직접 경로를 입력해주세요. (예: {default_algo_dir})")
             while True:
-                new_dir = input(f"   경로 입력 (기본값 Enter 시 '{default_algo_dir}'): ").strip()
+                new_dir = input("   경로 입력: ").strip()
                 if not new_dir:
-                    config["ALGO_BASE_DIR"] = default_algo_dir
-                    print(f"   ✅ 기본 경로 사용: {default_algo_dir}")
-                    break
+                    print("   ⚠️ 경로를 입력해주세요. 빈 값은 허용되지 않습니다.")
+                    continue
                 validated, error = sanitize_config_value(new_dir)
                 if error:
                     print(f"   ⚠️ {error}")
