@@ -21,33 +21,9 @@ _find_ssafy_session_root() {
     return 1
 }
 
-_confirm_commit_message_legacy() {
-    local msg="$1"
-    local answer=""
-
-    CONFIRMED_COMMIT_MSG=""
-
-    while true; do
-        echo "Current commit message: $msg"
-        read -r -p "Proceed with this message for commit/push? (y/n): " answer
-        case "$answer" in
-            y|Y)
-                CONFIRMED_COMMIT_MSG="$msg"
-                return 0
-                ;;
-            n|N)
-                read -r -p "Enter a new commit message: " msg
-                if [ -z "${msg//[[:space:]]/}" ]; then
-                    echo "Commit message cannot be empty. Canceling."
-                    return 1
-                fi
-                ;;
-            *)
-                echo "Please enter y or n."
-                ;;
-        esac
-    done
-}
+# _confirm_commit_message_legacy 는 _confirm_commit_message_styled로 통합되었습니다.
+# 하위 호환성을 위해 아래와 같이 에일리어스 처리한다.
+_confirm_commit_message_legacy() { _confirm_commit_message_styled "$@"; }
 
 _confirm_commit_message_styled() {
     local msg="$1"
@@ -662,8 +638,8 @@ _gitdown_all() {
         cd "$ssafy_root" || return 1
     done
 
-    if type ui_header >/dev/null 2>&1; then
-        ui_header "gitdown" "Commit follow-up"
+    if type ui_panel_begin >/dev/null 2>&1; then
+        ui_panel_begin "gitdown" "Commit follow-up"
         ui_info "success=$success_count"
         ui_info "failed=$fail_count"
         ui_info "skipped=$skip_count"
@@ -808,8 +784,8 @@ _ssafy_gitup_prompt_flow() {
                 _gitup_debug_log "step=2 validated mode=$mode repo_estimate=$repo_estimate"
                 ;;
             3)
-                if type ui_header >/dev/null 2>&1; then
-                    ui_header "gitup" "Step 3/4: Preview before run"
+                if type ui_panel_begin >/dev/null 2>&1; then
+                    ui_panel_begin "gitup" "Step 3/4: Preview before run"
                     case "$mode" in
                         1) ui_info "Input mode=SmartLink" ;;
                         2) ui_info "Input mode=URL" ;;
@@ -869,10 +845,21 @@ ssafy_gitdown() {
     local answer=""
     local current_repo
 
+    # SSAFY 세션 루트에서 단독 실행 시 기본적으로 전체 배치 모드
+    local _ssafy_root_check
+    _ssafy_root_check=$(_find_ssafy_session_root "$(pwd)" 2>/dev/null || true)
+    if [ -n "$_ssafy_root_check" ] && [ "$(pwd)" = "$_ssafy_root_check" ]; then
+        run_all=true
+    fi
+
     while [ $# -gt 0 ]; do
         case "$1" in
             --all|-a)
                 run_all=true
+                ;;
+            --no-all)
+                # 세션 루트에서도 단일 모드를 강제하실 때 사용
+                run_all=false
                 ;;
             --ssafy|-s)
                 ssafy_mode=true
@@ -880,7 +867,7 @@ ssafy_gitdown() {
             --msg|-m)
                 shift
                 if [ -z "${1:-}" ] || [[ "$1" == --* ]]; then
-                    if type ui_error >/dev/null 2>&1; then
+                    if type ui_error > /dev/null 2>&1; then
                         ui_error "--msg requires a commit message."
                     else
                         echo "[ERROR] --msg requires a commit message."
@@ -893,7 +880,7 @@ ssafy_gitdown() {
             --msg=*)
                 commit_msg="${1#--msg=}"
                 if [ -z "$commit_msg" ]; then
-                    if type ui_error >/dev/null 2>&1; then
+                    if type ui_error > /dev/null 2>&1; then
                         ui_error "--msg requires a commit message."
                     else
                         echo "[ERROR] --msg requires a commit message."
@@ -907,7 +894,7 @@ ssafy_gitdown() {
                     commit_msg="$1"
                     custom_msg=true
                 else
-                    if type ui_error >/dev/null 2>&1; then
+                    if type ui_error > /dev/null 2>&1; then
                         ui_error "Commit message with spaces must be quoted."
                     else
                         echo "[ERROR] Commit message with spaces must be quoted."
@@ -920,8 +907,8 @@ ssafy_gitdown() {
     done
 
     if [ "$run_all" = true ]; then
-        if _is_interactive && type input_confirm >/dev/null 2>&1; then
-            input_confirm answer "Run gitdown in --all batch mode?" "n"
+        if _is_interactive && type input_confirm > /dev/null 2>&1; then
+            input_confirm answer "Run gitdown in batch mode (all folders)?" "y"
             case $? in
                 20|10) return 1 ;;
             esac
@@ -938,8 +925,8 @@ ssafy_gitdown() {
         ssafy_mode=true
     fi
 
-    if type ui_header >/dev/null 2>&1; then
-        ui_header "gitdown" "Commit/Push execution"
+    if type ui_panel_begin >/dev/null 2>&1; then
+        ui_panel_begin "gitdown" "Commit/Push execution"
         if [ "$ssafy_mode" = true ]; then
             ui_info "mode=ssafy"
         else
@@ -1023,7 +1010,7 @@ ssafy_gitdown() {
                 open_submission_links=false
             fi
 
-            input_confirm answer "Step 4/5: Move to next problem after push?" "y"
+            input_confirm answer "Step 5/5: Move to next problem after push?" "y"
             case $? in
                 10|20) return 1 ;;
             esac
@@ -1032,8 +1019,8 @@ ssafy_gitdown() {
             fi
         fi
 
-        if type ui_header >/dev/null 2>&1; then
-            ui_header "gitdown" "Final confirmation"
+        if type ui_panel_begin >/dev/null 2>&1; then
+            ui_panel_begin "gitdown" "Final confirmation"
             if [ "$custom_msg" = true ]; then
                 ui_info "commit_msg=$commit_msg"
             else
@@ -1303,10 +1290,16 @@ _gitup_ssafy() {
         session="${BASH_REMATCH[3]}"
     elif [[ "$repo_name" =~ ^([A-Za-z0-9]+)_(ws|hw|ex)$ ]]; then
         topic="${BASH_REMATCH[1]}"
-        read -r -p "Enter session number: " session
+        input_text session "Enter session number (e.g. 3)" "" false
+        case $? in
+            10|20) return 1 ;;
+        esac
     elif [[ "$repo_name" =~ ^([A-Za-z0-9]+)$ ]]; then
         topic="$repo_name"
-        read -r -p "Enter session number: " session
+        input_text session "Enter session number (e.g. 3)" "" false
+        case $? in
+            10|20) return 1 ;;
+        esac
     else
         if [[ "$repo_name" =~ ^(ws|hw|ex)_[0-9]+(_[0-9]+)?$ ]]; then
             if type ui_error >/dev/null 2>&1; then
@@ -1355,8 +1348,8 @@ _gitup_ssafy() {
         fi
     done
 
-    if type ui_header >/dev/null 2>&1; then
-        ui_header "gitup" "SSAFY clone result"
+    if type ui_panel_begin >/dev/null 2>&1; then
+        ui_panel_begin "gitup" "SSAFY clone result"
         ui_info "success=${#cloned[@]}"
         ui_info "skipped=${#skipped[@]}"
         ui_info "failed=${#failed[@]}"
@@ -1523,8 +1516,8 @@ ssafy_gitup() {
         return 1
     fi
 
-    if type ui_header >/dev/null 2>&1; then
-        ui_header "gitup" "Input validation and clone run"
+    if type ui_panel_begin >/dev/null 2>&1; then
+        ui_panel_begin "gitup" "Input validation and clone run"
         if [ "$ssafy_mode" = true ]; then
             ui_info "input_mode=topic"
         elif [[ "$input" == *"|"* ]]; then
