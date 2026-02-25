@@ -63,6 +63,62 @@ _get_config_value() {
     fi
 }
 
+# =============================================================================
+# 필수 설정 가드: 지정된 키가 미설정이면 경고 후 안내를 출력한다.
+# 반환값: 0=정상, 1=필수 설정 누락
+# 사용법: _ssafy_require_config algo_base_dir ssafy_user_id git_prefix ...
+# =============================================================================
+_ssafy_require_config() {
+    local missing=()
+    local home_unix
+    home_unix=$(echo "$HOME" | tr '\\' '/')
+    local default_algo_dir="${home_unix}/algos"
+
+    for key in "$@"; do
+        case "$key" in
+            algo_base_dir)
+                local cur_dir
+                cur_dir=$(echo "${ALGO_BASE_DIR:-}" | tr '\\' '/')
+                cur_dir="${cur_dir%/}"
+                if [ -z "$cur_dir" ] || [ "$cur_dir" = "$default_algo_dir" ]; then
+                    missing+=("ALGO_BASE_DIR (작업 경로)  →  algo-config edit > 1번: 작업 경로 변경")
+                fi
+                ;;
+            ssafy_user_id)
+                if [ -z "${SSAFY_USER_ID:-}" ]; then
+                    missing+=("SSAFY_USER_ID               →  algo-config edit > 4번: SSAFY ID 설정")
+                fi
+                ;;
+            git_prefix)
+                if [ -z "${GIT_COMMIT_PREFIX:-}" ]; then
+                    missing+=("GIT_COMMIT_PREFIX            →  algo-config edit > 5번: Git 설정")
+                fi
+                ;;
+            git_branch)
+                if [ -z "${GIT_DEFAULT_BRANCH:-}" ]; then
+                    missing+=("GIT_DEFAULT_BRANCH           →  algo-config edit > 5번: Git 설정")
+                fi
+                ;;
+        esac
+    done
+
+    if [ "${#missing[@]}" -eq 0 ]; then
+        return 0
+    fi
+
+    if type ui_warn >/dev/null 2>&1; then
+        ui_warn "필수 설정이 비어있습니다. 'algo-config edit' 으로 설정 후 다시 시도하세요."
+    else
+        echo "[WARN] 필수 설정이 비어있습니다. 'algo-config edit' 으로 설정 후 다시 시도하세요." >&2
+    fi
+    local item
+    for item in "${missing[@]}"; do
+        echo "   ✗ $item"
+    done
+    echo ""
+    return 1
+}
+
 _set_config_value() {
     local key="$1"
     local value="$2"

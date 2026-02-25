@@ -226,6 +226,9 @@ _ssafy_al_interactive_flow() {
 ssafy_al() {
     init_algo_config
 
+    # 필수 설정 가드: ALGO_BASE_DIR이 기본값 또는 미설정이면 차단
+    _ssafy_require_config algo_base_dir || return 1
+
     local site_code="${1:-}"
     local problem="${2:-}"
     local lang="py"
@@ -450,9 +453,10 @@ ssafy_al() {
         fi
 
         if [[ "$editor" == "code" || "$editor" == "cursor" ]]; then
-            "$editor" -g "$file"
+            # 프로젝트 루트($ALGO_BASE_DIR)를 workspace로 열고, 해당 파일을 포커싱
+            "$editor" "$ALGO_BASE_DIR" -g "$file"
         else
-            "$editor" "$file" &
+            "$editor" "$ALGO_BASE_DIR" "$file" &
         fi
     else
         if type ui_info >/dev/null 2>&1; then
