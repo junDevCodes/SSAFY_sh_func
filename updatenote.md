@@ -1,5 +1,22 @@
 # 📋 업데이트 노트 (Release Notes)
 
+## V8.2.4 (2026-02-25) - File Selection Panel UI & Force Update
+
+### ✅ `gitup` 파일 선택 UI 패널화 (`lib/git.sh`)
+- `_open_repo_file()`: 파일 목록 및 선택 안내를 `ui_panel_begin/end` 패널로 통합 출력
+  - 헤더: `ui_panel_begin "gitup" <repo_path>`
+  - 파일 목록: `ui_info "N. filename"` (번호 포함)
+  - 조작 안내: `ui_hint "번호 입력: Enter=건너뜀 | q=취소"`
+  - 패널 종료(`ui_panel_end`) 후 `input_text`로 입력 받음 (버퍼 flush 보장)
+- 파일 없는 경우도 패널 안에서 `ui_warn`으로 처리
+
+### ✅ `algo-update --force` 옵션 추가 (`lib/update.sh`)
+- 버전 일치 여부와 무관하게 강제로 최신 스냅샷을 다시 내려받아 설치
+- 사용: `algo-update --force`
+- 대화형 모드: 확인 프롬프트에 `[--force]` 표시로 강제 재설치임을 안내
+- 패널에 `ui_warn "--force: 버전 일치 여부와 무관하게 강제 업데이트"` 표시
+- 완료 메시지에 `[force]` 접두사 추가로 강제 실행 여부 구분
+
 ## V8.2.3 (2026-02-25) - File Open Logic Fix
 
 ### ✅ `gitup` 파일 열기 방식 수정 (`lib/git.sh`)
