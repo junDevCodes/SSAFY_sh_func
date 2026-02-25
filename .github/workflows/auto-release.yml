@@ -16,21 +16,24 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: Read VERSION
         id: version
         run: |
           VERSION=$(cat VERSION | tr -d '[:space:]')
           echo "tag=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Detected version: $VERSION"
 
       - name: Check if tag already exists
         id: tag_check
         run: |
           if git ls-remote --tags origin "refs/tags/${{ steps.version.outputs.tag }}" | grep -q .; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Tag ${{ steps.version.outputs.tag }} already exists. Skip."
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Tag ${{ steps.version.outputs.tag }} not found. Will create."
           fi
 
       - name: Extract release notes from updatenote.md
@@ -38,26 +41,31 @@ jobs:
         if: steps.tag_check.outputs.exists == 'false'
         run: |
           VERSION="${{ steps.version.outputs.tag }}"
-          # updatenote.md에서 해당 버전 섹션 추출
-          NOTES=$(awk "/^## ${VERSION}/,/^## V[0-9]/" updatenote.md \
-            | head -n -1 \
-            | tail -n +2)
-          if [ -z "$NOTES" ]; then
-            NOTES="Release ${VERSION}"
-          fi
-          # 멀티라인 output 처리
-          {
-            echo "body<<EOF"
-            echo "$NOTES"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
+          # VERSION 섹션 ~ 다음 ## V 섹션 사이 추출
+          NOTES=$(awk -v ver="## $VERSION" '
+            $0 ~ ver { found=1; next }
+            found && /^## V/ { exit }
+            found { print }
+          ' updatenote.md | sed '/^[[:space:]]*$/d' | head -50)
 
-      - name: Create GitHub Release
+          if [ -z "$NOTES" ]; then
+            NOTES="Release $VERSION"
+          fi
+
+          # 파일로 저장 (multiline 이슈 방지)
+          echo "$NOTES" > /tmp/release_notes.md
+          cat /tmp/release_notes.md
+
+      - name: Create tag and GitHub Release
         if: steps.tag_check.outputs.exists == 'false'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: ${{ steps.version.outputs.tag }}
-          body: ${{ steps.notes.outputs.body }}
-          draft: false
-          prerelease: false
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ steps.version.outputs.tag }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag "$VERSION"
+          git push origin "$VERSION"
+          gh release create "$VERSION" \
+            --title "$VERSION" \
+            --notes-file /tmp/release_notes.md
