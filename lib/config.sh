@@ -120,11 +120,11 @@ _ssafy_require_config() {
 }
 
 # =============================================================================
-# al 전용 경로 가드: ALGO_BASE_DIR 미설정 시 차단 대신 인라인 설정 안내
-# 사용자가 Enter 치면 기본 경로 사용, 직접 입력하면 저장 후 계속
+# al 전용 경로 가드: ALGO_BASE_DIR 미설정 시 GUI 폴더 피커 → CLI fallback
+# GUI(tkinter) 우선 시도, 실패 시 텍스트 입력으로 대체
 # =============================================================================
 _ssafy_ensure_algo_dir() {
-    local home_unix cur_dir default_dir new_dir
+    local home_unix cur_dir default_dir new_dir python_cmd
     home_unix=$(echo "$HOME" | tr '\\' '/')
     default_dir="${home_unix}/algos"
     cur_dir=$(echo "${ALGO_BASE_DIR:-}" | tr '\\' '/' | sed 's|/*$||')
@@ -134,19 +134,55 @@ _ssafy_ensure_algo_dir() {
         return 0
     fi
 
-    # 인라인 안내
     echo ""
     echo "📁 알고리즘 파일 저장 경로가 설정되지 않았습니다."
     echo "   기본 경로: $default_dir"
-    printf "   경로 입력 (Enter = 기본 경로 사용): "
+    echo ""
 
-    # 비대화형(CI 등)이면 기본 경로로 자동 진행
-    if ! _is_interactive 2>/dev/null; then
-        new_dir="$default_dir"
-        echo "$new_dir  (비대화형: 기본 경로 자동 적용)"
+    # GUI 시도 (Python + tkinter)
+    python_cmd=$(_ssafy_python_lookup 2>/dev/null || echo "")
+    new_dir=""
+    if [ -n "$python_cmd" ]; then
+        echo "   📂 폴더 선택 창을 띄웁니다... (작업표시줄을 확인하세요)"
+        new_dir=$(
+            "$python_cmd" - "$home_unix" <<'PYEOF'
+import sys, os
+try:
+    import tkinter as tk
+    from tkinter import filedialog
+    root = tk.Tk()
+    root.withdraw()
+    root.lift()
+    root.attributes('-topmost', True)
+    start = sys.argv[1] if len(sys.argv) > 1 else os.path.expanduser("~")
+    path = filedialog.askdirectory(initialdir=start, title="알고리즘 파일 저장 경로 선택")
+    root.destroy()
+    if path:
+        print(path.replace("\\", "/"))
+except Exception:
+    pass
+PYEOF
+        ) 2>/dev/null
+    fi
+
+    # GUI 성공
+    if [ -n "$new_dir" ]; then
+        echo "   ✅ 경로 선택됨: $new_dir"
     else
-        read -r new_dir
-        new_dir="${new_dir:-$default_dir}"
+        # CLI fallback
+        if [ -n "$python_cmd" ]; then
+            echo "   ⚠️  GUI 선택이 취소되었거나 실패했습니다."
+        fi
+        printf "   경로 입력 (Enter = 기본 경로 '%s' 사용): " "$default_dir"
+
+        if ! _is_interactive 2>/dev/null; then
+            new_dir="$default_dir"
+            echo "$new_dir  (비대화형: 기본 경로 자동 적용)"
+        else
+            read -r new_dir
+            new_dir="${new_dir:-$default_dir}"
+            echo "   ✅ 경로 설정됨: $new_dir"
+        fi
     fi
 
     # 설정 저장
@@ -154,7 +190,6 @@ _ssafy_ensure_algo_dir() {
         _set_config_value "ALGO_BASE_DIR" "$new_dir"
     fi
     export ALGO_BASE_DIR="$new_dir"
-    echo "   ✅ 경로 설정됨: $new_dir"
     echo ""
 }
 
