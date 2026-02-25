@@ -104,6 +104,22 @@ if [ -f "$(pwd)/algo_functions.sh" ] && [ "$(pwd)" != "${ALGO_ROOT_DIR}" ]; then
     fi
 fi
 
+# 업데이트 알림 (배경 체크 결과, 파일로 전달됨)
+_ALGO_NOTIF_FILE="${ALGO_UPDATE_NOTIFICATION_FILE:-$HOME/.algo_update_notification}"
+if [ -f "$_ALGO_NOTIF_FILE" ]; then
+    _upd_cur=$(sed -n '1p' "$_ALGO_NOTIF_FILE" 2>/dev/null || true)
+    _upd_new=$(sed -n '2p' "$_ALGO_NOTIF_FILE" 2>/dev/null || true)
+    if [ -n "$_upd_cur" ] && [ -n "$_upd_new" ]; then
+        if type ui_warn >/dev/null 2>&1; then
+            ui_warn "🆕 업데이트 가능: $_upd_cur → $_upd_new  |  'algo-update' 실행하세요."
+        else
+            echo "  ⚠ [WARN] 업데이트 가능: $_upd_cur → $_upd_new  |  실행: algo-update"
+        fi
+    fi
+    unset _upd_cur _upd_new
+fi
+unset _ALGO_NOTIF_FILE
+
 # 안전한 별칭 생성
 _create_safe_alias() {
     local alias_name="$1"

@@ -5,6 +5,7 @@
 
 SSAFY_INSTALL_META_FILE=".install_meta"
 ALGO_UPDATE_CHECK_FILE="$HOME/.algo_update_last_check"
+ALGO_UPDATE_NOTIFICATION_FILE="$HOME/.algo_update_notification"
 
 _ssafy_command_exists() {
     command -v "$1" >/dev/null 2>&1
@@ -619,10 +620,11 @@ _ssafy_check_update_snapshot() {
     fi
 
     if [ -n "$remote_version" ] && [ "$remote_version" != "$local_version" ]; then
-        echo ""
-        echo "[Update] New version is available. (current: $local_version, latest: $remote_version)"
-        echo "         Run 'algo-update'"
-        echo ""
+        # 배너 직후 표시를 위해 파일로 저장
+        printf '%s\n' "$local_version" "$remote_version" > "$ALGO_UPDATE_NOTIFICATION_FILE" 2>/dev/null || true
+    else
+        # 최신 버전이면 기존 알림 파일 제거
+        rm -f "$ALGO_UPDATE_NOTIFICATION_FILE" 2>/dev/null || true
     fi
 }
 
