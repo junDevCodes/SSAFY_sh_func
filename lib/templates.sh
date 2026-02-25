@@ -226,8 +226,8 @@ _ssafy_al_interactive_flow() {
 ssafy_al() {
     init_algo_config
 
-    # 필수 설정 가드: ALGO_BASE_DIR이 기본값 또는 미설정이면 차단
-    _ssafy_require_config algo_base_dir || return 1
+    # ALGO_BASE_DIR 미설정 시 인라인 안내로 경로 설정 유도 (차단 대신)
+    _ssafy_ensure_algo_dir || return 1
 
     local site_code="${1:-}"
     local problem="${2:-}"
