@@ -66,6 +66,10 @@ test_step3_preview_text() {
   local header_subtitle=""
   local info_lines=()
 
+  ui_panel_begin() {
+    header_title="$1"
+    header_subtitle="${2:-}"
+  }
   ui_header() {
     header_title="$1"
     header_subtitle="${2:-}"
