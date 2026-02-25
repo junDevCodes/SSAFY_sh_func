@@ -1,10 +1,13 @@
-# 알고리즘/실습 자동화 Shell 함수 (V8.2.2)
+# 알고리즘/실습 자동화 Shell 함수 (V8.2.4)
 
 이 저장소는 Bash 함수들을 제공하여 알고리즘 풀이와 SSAFY 실습 과제 제출을 자동화합니다.
 별도의 복잡한 설치 없이 스크립트 파일만 복사하여 즉시 사용할 수 있습니다.
 
-## 📌 V8.2.2 주요 변경
-- **업데이트 알림 배너 통합**: 업데이트 가능 시 로드 배너 안에 `⚠ 🆕 업데이트 가능: V8.2.1 → V8.2.2 | 'algo-update' 실행하세요.` 스타일로 표시
+## 📌 V8.2.4 주요 변경
+- **`gitup` 파일 선택 패널 UI**: 클론 후 파일 목록을 `ui_panel`로 통합 출력 (번호 선택으로 VSCode에서 파일 열기)
+- **`algo-update --force`**: 버전 일치 여부와 무관하게 강제 재설치
+- **`gitup` 새 창 방지**: 클론 후 VSCode 새 창이 열리지 않도록 수정 (`code -r -g <파일>` 방식)
+- **`al` 파일 열기 개선**: `VSCODE_WORKSPACE_FOLDER` 감지로 이미 열린 프로젝트 창 재활용
 
 ---
 
@@ -68,7 +71,9 @@ SSAFY_INSTALL_MODE=git SSAFY_UPDATE_CHANNEL=main bash <(curl -fsSL https://raw.g
 
 새로운 기능이 추가되면 아래 명령어로 간단히 업데이트할 수 있습니다.
 ```bash
-algo-update
+algo-update           # 일반 업데이트 (최신 버전이면 스킵)
+algo-update --force   # 버전 무관 강제 재설치
+algo-update --check   # 업데이트 가능 여부만 확인 (설치 X)
 ```
 
 
@@ -133,6 +138,18 @@ algo-update
 
 - **기능:** 실습실 링크를 넣으면 **1번~7번 문제 자동 생성 + 전체 클론 + 1번 IDE 열기**를 한 번에 수행합니다.
 - **자동 정렬:** 생성 시간을 기준으로 `ws` -> `hw` 순서로 정확하게 정렬합니다.
+- **파일 선택 UI:** 클론 완료 후 패널 형태로 파일 목록(최대 5개)을 표시하고 번호로 VSCode에서 바로 열기 지원.
+  ```
+  +--------------------------------------------+
+  | 🧩 gitup                                   |
+  | /path/to/repo                               |
+  |............................................|
+  | 📌 [열 파일을 선택하세요]                   |
+  |   ℹ 1. skeleton/solution.py               |
+  |   ℹ 2. README.md                          |
+  |   💡 번호 입력: Enter=건너뜀 | q=취소      |
+  +--------------------------------------------+
+  ```
 
 ### [gitdown] 과제 제출 및 다음 문제 이동
 - **사용법:**
@@ -199,8 +216,8 @@ bash tests/test_encoding_smoke.sh
 
 ### Command interaction summary
 - `al`: missing/invalid arguments open step-by-step flow (site -> problem -> lang -> options -> confirm)
-- `gitup`: guided flow for SmartLink / URL / Topic, with validation and preview before clone
+- `gitup`: guided flow for SmartLink / URL / Topic, with validation, preview, clone, and **panel file-picker**
 - `gitdown`: guided preflight for commit mode, push branch, follow-up actions, and final confirmation
 - `algo-config`: `show` panel view, `edit` with GUI or CLI mode, `reset` with two-step safety confirm
-- `algo-update`: update plan preview + confirmation (explicit warning for `legacy-git` migration)
+- `algo-update`: update plan preview + confirmation; `--force` bypasses version-match check; `--check` prints version diff only
 - `algo-doctor`: panel summary + optional action (`Enter` exit / `r` rerun / `c` reprint report)
