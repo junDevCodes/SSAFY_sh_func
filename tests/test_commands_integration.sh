@@ -368,24 +368,33 @@ test_al_opens_dir_with_file_focus() {
   setup_ui_stub
   _is_interactive() { return 1; }
 
-  # IDE 호출 인자를 캐포처하는 stub
+  # IDE 호출 인자를 캡처하는 stub
+  # 새 동작: code -r DIR -g file
+  local editor_flag_arg=""
   local editor_dir_arg=""
   local editor_file_arg=""
   code() {
-    editor_dir_arg="${1:-}"
-    if [ "${2:-}" = "-g" ]; then
-      editor_file_arg="${3:-}"
+    editor_flag_arg="${1:-}"
+    editor_dir_arg="${2:-}"
+    if [ "${3:-}" = "-g" ]; then
+      editor_file_arg="${4:-}"
     fi
     return 0
   }
   get_active_ide() { echo "code"; }
 
-  ssafy_al b 3001 py --no-git >/dev/null 2>&1
+  ssafy_al b 3001 py --no-git > /dev/null 2>&1
 
-  # 에디터에 ALGO_BASE_DIR (=프로젝트 루트)가 전달됩니다
+  # 외부터미널(VSCODE_WORKSPACE_FOLDER 미설정) → code -r ALGO_BASE_DIR -g file
+  local expected_flag="-r"
   local expected_dir="$ALGO_BASE_DIR"
   local expected_file="$ALGO_BASE_DIR/boj/3001/boj_3001.py"
 
+  [ "$editor_flag_arg" = "$expected_flag" ] || {
+    echo "  expected editor flag: $expected_flag"
+    echo "  actual   editor flag: $editor_flag_arg"
+    return 1
+  }
   [ "$editor_dir_arg" = "$expected_dir" ] || {
     echo "  expected editor dir: $expected_dir"
     echo "  actual   editor dir: $editor_dir_arg"
@@ -400,7 +409,7 @@ test_al_opens_dir_with_file_focus() {
 
 run_test "al: 비대화형 py 생성 플로우" test_al_non_interactive_py_flow
 run_test "al: 대화형 back 포함 플로우" test_al_interactive_with_back_and_confirm
-run_test "al: 디렉토리를 workspace로 열고 파일 포커싱" test_al_opens_dir_with_file_focus
+run_test "al: 프로젝트 교체 후 파일 포커싱 (code -r DIR -g file)" test_al_opens_dir_with_file_focus
 run_test "gitup: URL 대화형 clone 플로우" test_gitup_interactive_url_clone_flow
 run_test "gitup: Step4 back 후 재확인 플로우" test_gitup_step4_back_then_success
 run_test "gitup: SmartLink 토큰 반영 + batch 호출" test_gitup_smartlink_applies_token_and_calls_batch
