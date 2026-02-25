@@ -408,6 +408,12 @@ ssafy_algo_update() {
     local applied_channel=""
     local applied_ref=""
     local answer=""
+    local check_only=false
+
+    # --check 플래그 처리
+    for _arg in "$@"; do
+        [ "$_arg" = "--check" ] && check_only=true
+    done
 
     if [ ! -d "$script_dir" ]; then
         if type ui_error >/dev/null 2>&1; then
@@ -421,6 +427,34 @@ ssafy_algo_update() {
     install_mode=$(_ssafy_resolve_install_mode "$script_dir")
     channel=$(_ssafy_resolve_update_channel "$script_dir")
     current_version=$(_ssafy_read_version_from_dir "$script_dir")
+
+    # --check: 버전 비교 후 결과 출력
+    if [ "$check_only" = true ]; then
+        local latest_tag=""
+        latest_tag=$(_ssafy_fetch_latest_release_tag 2>/dev/null || true)
+
+        echo ""
+        echo "🔍 업데이트 확인"
+        echo "   현재 버전: ${current_version:-Unknown}"
+        echo "   채널: $channel"
+        if [ -n "$latest_tag" ]; then
+            echo "   최신 버전: $latest_tag"
+            if [ "${current_version}" = "$latest_tag" ]; then
+                echo "   ✅ 최신 버전입니다. 업데이트가 필요하지 않습니다."
+                echo ""
+                return 0
+            else
+                echo "   ⬆️  업데이트 가능: $current_version → $latest_tag"
+                echo "   실행: algo-update"
+                echo ""
+                return 1
+            fi
+        else
+            echo "   ⚠️  최신 버전 정보를 가져오지 못했습니다. (네트워크 확인)"
+            echo ""
+            return 2
+        fi
+    fi
 
     if type ui_panel_begin >/dev/null 2>&1; then
         ui_panel_begin "algo-update" "Update execution plan"
