@@ -1,5 +1,18 @@
 # 📋 업데이트 노트 (Release Notes)
 
+## V8.2.3 (2026-02-25) - File Open Logic Fix
+
+### ✅ `gitup` 파일 열기 방식 수정 (`lib/git.sh`)
+- **문제**: 클론 완료 후 `_open_repo_file()`이 `code -r "$dir"` (디렉토리)를 VSCode에 전달해, 현재 workspace와 다른 경로로 인식되어 **새 창**이 열리던 버그 수정
+- **수정**: `code`/`cursor`에 대한 디렉토리 열기 호출 제거 → 기존 파일 목록 표시 + 번호 선택 + `code -r -g <파일>` 흐름만 사용 (현재 창에서 파일 열기)
+- **`ssafy_batch`**: `_open_repo_file "$ssafy_root/$first_repo"` → `_open_repo_file "$first_repo"` (이미 `cd "$ssafy_root"` 상태이므로 절대경로 불필요)
+
+### ✅ `al` 파일 열기 방식 개선 (`lib/templates.sh`)
+- **문제**: `code "$ALGO_BASE_DIR" -g "$file"` 방식으로 항상 `ALGO_BASE_DIR`을 workspace 교체 시도 → 이미 열려있어도 새 창이 생길 수 있음
+- **수정**: `$VSCODE_WORKSPACE_FOLDER` 환경변수로 현재 창의 workspace를 감지
+  - VSCode 통합 터미널 + `ALGO_BASE_DIR` 이미 열려있음 → `code -r -g "$file"` (파일만 현재 창에서)
+  - 외부 터미널 또는 다른 프로젝트 → `code -r "$ALGO_BASE_DIR" -g "$file"` (프로젝트 교체 후 파일 포커싱)
+
 ## V8.2.2 (2026-02-25) - Update Banner Integration
 
 ### ✅ 업데이트 알림 배너 통합 (`algo_functions.sh`)
