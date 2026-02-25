@@ -119,6 +119,45 @@ _ssafy_require_config() {
     return 1
 }
 
+# =============================================================================
+# al 전용 경로 가드: ALGO_BASE_DIR 미설정 시 차단 대신 인라인 설정 안내
+# 사용자가 Enter 치면 기본 경로 사용, 직접 입력하면 저장 후 계속
+# =============================================================================
+_ssafy_ensure_algo_dir() {
+    local home_unix cur_dir default_dir new_dir
+    home_unix=$(echo "$HOME" | tr '\\' '/')
+    default_dir="${home_unix}/algos"
+    cur_dir=$(echo "${ALGO_BASE_DIR:-}" | tr '\\' '/' | sed 's|/*$||')
+
+    # 비기본값으로 설정돼 있으면 바로 통과
+    if [ -n "$cur_dir" ] && [ "$cur_dir" != "$default_dir" ]; then
+        return 0
+    fi
+
+    # 인라인 안내
+    echo ""
+    echo "📁 알고리즘 파일 저장 경로가 설정되지 않았습니다."
+    echo "   기본 경로: $default_dir"
+    printf "   경로 입력 (Enter = 기본 경로 사용): "
+
+    # 비대화형(CI 등)이면 기본 경로로 자동 진행
+    if ! _is_interactive 2>/dev/null; then
+        new_dir="$default_dir"
+        echo "$new_dir  (비대화형: 기본 경로 자동 적용)"
+    else
+        read -r new_dir
+        new_dir="${new_dir:-$default_dir}"
+    fi
+
+    # 설정 저장
+    if type _set_config_value >/dev/null 2>&1; then
+        _set_config_value "ALGO_BASE_DIR" "$new_dir"
+    fi
+    export ALGO_BASE_DIR="$new_dir"
+    echo "   ✅ 경로 설정됨: $new_dir"
+    echo ""
+}
+
 _set_config_value() {
     local key="$1"
     local value="$2"
