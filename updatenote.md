@@ -1,5 +1,37 @@
 # 📋 업데이트 노트 (Release Notes)
 
+## V8.1.8 (2026-02-25) - Panel Batch Output & UX Polish
+
+### ✅ 전체 패널 일괄 출력 (`ui_panel_begin/end` 전환)
+- `al`, `gitdown`, `gitup`, `algo-config`, `algo-update`, `algo-doctor` 등 **모든 명령어 패널**이 내용을 버퍼에 담아 한 번에 출력됩니다.
+- 기존 `ui_header()` (헤더만 출력 후 내용 줄바꿈) 방식의 모든 호출을 `ui_panel_begin/end` 방식으로 전환했습니다.
+- 우측 패널 경계(`|`)가 모든 줄에서 정확하게 정렬됩니다.
+
+### ✅ 로드 배너 간소화
+- `source ~/.bashrc` 시 출력되는 로드 배너를 3줄로 줄였습니다.
+  ```
+  | ℹ [INFO] Loaded from: /c/Users/.../  |
+  | ✅ [OK] 알고리즘 셸 함수 로드 완료! |
+  | ℹ [INFO] 도움말: algo-help | ...     |
+  ```
+- 기존 `Verify load`, `Verify function`, 버전 중복 라인 등 불필요한 안내문 제거.
+
+### ✅ algo-help 도움말 보강 (`lib/help.sh`)
+- 각 명령어별 옵션, 예시, 기본 동작을 상세 도움말 형태로 정리.
+- `algo-help gitdown`, `algo-help al` 등 개별 명령어 상세 조회 지원.
+
+### ✅ algo-config wizard 누락 키 추가 (`algo_config_wizard.py`, `lib/config.sh`)
+- `SSAFY_BASE_URL`, `SSAFY_USER_ID` 등 누락된 설정 키가 wizard에서 표시 및 수정됩니다.
+- SSAFY 토큰 세션 설정 안내 추가.
+
+### ✅ Windows Git Bash UTF-8 안정화 (`algo_functions.sh`)
+- `LANG=ko_KR.UTF-8`, `PYTHONIOENCODING=utf-8` 등 환경변수를 자동 설정합니다.
+- 한글 출력 깨짐(모지바케) 예방 처리 강화.
+
+### ✅ 테스트 안정화 (`tests/test_gitup_flow.sh`)
+- `ui_panel_begin` mock 추가로 `gitup step3 preview text is readable` 테스트 복구.
+- 전체 테스트 스위트: **14 passed, 0 failed**.
+
 ## V8.1.7 (2026-02-24) - Stability Hotfix
 
 ### ✅ algo-update 입력 흐름 버그 수정

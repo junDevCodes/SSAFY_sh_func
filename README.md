@@ -1,14 +1,14 @@
-# 알고리즘/실습 자동화 Shell 함수 (V8.1.7)
+# 알고리즘/실습 자동화 Shell 함수 (V8.1.8)
 
 이 저장소는 Bash 함수들을 제공하여 알고리즘 풀이와 SSAFY 실습 과제 제출을 자동화합니다.
 별도의 복잡한 설치 없이 스크립트 파일만 복사하여 즉시 사용할 수 있습니다.
 
-## 📌 V8.1.7 필수 공지
-- `gitup` guided flow의 Step 4 확인 단계가 안정화되었습니다. `b=back`은 이전 단계 복귀, `Enter`는 기본값(`yes`)으로 동작합니다.
-- `SSAFY_DEBUG_FLOW=1`을 설정하면 `gitup` 단계별 반환값(`step/rc/answer/flow_rc`)을 확인할 수 있습니다.
-- 수정 반영 후 현재 셸에 최신 함수를 다시 로드하세요: `source ./algo_functions.sh`
-- 현재 로드 경로 점검: `echo $ALGO_ROOT_DIR`, `type -a gitup`
-- 전체 명령어 안내는 `algo-help`를 사용하고, `hint`는 현재 흐름 연계 안내로 최소화되었습니다.
+## 📌 V8.1.8 주요 변경
+- `al`, `gitdown`, `gitup` 등 **모든 명령어 패널이 전체 내용을 한 번에 출력**합니다 (`ui_panel_begin/end` 버퍼링).
+- **로드 배너 간소화**: `source ~/.bashrc` 시 Loaded from / 완료 / 도움말 **3줄만** 표시됩니다.
+- `algo-help` 도움말 구성이 보강됐습니다 (옵션/예시/기본 동작 안내).
+- `algo-config edit` 마법사에서 누락된 키가 추가됐습니다 (SSAFY 토큰 세션 설정 포함).
+- Windows Git Bash에서 한글 출력 안정성 강화 (UTF-8 환경변수 자동 설정, 모지바케 예방).
 
 ---
 
