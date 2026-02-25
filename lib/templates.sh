@@ -459,8 +459,18 @@ ssafy_al() {
         fi
 
         if [[ "$editor" == "code" || "$editor" == "cursor" ]]; then
-            # 프로젝트 루트($ALGO_BASE_DIR)를 workspace로 열고, 해당 파일을 포커싱
-            "$editor" "$ALGO_BASE_DIR" -g "$file"
+            local current_ws="${VSCODE_WORKSPACE_FOLDER:-}"
+            local algo_dir_real
+            algo_dir_real="$(realpath "$ALGO_BASE_DIR" 2>/dev/null || echo "$ALGO_BASE_DIR")"
+            local ws_real=""
+            [ -n "$current_ws" ] && ws_real="$(realpath "$current_ws" 2>/dev/null || echo "$current_ws")"
+            if [ -n "$ws_real" ] && [ "$ws_real" = "$algo_dir_real" ]; then
+                # 이미 같은 프로젝트가 열려있음 → 파일만 현재 창에서 열기
+                "$editor" -r -g "$file"
+            else
+                # 다른/미감지 → 프로젝트를 현재 창에 교체 후 파일 포커싱
+                "$editor" -r "$ALGO_BASE_DIR" -g "$file"
+            fi
         else
             "$editor" "$ALGO_BASE_DIR" "$file" &
         fi
