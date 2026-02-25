@@ -502,15 +502,18 @@ post_install_setup() {
         return 0
     fi
 
-    if [ -n "${SSAFY_PYTHON:-}" ] && command_exists "${SSAFY_PYTHON}"; then
-        python_cmd="${SSAFY_PYTHON}"
-    elif command_exists python3; then
-        python_cmd="python3"
-    elif command_exists python; then
-        python_cmd="python"
-    elif command_exists py; then
-        python_cmd="py"
+    # SSAFY_PYTHON 환경변수 우선, 없으면 python3 → python → py 순으로 실행 검증
+    local _py_candidates=("python3" "python" "py")
+    if [ -n "${SSAFY_PYTHON:-}" ]; then
+        _py_candidates=("${SSAFY_PYTHON}" "python3" "python" "py")
     fi
+    for _py in "${_py_candidates[@]}"; do
+        if command -v "$_py" >/dev/null 2>&1 \
+            && "$_py" -c "exit(0)" >/dev/null 2>&1; then
+            python_cmd="$_py"
+            break
+        fi
+    done
 
     if [ -z "$python_cmd" ]; then
         echo "[warn] Python runtime not found for GUI setup."
