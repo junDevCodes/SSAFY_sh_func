@@ -456,7 +456,7 @@ ssafy_al() {
             # 프로젝트 루트($ALGO_BASE_DIR)를 workspace로 열고, 해당 파일을 포커싱
             "$editor" "$ALGO_BASE_DIR" -g "$file"
         else
-            "$editor" "$ALGO_BASE_DIR" &
+            "$editor" "$ALGO_BASE_DIR" "$file" &
         fi
     else
         if type ui_info >/dev/null 2>&1; then

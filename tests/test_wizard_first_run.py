@@ -45,9 +45,9 @@ def _load_wizard_with_config(config_path):
     """CONFIG_FILE을 config_path 로 교체한 뒤 wizard 모듈을 반환한다."""
     spec = importlib.util.spec_from_file_location("wizard_mod", WIZARD_PATH)
     mod = importlib.util.module_from_spec(spec)
-    mod.CONFIG_FILE = config_path          # 주입
-    # pick_folder_gui는 비대화형 환경에서 None 반환하도록 패치
     spec.loader.exec_module(mod)
+    # exec_module 이후에 덮어쓰기 (모듈 최상위 코드에 의한 overwite 방지)
+    mod.CONFIG_FILE = config_path
     mod.pick_folder_gui = lambda *a, **kw: None
     return mod
 
