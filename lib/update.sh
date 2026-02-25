@@ -333,6 +333,7 @@ _ssafy_update_git_install() {
 _ssafy_update_snapshot_install() {
     local script_dir="$1"
     local channel="$2"
+    local force="${3:-false}"
     local staged_dir=""
     local current_version=""
     local next_version=""
@@ -357,7 +358,10 @@ _ssafy_update_snapshot_install() {
     current_ref=$(_ssafy_read_meta_value "$script_dir" "ref" 2>/dev/null || true)
     next_ref=$(_ssafy_read_meta_value "$staged_dir" "ref" 2>/dev/null || true)
 
-    if [ "$channel" = "stable" ] && [ "$current_version" = "$next_version" ] && [ "$current_ref" = "$next_ref" ]; then
+    if [ "$force" != "true" ] && \
+       [ "$channel" = "stable" ] && \
+       [ "$current_version" = "$next_version" ] && \
+       [ "$current_ref" = "$next_ref" ]; then
         echo "Already up to date. (version: $current_version)"
         rm -rf "$staged_dir"
         return 0
@@ -368,7 +372,9 @@ _ssafy_update_snapshot_install() {
         return 1
     }
 
-    echo "Snapshot update completed. (from: $current_version to: $next_version)"
+    local msg="Snapshot update completed. (from: $current_version to: $next_version)"
+    [ "$force" = "true" ] && msg="[force] $msg"
+    echo "$msg"
     return 0
 }
 
@@ -410,10 +416,12 @@ ssafy_algo_update() {
     local applied_ref=""
     local answer=""
     local check_only=false
+    local force=false
 
-    # --check 플래그 처리
+    # --check / --force 플래그 처리
     for _arg in "$@"; do
         [ "$_arg" = "--check" ] && check_only=true
+        [ "$_arg" = "--force" ] && force=true
     done
 
     if [ ! -d "$script_dir" ]; then
@@ -462,10 +470,12 @@ ssafy_algo_update() {
         ui_info "install_mode=$install_mode"
         ui_info "channel=$channel"
         ui_info "current_version=$current_version"
+        [ "$force" = "true" ] && ui_warn "--force: 버전 일치 여부와 무관하게 강제 업데이트"
         ui_path "$script_dir"
     else
         echo "Install path: $script_dir"
         echo "Updating... (mode: $install_mode, channel: $channel)"
+        [ "$force" = "true" ] && echo "[warn] --force: version check bypassed"
     fi
 
     if _is_interactive && type input_confirm >/dev/null 2>&1; then
@@ -483,7 +493,9 @@ ssafy_algo_update() {
                 return 1
             fi
         else
-            input_confirm answer "Proceed with update now?" "y"
+            local confirm_prompt="Proceed with update now?"
+            [ "$force" = "true" ] && confirm_prompt="[--force] Proceed with forced update (same version will be reinstalled)?"
+            input_confirm answer "$confirm_prompt" "y"
             case $? in
                 10|20) return 1 ;;
             esac
@@ -515,7 +527,7 @@ ssafy_algo_update() {
             }
             ;;
         snapshot|*)
-            _ssafy_update_snapshot_install "$script_dir" "$channel" || {
+            _ssafy_update_snapshot_install "$script_dir" "$channel" "$force" || {
                 if type ui_error >/dev/null 2>&1; then
                     ui_error "Snapshot update failed."
                 else
