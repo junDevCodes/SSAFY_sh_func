@@ -21,7 +21,7 @@ export HOME="$TEST_ROOT/home"
 mkdir -p "$HOME"
 
 cat > "$HOME/.algo_config" <<'EOF'
-ALGO_BASE_DIR="$HOME/algos"
+ALGO_BASE_DIR="$HOME/algo_workspace"
 GIT_DEFAULT_BRANCH="main"
 GIT_COMMIT_PREFIX="solve"
 GIT_AUTO_PUSH=false
@@ -30,7 +30,7 @@ SSAFY_BASE_URL="https://lab.ssafy.com"
 SSAFY_USER_ID="testuser"
 EOF
 
-mkdir -p "$HOME/algos"
+mkdir -p "$HOME/algo_workspace"
 
 # shellcheck source=/dev/null
 source "$SCRIPT_PATH" >/dev/null 2>&1
@@ -364,8 +364,43 @@ test_integration_report_output() {
   assert_contains "$report" "al=ok"
 }
 
+test_al_opens_dir_with_file_focus() {
+  setup_ui_stub
+  _is_interactive() { return 1; }
+
+  # IDE 호출 인자를 캐포처하는 stub
+  local editor_dir_arg=""
+  local editor_file_arg=""
+  code() {
+    editor_dir_arg="${1:-}"
+    if [ "${2:-}" = "-g" ]; then
+      editor_file_arg="${3:-}"
+    fi
+    return 0
+  }
+  get_active_ide() { echo "code"; }
+
+  ssafy_al b 3001 py --no-git >/dev/null 2>&1
+
+  # 에디터에 ALGO_BASE_DIR (=프로젝트 루트)가 전달됩니다
+  local expected_dir="$ALGO_BASE_DIR"
+  local expected_file="$ALGO_BASE_DIR/boj/3001/boj_3001.py"
+
+  [ "$editor_dir_arg" = "$expected_dir" ] || {
+    echo "  expected editor dir: $expected_dir"
+    echo "  actual   editor dir: $editor_dir_arg"
+    return 1
+  }
+  [ "$editor_file_arg" = "$expected_file" ] || {
+    echo "  expected editor file: $expected_file"
+    echo "  actual   editor file: $editor_file_arg"
+    return 1
+  }
+}
+
 run_test "al: 비대화형 py 생성 플로우" test_al_non_interactive_py_flow
 run_test "al: 대화형 back 포함 플로우" test_al_interactive_with_back_and_confirm
+run_test "al: 디렉토리를 workspace로 열고 파일 포커싱" test_al_opens_dir_with_file_focus
 run_test "gitup: URL 대화형 clone 플로우" test_gitup_interactive_url_clone_flow
 run_test "gitup: Step4 back 후 재확인 플로우" test_gitup_step4_back_then_success
 run_test "gitup: SmartLink 토큰 반영 + batch 호출" test_gitup_smartlink_applies_token_and_calls_batch
