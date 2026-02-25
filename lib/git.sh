@@ -334,11 +334,11 @@ _open_repo_file() {
     local file=""
     while IFS= read -r file; do
         [ -n "$file" ] && files+=("${file#./}")
-    done < <(find . -maxdepth 3 -not -path '*/.*' -type f 2>/dev/null | head -n 6)
+    done < <(find . -maxdepth 3 -not -path '*/.*' -type f 2>/dev/null | head -n 5)
 
     local count=${#files[@]}
     if [ $count -eq 0 ]; then
-        if type ui_info >/dev/null 2>&1; then
+        if type ui_info > /dev/null 2>&1; then
             ui_info "No files found in repository yet."
         else
             echo "[INFO] No files found in repository yet."
@@ -346,20 +346,15 @@ _open_repo_file() {
         return 0
     fi
 
-    if type ui_section >/dev/null 2>&1; then
-        ui_section "Repository files (top 5)"
+    if type ui_section > /dev/null 2>&1; then
+        ui_section "Repository files"
     fi
 
     local idx=0
     for file in "${files[@]}"; do
-        if [ $idx -lt 5 ]; then
-            echo "  - $file"
-        fi
+        echo "  $((idx + 1)). $file"
         idx=$((idx + 1))
     done
-    if [ $count -gt 5 ]; then
-        echo "  - ..."
-    fi
 
     if _is_interactive && [ $count -gt 0 ] && [ -n "$ide_cmd" ] && [[ "$ide_cmd" == "code" || "$ide_cmd" == "cursor" ]]; then
         local choice=""
