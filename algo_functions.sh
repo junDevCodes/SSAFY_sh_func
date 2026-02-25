@@ -9,6 +9,16 @@
 # =============================================================================
 
 # =============================================================================
+# [인코딩 방어] Windows Git Bash 환경에서 UTF-8 출력 보장
+# 이미 설정된 경우 덮어쓰지 않는다.
+# =============================================================================
+export PYTHONUTF8=1
+export PYTHONIOENCODING=UTF-8
+if [ -z "${LANG:-}" ]; then
+    export LANG=ko_KR.UTF-8
+fi
+
+# =============================================================================
 # [V8.1 Modular Architecture]
 # =============================================================================
 # 스크립트 위치 감지
@@ -74,21 +84,16 @@ else
     _check_update
 fi
 
-if type ui_ok >/dev/null 2>&1; then
-    ui_header "SSAFY Algo Tools" "Version ${ALGO_FUNCTIONS_VERSION}"
-    ui_ok "알고리즘 셸 함수 로드 완료!"
-    ui_info "전체 명령어 요약은 'algo-help'를 실행하세요."
+if type ui_panel_begin > /dev/null 2>&1; then
+    ui_panel_begin "SSAFY Algo Tools" "Version ${ALGO_FUNCTIONS_VERSION}"
     ui_info "Loaded from: ${ALGO_ROOT_DIR}"
-    ui_info "Version: ${ALGO_FUNCTIONS_VERSION}"
-    ui_info "Verify load: type -a gitup"
-    ui_info "Verify function: declare -f ssafy_gitup | head -n 20"
+    ui_ok "알고리즘 셸 함수 로드 완료!"
+    ui_info "도움말: algo-help | 설정: algo-config edit"
+    ui_panel_end
 else
     echo "알고리즘 셸 함수 로드 완료! (${ALGO_FUNCTIONS_VERSION})"
-    echo "전체 명령어 요약은 'algo-help'를 실행하세요."
     echo "Loaded from: ${ALGO_ROOT_DIR}"
-    echo "Version: ${ALGO_FUNCTIONS_VERSION}"
-    echo "Verify load: type -a gitup"
-    echo "Verify function: declare -f ssafy_gitup | head -n 20"
+    echo "도움말: algo-help"
 fi
 
 if [ -f "$(pwd)/algo_functions.sh" ] && [ "$(pwd)" != "${ALGO_ROOT_DIR}" ]; then
