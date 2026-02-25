@@ -356,6 +356,103 @@ test_gitdown_all_mode_flow() {
   assert_eq "$called" "1"
 }
 
+test_gitdown_defaults_to_batch_at_session_root() {
+  setup_ui_stub
+
+  local called=0
+  local session_root="$TEST_ROOT/session_root_default_mode"
+  local old_pwd=""
+
+  mkdir -p "$session_root"
+  : > "$session_root/.ssafy_session_meta"
+
+  _gitdown_all() {
+    called=1
+    return 0
+  }
+  _is_interactive() { return 1; }
+
+  old_pwd="$(pwd)"
+  cd "$session_root" || return 1
+  ssafy_gitdown >/dev/null 2>&1
+  local rc=$?
+  cd "$old_pwd" || return 1
+
+  [ "$rc" -eq 0 ] || return 1
+  assert_eq "$called" "1"
+}
+
+test_gitdown_followup_runs_when_auto_push_disabled() {
+  setup_ui_stub
+  setup_git_stub
+
+  local link_called=0
+  local session_root="$TEST_ROOT/session_followup_flow"
+  local repo_dir="$session_root/ds_ws_1_1"
+  local old_pwd=""
+
+  mkdir -p "$repo_dir"
+  : > "$session_root/.ssafy_session_meta"
+  _is_interactive() { return 1; }
+  _show_submission_links() {
+    link_called=$((link_called + 1))
+    return 0
+  }
+  _ssafy_next_repo() { echo ""; }
+  _sync_playlist_status() { :; }
+  _check_unsolved_folders() { :; }
+  _open_repo_file() { :; }
+
+  old_pwd="$(pwd)"
+  cd "$repo_dir" || return 1
+  ssafy_gitdown >/dev/null 2>&1
+  local rc=$?
+  cd "$old_pwd" || return 1
+
+  [ "$rc" -eq 0 ] || return 1
+  assert_eq "$link_called" "1"
+}
+
+test_gitdown_panel_begin_end_pairs() {
+  setup_ui_stub
+  setup_git_stub
+
+  local panel_begin_count=0
+  local panel_end_count=0
+  local work_dir="$TEST_ROOT/panel_pair_repo"
+  local old_pwd=""
+
+  mkdir -p "$work_dir"
+
+  _is_interactive() { return 0; }
+  ui_panel_begin() {
+    panel_begin_count=$((panel_begin_count + 1))
+    return 0
+  }
+  ui_panel_end() {
+    panel_end_count=$((panel_end_count + 1))
+    return 0
+  }
+  input_choice() {
+    printf -v "$1" '%s' "auto"
+    return 0
+  }
+  input_confirm() {
+    printf -v "$1" '%s' "yes"
+    return 0
+  }
+
+  old_pwd="$(pwd)"
+  cd "$work_dir" || return 1
+  ssafy_gitdown >/dev/null 2>&1
+  local rc=$?
+  cd "$old_pwd" || return 1
+
+  [ "$rc" -eq 0 ] || return 1
+  [ "$panel_begin_count" -ge 3 ] || return 1
+  assert_eq "$panel_begin_count" "$panel_end_count"
+}
+
 test_integration_report_output() {
   local report=""
   report="$(printf 'gitup=%s gitdown=%s al=%s' "ok" "ok" "ok")"
@@ -415,6 +512,9 @@ run_test "gitup: Step4 back 후 재확인 플로우" test_gitup_step4_back_then_
 run_test "gitup: SmartLink 토큰 반영 + batch 호출" test_gitup_smartlink_applies_token_and_calls_batch
 run_test "gitdown: 대화형 commit/push 플로우" test_gitdown_interactive_commit_flow
 run_test "gitdown: --all 배치 플로우" test_gitdown_all_mode_flow
+run_test "gitdown: 세션 루트 기본 실행은 batch 모드여야 한다" test_gitdown_defaults_to_batch_at_session_root
+run_test "gitdown: auto-push 비활성화에서도 follow-up이 실행되어야 한다" test_gitdown_followup_runs_when_auto_push_disabled
+run_test "gitdown: 패널 begin/end 짝이 유지되어야 한다" test_gitdown_panel_begin_end_pairs
 run_test "통합 리포트 문자열 검증" test_integration_report_output
 
 echo ""

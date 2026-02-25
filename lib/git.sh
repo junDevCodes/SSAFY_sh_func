@@ -653,19 +653,19 @@ _gitdown_all() {
         cd "$ssafy_root" || return 1
     done
 
-    if type ui_panel_begin >/dev/null 2>&1; then
-        ui_panel_begin "gitdown" "Commit follow-up"
+    if type ui_panel_begin > /dev/null 2>&1; then
+        ui_panel_begin "gitdown --all" "Batch result"
         ui_info "success=$success_count"
         ui_info "failed=$fail_count"
         ui_info "skipped=$skip_count"
+        ui_panel_end
     else
         echo "Result: success=$success_count failed=$fail_count skipped=$skip_count"
     fi
 
     _check_unsolved_folders "$ssafy_root" "${folders[@]}"
-    local playlist_complete=$?
 
-    if [ "$playlist_complete" -ne 0 ] && [ ${#pushed_folders[@]} -gt 0 ]; then
+    if [ ${#pushed_folders[@]} -gt 0 ]; then
         _show_submission_links "$ssafy_root" "${pushed_folders[@]}"
     fi
 }
@@ -862,6 +862,9 @@ ssafy_gitdown() {
     local move_to_next_problem=true
     local answer=""
     local current_repo
+    local panel_open=false
+    local status_lines=()
+    local status_line=""
 
     # SSAFY 세션 루트에서 단독 실행 시 기본적으로 전체 배치 모드
     local _ssafy_root_check
@@ -944,6 +947,7 @@ ssafy_gitdown() {
     fi
 
     if type ui_panel_begin >/dev/null 2>&1; then
+        panel_open=true
         ui_panel_begin "gitdown" "Commit/Push execution"
         if [ "$ssafy_mode" = true ]; then
             ui_info "mode=ssafy"
@@ -954,8 +958,32 @@ ssafy_gitdown() {
     else
         echo "[INFO] gitdown"
     fi
-    git status --short
-    echo ""
+
+    while IFS= read -r status_line; do
+        [ -n "$status_line" ] && status_lines+=("$status_line")
+    done < <(git status --short 2>/dev/null || true)
+
+    if [ "$panel_open" = true ]; then
+        if [ "${#status_lines[@]}" -eq 0 ]; then
+            ui_info "(clean)"
+        else
+            for status_line in "${status_lines[@]}"; do
+                ui_info "$status_line"
+            done
+        fi
+        ui_hint "Step 1/5부터 순서대로 입력하세요."
+        ui_panel_end
+        panel_open=false
+    else
+        if [ "${#status_lines[@]}" -eq 0 ]; then
+            echo "(clean)"
+        else
+            for status_line in "${status_lines[@]}"; do
+                echo "$status_line"
+            done
+        fi
+        echo ""
+    fi
 
     if _is_interactive && type input_choice >/dev/null 2>&1; then
         local commit_mode="auto"
@@ -1049,6 +1077,7 @@ ssafy_gitdown() {
             else
                 ui_info "push_branch=auto"
             fi
+            ui_panel_end
         fi
         input_confirm answer "Proceed with git add/commit/push?" "y"
         case $? in
@@ -1190,6 +1219,27 @@ ssafy_gitdown() {
                 fi
             fi
         fi
+    else
+        # GIT_AUTO_PUSH=false: commit 성공이면 follow-up(URL, 다음문제) 허용
+        push_ok=true
+        if type ui_info > /dev/null 2>&1; then
+            ui_info "Auto-push disabled. Commit saved locally."
+        fi
+    fi
+
+    if type ui_panel_begin >/dev/null 2>&1; then
+        ui_panel_begin "gitdown" "Execution result"
+        ui_ok "Commit completed"
+        if [ "$GIT_AUTO_PUSH" = true ]; then
+            if [ "$push_ok" = true ]; then
+                ui_ok "Push completed"
+            else
+                ui_warn "Push failed or skipped"
+            fi
+        else
+            ui_info "Auto-push disabled (commit only)"
+        fi
+        ui_panel_end
     fi
 
     cd .. || {
