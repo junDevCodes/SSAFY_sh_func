@@ -771,10 +771,12 @@ ui_panel_begin() {
     _ui_panel_buffer_reset
 
     if [ "$style" = "panel" ]; then
+        # 타이틀과 서브타이틀을 버퍼에 추가한다. (즉시 출력하지 않음)
+        # ui_panel_end()에서 전체를 한 번에 flush한다.
         _ui_panel_buffer_add "B|"
-        _ui_panel_line "$title_view" "$frame_width" || printf '%s\n' "$title_view"
+        _ui_panel_buffer_add "T|${title_view}"
         if [ -n "$subtitle" ]; then
-            _ui_panel_line "$subtitle" "$frame_width" || printf '%s\n' "$subtitle"
+            _ui_panel_buffer_add "T|${subtitle}"
         fi
     else
         printf '%s%s%s\n' "$UI_CLR_TITLE" "$title_view" "$UI_CLR_RESET"
@@ -840,6 +842,7 @@ ui_header() {
     fi
 }
 
+
 ui_section() {
     local title="$1"
     local style=""
@@ -849,9 +852,10 @@ ui_section() {
     style=$(_ui_effective_style)
     frame_width=$(_ui_frame_width)
 
-    if ui_panel_is_open && [ "$UI_PANEL_OPEN_STYLE" = "panel" ]; then
+    if ui_panel_is_open && [ "${UI_PANEL_OPEN_STYLE:-}" = "panel" ]; then
+        # 패널이 열려 있으면 버퍼에 추가한다. (즉시 출력하지 않음)
         _ui_panel_buffer_add "D|"
-        _ui_panel_line "📌 [$title]" "$frame_width" || printf '\n📌 [%s]\n' "$title"
+        _ui_panel_buffer_add "T|📌 [$title]"
         return 0
     fi
 
@@ -861,6 +865,8 @@ ui_section() {
         printf '\n%s📌 [%s]%s\n' "$UI_CLR_SECTION" "$title" "$UI_CLR_RESET"
     fi
 }
+
+
 
 _ui_print_with_prefix() {
     local color="$1"
@@ -873,8 +879,9 @@ _ui_print_with_prefix() {
     icon=$(_ui_prefix_icon "$prefix")
     frame_width=$(_ui_frame_width)
 
-    if ui_panel_is_open && [ "$UI_PANEL_OPEN_STYLE" = "panel" ]; then
-        _ui_panel_line "  ${icon} ${prefix} ${message}" "$frame_width" || printf '  %s %s %s\n' "$icon" "$prefix" "$message"
+    if ui_panel_is_open && [ "${UI_PANEL_OPEN_STYLE:-}" = "panel" ]; then
+        # 패널이 열려 있으면 버퍼에 추가한다. (즉시 출력하지 않음)
+        _ui_panel_buffer_add "T|  ${icon} ${prefix} ${message}"
         return 0
     fi
 
